@@ -55,6 +55,7 @@ component MainSpar : functional {        # levels: functional | behavioral | phy
   port root_attach : mechanical.translation {
     direction inout                      # in | out | inout (default)
     force: [0, 12 kN] ± cal              # port attrs use ':' (typed slots)
+    voltage: [8, 26 V] from "p.2"        # attrs take provenance tails too
   }
   mass_margin = 0.15                     # quantities use '='
   budget mass <= 240 g ± 10 g            # typed rollups: mass, unit_cost, lead_time

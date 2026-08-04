@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "UEL — Unified Engineering Language: a content-addressed, typed graph of engineering claims. Reference implementation (kernel proof)."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"  # tomllib
 authors = [{ name = "UEL program" }]
 keywords = ["engineering", "systems-engineering", "content-addressed", "units", "agents"]
 classifiers = [
@@ -28,3 +28,6 @@ Repository = "https://github.com/JakeAum/unified-engineering-language"
 
 [tool.setuptools]
 packages = ["uel"]
+
+[tool.setuptools.package-data]
+uel = ["stdlib/*.uel"]
