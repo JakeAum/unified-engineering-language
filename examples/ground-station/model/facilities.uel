@@ -1,0 +1,129 @@
+# Facilities: distribution, protection, environment, compute, and site works
+# for the I-ALiRT station. The seam this file guards (INTERFACES.md): the LNA
+# enclosure's temperature guarantee, lna_physical_temp in [-5, 40] degC, fences
+# what the RF team's SystemNoise may assume ([0, 35] degC ⊆ ours); the compiler
+# checks that containment at integration. Everything here is COTS or civil —
+# vendor-prov quantities and quotes, no geometry cores.
+
+binding PowerDistribution -> pdist_v1 : physical {
+  doc "Wall-mount 3-phase distribution: main breaker, drive branch, protected AC branch with SPD, 12 V DC rail for the RF chain"
+  mass = 120 kg from "Sentar Power panel schedule, quote SP-2117 rev B"
+  unit_cost = 9000 USD from "Sentar Power quote SP-2117 rev B, incl. breakers, SPD, 12 V rectifier"
+  lead_time = 6 week from "Sentar Power quote SP-2117 rev B"
+}
+
+binding UpsUnit -> ups_2200 : physical {
+  doc "Online double-conversion UPS on the protected AC branch; carries the receive chain and server, deliberately not the drives"
+  energy_capacity = 0.9 kW*hr ± 10 % from "Vertex Power VRT-2200 datasheet rev D, nameplate battery energy"
+  mass = 28 kg from "Vertex Power VRT-2200 datasheet rev D"
+  unit_cost = 1400 USD from "Vertex Power list price, Q3 quote V-8841"
+  lead_time = 2 week from "Vertex Power quote V-8841, stock item"
+}
+
+binding LnaEnclosure -> lna_enclosure_v1 : physical {
+  doc "Insulated hub enclosure for LNA + downconverter: 800 W strip heater, wall TEC cooler, stand-off solar shield"
+  heater_power = 800 W from "Almarin Enclosures AE-88 config sheet, heater option H8"
+  mass = 22 kg from "Almarin Enclosures AE-88 config sheet"
+  unit_cost = 3500 USD from "Almarin Enclosures quote AE-88-Q12, incl. heater, TEC, shield"
+  lead_time = 4 week from "Almarin Enclosures quote AE-88-Q12"
+  envelope {
+    T in [-40, 55] degC # vendor operating rating; covers the functional [-30, 45] site fence
+  }
+}
+
+binding StationServer -> server_r1 : physical {
+  doc "1U demod host with the SDR, monitoring, and frame delivery; dual PSU on the UPS branch"
+  continuous_draw = 450 W ± 10 % from "Corvid Systems R1 config quote C-3308, measured demod load incl. SDR host"
+  mass = 14 kg from "Corvid Systems R1 config quote C-3308"
+  unit_cost = 4200 USD from "Corvid Systems R1 config quote C-3308"
+  lead_time = 3 week from "Corvid Systems quote C-3308"
+}
+
+binding SiteWorks -> site_works_v1 : physical {
+  doc "Foundation, conduit runs, grounding ring. Mass is zero by the skeleton's convention: the concrete belongs to the site, not the shipped station"
+  mass = 0 kg from "convention — see SiteWorks doc in station.uel"
+  unit_cost = 25000 USD from "Halloway Civil quote HC-451: pad, conduit, ground ring, trenching"
+  lead_time = 8 week from "Halloway Civil quote HC-451, incl. cure time"
+}
+
+analysis PowerBudget {
+  intent req.PWR-005 "does the station live inside its single 8 kW utility feed, continuous and peak?"
+  framing {
+    model power.load_ledger
+    assume steady_state because "the ledger sums sustained worst-case draws; motor inrush and heater-cycling transients are breaker-coordination items, not feed sizing"
+  }
+  knowns {
+    peak_drive_power <- ServoSizing.outputs.peak_drive_power
+    heater_power <- lna_enclosure_v1.heater_power
+    server_draw <- server_r1.continuous_draw
+    max_feed <- req.PWR-005.max_feed_power
+  }
+  params {
+    rf_chain_dc = 60 W ± 20 % from "12 V rail ledger: LNA 5 W + downconverter 25 W + GPSDO 10 W + bias/monitor 20 W, incl. rectifier loss"
+    dehydrator_draw = 150 W ± 10 % from "feedline dehydrator nameplate, compressor duty"
+    misc_draw = 300 W ± 30 % from "allocation: network switch, cameras, lighting, enclosure TEC and controls"
+    heater_duty_avg = 0.3 from "cold-case thermostat duty from EnclosureThermal sizing; annual mean is lower, so the continuous figure is conservative"
+    growth_allowance = 0.2 from "program margin policy: supply_margin is quoted after 20 % load growth on peak"
+  }
+  core python "analysis/power_budget.py"
+  outputs {
+    total_continuous_draw : W ±
+    peak_draw : W ±
+    supply_margin : W ±
+  }
+  judgment accepted "continuous 1.2 kW, peak 3.96 kW against the 8 kW feed — 3.25 kW of margin left even after the 20 % growth policy" doubts "dehydrator and misc are allocations, not measurements, and servo peak carries the structures stub's 20 % band until their sizing lands"
+}
+
+analysis EnclosureThermal {
+  intent req.ENV-004 "does the LNA enclosure hold its electronics between -5 and 40 degC across the -30 to 45 degC site range?"
+  framing {
+    model thermal.lumped_balance
+    assume lumped_element because "one air node in a small insulated box; wall and component gradients are a few kelvin and unresolved"
+    assume steady_state because "site extremes hold for hours against a ~20 min enclosure time constant; soak bounds the transients"
+    envelope {
+      lna_physical_temp in [-5, 40] degC
+      T_amb in [-30, 45] degC
+    }
+  }
+  knowns {
+    t_amb_min <- req.ENV-004.t_amb_min
+    t_amb_max <- req.ENV-004.t_amb_max
+    heater_power <- lna_enclosure_v1.heater_power
+  }
+  params {
+    ua = 6 W/K ± 20 % from "0.6 m^2 double-wall shell, 25 mm PIR core, incl. thermal bridging at glands and mounts; flat-plate estimate"
+    q_internal = 25 W ± 20 % from "LNA 5 W + downconverter 13 W + bias tee and monitor 7 W dissipated inside the box"
+    q_solar_residual = 15 W ± 50 % from "stand-off solar shield intercepts direct load; residual through the vented shield gap"
+    q_cool = 120 W ± 15 % from "declared hot-case mitigation: wall-mount TEC assembly (AE-88 option), vendor curve at dT = 15 K, thermostat engages above 25 degC — passive shade/vent alone cannot sit below a 45 degC ambient"
+    heater_setpoint = 10 degC from "hold above site dew point and inside the LNA gain-stability band in cold soak"
+  }
+  core python "analysis/enclosure_thermal.py"
+  outputs {
+    lna_physical_temp : degC ±
+    heater_duty : dimensionless ±
+  }
+  judgment accepted "hot case 31.7 degC with shield and TEC engaged, cold-case heater duty 0.30 at -30 degC — both ends inside the [-5, 40] guarantee, and the RF team's [0, 35] assumption stays covered" doubts "UA is a flat-plate estimate and TEC capacity derates with dT; the +-4 K hot-case band grazes 36 degC, so confirm both against the vendor enclosure test report before CDR"
+}
+
+analysis UpsRideThrough {
+  intent req.PWR-005 "how long does the UPS carry the receive chain and server when the feed drops?"
+  framing {
+    model energy.reservoir_discharge
+    assume steady_state because "constant-power discharge at the protected bus; converter dynamics and battery voltage sag are folded into the efficiency and end-of-life derates"
+  }
+  knowns {
+    capacity <- ups_2200.energy_capacity
+    server_draw <- server_r1.continuous_draw
+    min_ride <- req.PWR-005.min_ride_through
+  }
+  params {
+    eta_inv = 0.9 ± 3 % from "Vertex Power VRT-2200 datasheet rev D, double-conversion efficiency near 25 % load"
+    chain_dc_draw = 60 W ± 20 % from "receive-chain DC ledger — same figure PowerBudget carries"
+    eol_derate = 0.8 from "VRLA end-of-life capacity retention per vendor cycle-life curve; ride-through is sized at end of life"
+  }
+  core python "analysis/ups_ride_through.py"
+  outputs {
+    ride_through_time : min ±
+  }
+  judgment accepted "76 min at end-of-life capacity against 10 min required — 7.6x cover; the drives sit outside the protected bus by design" doubts "constant-power draw assumed at the wall; Peukert effect at this light load is small but unmodeled"
+}
