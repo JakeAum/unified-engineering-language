@@ -1,0 +1,173 @@
+# X-band receive chain — RF team deliverable (INTERFACES.md, RF section).
+# Five COTS realizations bound to the architect's functional skeleton, and the
+# analysis ladder that closes req.LNK-002 against the IMAP I-ALiRT broadcast
+# from Sun-Earth L1: aperture gain, system noise at the LNA input, G/T, and
+# the link budget. Vendor numbers carry datasheet/quote provenance (spec §7.2);
+# every derived value is an analysis output, never a copied literal (spec §4.2).
+
+# ---------------------------------------------------------------------------
+# Bindings — COTS receive chain
+# ---------------------------------------------------------------------------
+
+binding FeedAssembly -> feed_x84 : physical {
+  doc "MilliRF FH-84 corrugated horn + septum polarizer + OMT, RHCP receive"
+  datasheet "vendor/millirf_fh84_feed.pdf" sha256 "8f2c41d7a9e3b06c5d21f84a7b9c0e3d6f15a28b4c7d90e1f3a5b6c8d0e2f4a6"
+  insertion_loss_db = 0.3 dB ± 0.05 dB from "datasheet p.3, horn aperture to LNA flange at 8.45 GHz, 25 degC"
+  axial_ratio_db = 1.0 dB from "datasheet p.3, on-axis, 8.4-8.5 GHz"
+  mass = 6 kg from "datasheet p.1"
+  unit_cost = 12000 USD from "MilliRF quote Q-3182, 2026-07-21"
+  lead_time = 10 week from "MilliRF quote Q-3182"
+}
+
+binding Lna -> lna_x40k : physical {
+  doc "CryoLink LNX-840 X-band GaAs pHEMT LNA, feed-flange mounted"
+  datasheet "vendor/cryolink_lnx840_lna.pdf" sha256 "2b9e60c3f7a14d85e2c90b6f3a7d18e4c5b2f90a6d3e17c84f0b5a29d6e3c1f7"
+  noise_temperature = 45 K ± 15 % from "datasheet p.2, Te typical at 25 degC flange, 8.4-8.5 GHz"
+  gain_db = 40 dB from "datasheet p.2, minimum over band"
+  mass = 0.4 kg from "datasheet p.1"
+  unit_cost = 4500 USD from "CryoLink quote Q-9917, 2026-07-24"
+  lead_time = 6 week from "CryoLink quote Q-9917"
+  envelope {
+    T in [-40, 60] degC
+  }
+}
+
+binding Downconverter -> dc_x2l_v2 : physical {
+  doc "SpanWave DC-X2L rev 2 X-to-L block downconverter, locked to external 10 MHz"
+  datasheet "vendor/spanwave_dcx2l_v2.pdf" sha256 "7d4a92e1b5c60f38a9d27e4b1c8f05a3d6b91c2e7f40a8d5b3c6e9f12a70d4b8"
+  conversion_gain_db = 30 dB from "datasheet p.2"
+  noise_figure_db = 10 dB from "datasheet p.2, SSB at 25 degC"
+  mass = 1.1 kg from "datasheet p.1"
+  unit_cost = 6000 USD from "SpanWave quote Q-2088, 2026-07-24"
+  lead_time = 8 week from "SpanWave quote Q-2088"
+}
+
+binding SdrReceiver -> sdr_x310 : physical {
+  doc "X310-class SDR digitizer; CCSDS turbo demod/decode runs on the station server"
+  datasheet "vendor/x310_sdr.pdf" sha256 "5c1f80b4d7e29a63c5f04b8e1d6a37c92e5b0f8a4d17c63e9b2a5d80f4c1e7b3"
+  inst_bandwidth = 160 MHz from "datasheet p.1, per channel"
+  mass = 1.7 kg from "datasheet p.1"
+  unit_cost = 8000 USD from "distributor quote 2026-07-28, incl. L-band daughterboard"
+  lead_time = 4 week from "distributor quote 2026-07-28"
+}
+
+binding RefOscillator -> gpsdo_10m : physical {
+  doc "GPS-disciplined 10 MHz OCXO station reference"
+  datasheet "vendor/gpsdo_10m_ocxo.pdf" sha256 "9e6b23f8a1d50c74b6e39f2a8d05c1e4f7b28a9d6c30e5f1a4d78b2c9e60f3a5"
+  pn_100hz_dbchz = -145 dB from "datasheet p.2, 10 MHz carrier, 100 Hz offset"
+  mass = 1.4 kg from "datasheet p.1"
+  unit_cost = 2200 USD from "distributor quote 2026-07-28"
+  lead_time = 3 week from "distributor quote 2026-07-28"
+}
+
+# ---------------------------------------------------------------------------
+# Analyses — the ladder that closes req.LNK-002
+# ---------------------------------------------------------------------------
+
+analysis AntennaGain {
+  intent req.LNK-002 "does the 5 m aperture deliver the boresight gain the link budget stands on?"
+  framing {
+    model antenna.aperture_ruze
+    assume lumped_element because "one aperture-efficiency factor lumps taper, spillover, blockage and ohmic loss; no pattern integration behind it"
+    envelope {
+      freq in [8.0, 8.9] GHz
+      surface_rms in [0, 1.5] mm
+    }
+  }
+  knowns {
+    freq <- req.MIS-001.carrier_freq
+    diameter <- Reflector.aperture_diameter
+    efficiency <- Reflector.aperture_efficiency
+    surface_rms <- Reflector.surface_rms_spec
+  }
+  core python "analysis/antenna_gain.py"
+  outputs {
+    gain_dbi : dB ±
+    hpbw : deg
+  }
+  judgment accepted "50.65 dBi at 8447.5 MHz — 50.84 ideal aperture minus 0.20 dB Ruze at 0.6 mm rms — and 0.497 deg HPBW; in family with 5 m prime-focus X-band apertures" doubts "aperture efficiency is a class estimate until the pattern range test; carrier frequency is ± cal pending the mission ICD"
+}
+
+analysis SystemNoise {
+  intent req.LNK-002 "what receive system noise temperature does the link stand on, worst case at minimum elevation and enclosure hot case?"
+  framing {
+    model noise.friis_cascade
+    assume steady_state because "temperatures at thermal equilibrium; diurnal drift enters only through the enclosure hot-case input"
+    assume lumped_element because "each stage is a single noise temperature; no spectral structure across the 4 kHz channel"
+    envelope {
+      lna_physical_temp in [0, 35] degC
+      min_elevation in [5, 90] deg
+    }
+  }
+  knowns {
+    lna_noise_temp <- lna_x40k.noise_temperature
+    feed_loss_db <- feed_x84.insertion_loss_db
+    lna_physical_temp <- EnclosureThermal.outputs.lna_physical_temp
+    min_elevation <- req.ENV-004.min_elevation
+  }
+  params {
+    zenith_atm_temp = 3 K ± 30 % from "clear-air zenith sky brightness at 8.4 GHz, moderate humidity; scaled by flat-atmosphere airmass in the core"
+    cmb_temp = 2.7 K from "cosmic microwave background"
+    spillover_temp = 35 K ± 30 % from "prime-focus feed spillover and rear sidelobes seeing ~290 K ground, worst case at 10 deg elevation"
+    feed_physical_temp = 290 K ± 10 K from "feed/OMT ambient at the hub, hot-case bias"
+    lna_ref_temp = 25 degC from "LNA datasheet Te rating point"
+    lna_drift_coeff = 0.3 ± 50 % from "Te drift per kelvin of flange temperature above rating, GaAs pHEMT class value"
+    downstream_temp = 0.3 K ± 50 % from "downconverter NF ~10 dB (~2600 K) plus IF chain, referred through the 40 dB LNA gain"
+  }
+  core python "analysis/system_noise.py"
+  outputs {
+    t_sys : K ±
+  }
+  judgment accepted "121.9 K worst case at 10 deg elevation and enclosure hot case; LNA and spillover dominate the stack" doubts "spillover temperature is a prime-focus class estimate, not a pattern integral — validate by cold-sky Y-factor at commissioning; single-plane additive bookkeeping is conservative by a few kelvin"
+}
+
+analysis GtAnalysis {
+  intent req.LNK-002 "what figure of merit does the station present to the link, referenced at the LNA input?"
+  framing {
+    model link.gt_figure_of_merit
+    assume steady_state because "gain and system temperature enter as worst-case constants at one reference plane; no time structure inside the figure of merit"
+  }
+  knowns {
+    gain_dbi <- AntennaGain.outputs.gain_dbi
+    t_sys <- SystemNoise.outputs.t_sys
+    feed_loss_db <- feed_x84.insertion_loss_db
+  }
+  core python "analysis/gt_analysis.py"
+  outputs {
+    g_over_t_dbk : dB ±
+  }
+  judgment accepted "29.49 dB/K at the LNA input at minimum elevation — carries the 3 dB link margin requirement with room" doubts "inherits the antenna-temperature estimate from SystemNoise; a 1 dB gain shortfall at the pattern test takes G/T down 1:1"
+}
+
+analysis LinkMargin {
+  intent req.LNK-002 "does the I-ALiRT downlink close with >= 3 dB margin at maximum L1 range, worst-case declared conditions?"
+  framing {
+    model link.budget_ebn0
+    assume static because "worst-case snapshot at maximum range with all declared losses taken simultaneously; no fade dynamics"
+    envelope {
+      eirp_dbw in [18, 26] dB
+      freq in [8.0, 8.9] GHz
+    }
+  }
+  knowns {
+    eirp_dbw <- req.LNK-002.eirp_dbw
+    max_range <- req.LNK-002.max_range
+    required_ebn0_db <- req.LNK-002.required_ebn0_db
+    impl_loss_db <- req.LNK-002.impl_loss_db
+    min_margin_db <- req.LNK-002.min_margin_db
+    atm_loss_db <- req.LNK-002.atm_loss_db
+    rain_alloc_db <- req.LNK-002.rain_alloc_db
+    pol_loss_db <- req.LNK-002.pol_loss_db
+    freq <- req.MIS-001.carrier_freq
+    data_rate <- req.MIS-001.data_rate
+    g_over_t_dbk <- GtAnalysis.outputs.g_over_t_dbk
+    pointing_loss_db <- PointingBudget.outputs.pointing_loss_db
+  }
+  core python "analysis/link_margin.py"
+  outputs {
+    cn0_dbhz : dB ±
+    ebn0_db : dB ±
+    margin_db : dB ±
+  }
+  judgment accepted "5.28 dB margin against 3 dB required at 1650000 km with every declared loss taken at once; C/N0 43.8 dB-Hz at 2000 bit/s" doubts "EIRP is ± cal from the ICD draft and moves margin 1:1; pointing loss rides on the structures PointingBudget; rain allocation is a temperate-site statistic, not this site's measurement"
+}
