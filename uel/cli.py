@@ -30,8 +30,10 @@ def cmd_check(args: argparse.Namespace) -> int:
     if not bag.errors:
         res = resolve_project(project, bag)
         if res is not None:
+            from .calibration import apply_overlays
             from .checker import run_checks
 
+            apply_overlays(res, getattr(args, "serial", "") or "")
             run_checks(res, bag, lock=not args.no_lock)
     if args.json:
         print(bag.to_json())
@@ -46,21 +48,26 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0 if bag.ok() else 1
 
 
-def _load_and_resolve(path: str, bag: Bag):
+def _load_and_resolve(path: str, bag: Bag, serial: str = "", checks: bool = True):
     project = load_project(path, bag)
     res = None
+    rollups: dict = {}
     if not bag.errors:
         res = resolve_project(project, bag)
         if res is not None:
-            from .checker import run_checks
+            from .calibration import apply_overlays
 
-            run_checks(res, bag, lock=False)
-    return project, res
+            apply_overlays(res, serial)
+            if checks:
+                from .checker import run_checks
+
+                rollups = run_checks(res, bag, lock=False) or {}
+    return project, res, rollups
 
 
 def cmd_build(args: argparse.Namespace) -> int:
     bag = Bag()
-    project, res = _load_and_resolve(args.path, bag)
+    project, res, _ = _load_and_resolve(args.path, bag, serial=getattr(args, "serial", "") or "")
     if res is None or not bag.ok():
         print(bag.render(project.sources_map()))
         print("build: refused — fix compile-time errors first (compile time gates runtime)")
@@ -79,7 +86,7 @@ def cmd_build(args: argparse.Namespace) -> int:
 
 def cmd_stale(args: argparse.Namespace) -> int:
     bag = Bag()
-    project, res = _load_and_resolve(args.path, bag)
+    project, res, _ = _load_and_resolve(args.path, bag)
     if res is None:
         print(bag.render(project.sources_map()))
         return 1
@@ -113,7 +120,7 @@ def cmd_stale(args: argparse.Namespace) -> int:
 
 def cmd_hash(args: argparse.Namespace) -> int:
     bag = Bag()
-    project, res = _load_and_resolve(args.path, bag)
+    project, res, _ = _load_and_resolve(args.path, bag)
     if res is None:
         print(bag.render(project.sources_map()))
         return 1
@@ -184,6 +191,85 @@ def cmd_fmt(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def cmd_project(args: argparse.Namespace) -> int:
+    bag = Bag()
+    project, res, rollups = _load_and_resolve(args.path, bag, serial=args.serial)
+    if res is None or not bag.ok():
+        print(bag.render(project.sources_map()))
+        print("project: refused — projections compile only from a graph that checks clean")
+        return 1
+    from .lockfile import Lock
+    from . import projections as P
+
+    lock = Lock.load(project.lock_path, bag)
+    outdir = Path(args.path) / args.out if not Path(args.out).is_absolute() else Path(args.out)
+    outdir.mkdir(parents=True, exist_ok=True)
+    kinds = ["bom", "icd", "work", "status"] if args.kind == "all" else [args.kind]
+    for kind in kinds:
+        if kind == "bom":
+            text = P.bom(res, lock, rollups)
+        elif kind == "icd":
+            text = P.icd(res, lock)
+        elif kind == "work":
+            text = P.work_instructions(res, lock)
+        else:
+            text = P.status(res, lock)
+        suffix = f"-{args.serial}" if args.serial else ""
+        p = outdir / f"{kind}{suffix}.md"
+        p.write_text(text, encoding="utf-8")
+        print(f"project: wrote {p}")
+    return 0
+
+
+def cmd_graph(args: argparse.Namespace) -> int:
+    bag = Bag()
+    project, res, _ = _load_and_resolve(args.path, bag, checks=False)
+    if res is None:
+        print(bag.render(project.sources_map()))
+        return 1
+    from . import projections as P
+
+    sys.stdout.write(P.dot(res))
+    return 0
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    import json as _json
+
+    bag = Bag()
+    project, res, _ = _load_and_resolve(args.path, bag, checks=False)
+    if res is None:
+        print(bag.render(project.sources_map()))
+        return 1
+    try:
+        payload = _json.loads(Path(args.measurements).read_text(encoding="utf-8"))
+    except (OSError, _json.JSONDecodeError) as e:
+        print(f"calibrate: cannot read measurements: {e}")
+        return 1
+    from .calibration import ingest
+
+    summary = ingest(res, bag, payload, write_stubs=not args.no_stubs)
+    out = bag.render(project.sources_map())
+    if out:
+        print(out)
+    print(f"calibrate: {summary['applied']} applied, {summary['tightened']} tightened, "
+          f"{summary['validated']} validated, {summary['discrepancies']} discrepancies")
+    return 0 if bag.ok() else 1
+
+
+def cmd_query(args: argparse.Namespace) -> int:
+    bag = Bag()
+    project, res, _ = _load_and_resolve(args.path, bag, serial=args.serial, checks=False)
+    if res is None:
+        print(bag.render(project.sources_map()))
+        return 1
+    from .lockfile import Lock
+    from .projections import provenance
+
+    print(provenance(res, args.target, Lock.load(project.lock_path)))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="uel", description="UEL — Unified Engineering Language")
     ap.add_argument("--version", action="version", version=f"uel {__version__}")
@@ -211,6 +297,27 @@ def main(argv: list[str] | None = None) -> int:
     p_hash.add_argument("path", nargs="?", default=".")
     p_hash.add_argument("--node", help="show one node's identity + recipe breakdown")
 
+    p_proj = sub.add_parser("project", help="compile hash-stamped projections (spec §9.1)")
+    p_proj.add_argument("kind", choices=["bom", "icd", "work", "status", "all"])
+    p_proj.add_argument("path", nargs="?", default=".")
+    p_proj.add_argument("-o", "--out", default="out", help="output directory (default: out/)")
+    p_proj.add_argument("--serial", default="", help="apply an as-built overlay (calibration/<serial>.json)")
+
+    p_graph = sub.add_parser("graph", help="export the dependency graph")
+    p_graph.add_argument("path", nargs="?", default=".")
+    p_graph.add_argument("--dot", action="store_true", help="Graphviz DOT to stdout (default)")
+
+    p_cal = sub.add_parser("calibrate", help="ingest measurements; reality writes back (spec §8)")
+    p_cal.add_argument("measurements", help="JSON measurements file")
+    p_cal.add_argument("path", nargs="?", default=".")
+    p_cal.add_argument("--no-stubs", action="store_true", help="do not generate investigation stubs")
+
+    p_query = sub.add_parser("query", help="ask the graph")
+    p_query.add_argument("what", choices=["provenance"])
+    p_query.add_argument("target", help="e.g. spar_v7.mass or SparStaticLimit.outputs.FoS")
+    p_query.add_argument("path", nargs="?", default=".")
+    p_query.add_argument("--serial", default="")
+
     args = ap.parse_args(argv)
     if args.cmd == "check":
         return cmd_check(args)
@@ -222,6 +329,14 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_stale(args)
     if args.cmd == "hash":
         return cmd_hash(args)
+    if args.cmd == "project":
+        return cmd_project(args)
+    if args.cmd == "graph":
+        return cmd_graph(args)
+    if args.cmd == "calibrate":
+        return cmd_calibrate(args)
+    if args.cmd == "query":
+        return cmd_query(args)
     ap.print_help()
     return 2
 
