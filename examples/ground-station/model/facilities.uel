@@ -4,7 +4,6 @@
 # what the RF team's SystemNoise may assume ([0, 35] degC ⊆ ours); the compiler
 # checks that containment at integration. Everything here is COTS or civil —
 # vendor-prov quantities and quotes, no geometry cores.
-
 binding PowerDistribution -> pdist_v1 : physical {
   doc "Wall-mount 3-phase distribution: main breaker, drive branch, protected AC branch with SPD, 12 V DC rail for the RF chain"
   mass = 120 kg from "Sentar Power panel schedule, quote SP-2117 rev B"
@@ -27,7 +26,7 @@ binding LnaEnclosure -> lna_enclosure_v1 : physical {
   unit_cost = 3500 USD from "Almarin Enclosures quote AE-88-Q12, incl. heater, TEC, shield"
   lead_time = 4 week from "Almarin Enclosures quote AE-88-Q12"
   envelope {
-    T in [-40, 55] degC # vendor operating rating; covers the functional [-30, 45] site fence
+    T in [-40, 55 degC]  # vendor operating rating; covers the functional [-30, 45] site fence
   }
 }
 
@@ -81,8 +80,8 @@ analysis EnclosureThermal {
     assume lumped_element because "one air node in a small insulated box; wall and component gradients are a few kelvin and unresolved"
     assume steady_state because "site extremes hold for hours against a ~20 min enclosure time constant; soak bounds the transients"
     envelope {
-      lna_physical_temp in [-5, 40] degC
-      T_amb in [-30, 45] degC
+      lna_physical_temp in [-5, 40 degC]
+      T_amb in [-30, 45 degC]
     }
   }
   knowns {

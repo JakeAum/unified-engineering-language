@@ -4,7 +4,6 @@
 # receives that broadcast autonomously. Values marked estimate/± cal are design
 # anchors pending the mission ICD; they are load-bearing references, so an ICD
 # update ripples through every consuming analysis mechanically (spec §4.2).
-
 requirement MIS-001 {
   text "The station shall receive the IMAP I-ALiRT X-band direct broadcast and deliver decoded frames to the network continuously during view periods."
   carrier_freq = 8447.5 MHz ± cal from "I-ALiRT RF ICD draft — near-Earth X-band downlink allocation"

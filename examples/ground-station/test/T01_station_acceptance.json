@@ -1,0 +1,10 @@
+{
+  "source": "T01 station acceptance — solar Y-factor and LNA bench, day 1",
+  "ts": "2026-08-25T00:00:00Z",
+  "measurements": [
+    {"target": "lna_x40k.noise_temperature", "value": 41.0, "unit": "K",
+     "unc": {"kind": "abs", "value": 2.0}},
+    {"target": "GtAnalysis.outputs.g_over_t_dbk", "value": 29.6, "unit": "dB",
+     "unc": {"kind": "abs", "value": 0.2}}
+  ]
+}

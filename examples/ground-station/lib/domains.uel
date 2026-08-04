@@ -3,7 +3,6 @@
 # checker can settle — so it is a data-class domain typed by protocol
 # (spec §2.2: data ports are typed by protocol/schema, not by balance).
 # The DC and mains feeds use the stdlib electrical domain, which IS conserved.
-
 domain rf_coax {
   class data
   doc "Guided RF/IF signal path over coaxial or waveguide; protocol names band and level plan."

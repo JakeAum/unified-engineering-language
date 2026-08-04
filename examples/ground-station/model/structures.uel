@@ -3,7 +3,6 @@
 # that turns wind and stiffness into torque, bandwidth, and a pointing budget.
 # ServoBandwidth REQUIRES elastic modes and gets them from PedestalModes — the
 # spec §2.5 envelope-composition seam, made real at the servo/structure boundary.
-
 geometry reflector_geom {
   doc "5 m prime-focus paraboloid: stretch-formed panels on a backing truss; the code is the canonical shape definition (spec §6.2). Areal density is quoted per unit APERTURE area, so mass = density x aperture + hub."
   knowns {

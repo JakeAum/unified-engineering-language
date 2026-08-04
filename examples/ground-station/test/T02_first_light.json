@@ -1,0 +1,8 @@
+{
+  "source": "T02 first light — IMAP I-ALiRT track, pass 3, Es/N0-derived margin",
+  "ts": "2026-08-27T00:00:00Z",
+  "measurements": [
+    {"target": "LinkMargin.outputs.margin_db", "value": 5.1, "unit": "dB",
+     "unc": {"kind": "abs", "value": 0.3}}
+  ]
+}

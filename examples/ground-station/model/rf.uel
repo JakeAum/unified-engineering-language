@@ -4,16 +4,14 @@
 # from Sun-Earth L1: aperture gain, system noise at the LNA input, G/T, and
 # the link budget. Vendor numbers carry datasheet/quote provenance (spec §7.2);
 # every derived value is an analysis output, never a copied literal (spec §4.2).
-
 # ---------------------------------------------------------------------------
 # Bindings — COTS receive chain
 # ---------------------------------------------------------------------------
-
 binding FeedAssembly -> feed_x84 : physical {
   doc "MilliRF FH-84 corrugated horn + septum polarizer + OMT, RHCP receive"
   datasheet "vendor/millirf_fh84_feed.pdf" sha256 "8f2c41d7a9e3b06c5d21f84a7b9c0e3d6f15a28b4c7d90e1f3a5b6c8d0e2f4a6"
   insertion_loss_db = 0.3 dB ± 0.05 dB from "datasheet p.3, horn aperture to LNA flange at 8.45 GHz, 25 degC"
-  axial_ratio_db = 1.0 dB from "datasheet p.3, on-axis, 8.4-8.5 GHz"
+  axial_ratio_db = 1 dB from "datasheet p.3, on-axis, 8.4-8.5 GHz"
   mass = 6 kg from "datasheet p.1"
   unit_cost = 12000 USD from "MilliRF quote Q-3182, 2026-07-21"
   lead_time = 10 week from "MilliRF quote Q-3182"
@@ -28,7 +26,7 @@ binding Lna -> lna_x40k : physical {
   unit_cost = 4500 USD from "CryoLink quote Q-9917, 2026-07-24"
   lead_time = 6 week from "CryoLink quote Q-9917"
   envelope {
-    T in [-40, 60] degC
+    T in [-40, 60 degC]
   }
 }
 
@@ -63,15 +61,14 @@ binding RefOscillator -> gpsdo_10m : physical {
 # ---------------------------------------------------------------------------
 # Analyses — the ladder that closes req.LNK-002
 # ---------------------------------------------------------------------------
-
 analysis AntennaGain {
   intent req.LNK-002 "does the 5 m aperture deliver the boresight gain the link budget stands on?"
   framing {
     model antenna.aperture_ruze
     assume lumped_element because "one aperture-efficiency factor lumps taper, spillover, blockage and ohmic loss; no pattern integration behind it"
     envelope {
-      freq in [8.0, 8.9] GHz
-      surface_rms in [0, 1.5] mm
+      freq in [8, 8.9 GHz]
+      surface_rms in [0, 1.5 mm]
     }
   }
   knowns {
@@ -95,8 +92,8 @@ analysis SystemNoise {
     assume steady_state because "temperatures at thermal equilibrium; diurnal drift enters only through the enclosure hot-case input"
     assume lumped_element because "each stage is a single noise temperature; no spectral structure across the 4 kHz channel"
     envelope {
-      lna_physical_temp in [0, 35] degC
-      min_elevation in [5, 90] deg
+      lna_physical_temp in [0, 35 degC]
+      min_elevation in [5, 90 deg]
     }
   }
   knowns {
@@ -145,8 +142,8 @@ analysis LinkMargin {
     model link.budget_ebn0
     assume static because "worst-case snapshot at maximum range with all declared losses taken simultaneously; no fade dynamics"
     envelope {
-      eirp_dbw in [18, 26] dB
-      freq in [8.0, 8.9] GHz
+      eirp_dbw in [18, 26 dB]
+      freq in [8, 8.9 GHz]
     }
   }
   knowns {
