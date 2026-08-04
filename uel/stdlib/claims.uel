@@ -1,0 +1,108 @@
+# The structural-assumption taxonomy (spec §2.5, §10.1): claims about *dropped
+# physics*, with hand-authored entailment rules. Draft 0.1 treats this as a declared
+# taxonomy; the compatibility calculus is the language's foremost open research
+# problem, and declared-but-unchecked beats undeclared.
+
+claim rigid {
+  doc "Body deforms negligibly; elasticity dropped."
+  entails no_elastic_modes, no_structural_damping
+  excludes elastic_modes
+}
+
+claim rigid_root {
+  doc "Boundary idealization: the root fixture is treated as rigid."
+}
+
+claim elastic_modes {
+  doc "Structural flexibility retained; modes exist and are computable."
+  excludes rigid
+}
+
+claim static {
+  doc "Time derivatives dropped; loads applied quasi-statically."
+  entails no_transient_response
+  excludes transient_response
+}
+
+claim steady_state {
+  doc "Transients decayed; d/dt = 0 at the boundary."
+  entails no_transient_response
+}
+
+claim transient_response {
+  doc "Time-domain behavior retained."
+  excludes no_transient_response
+}
+
+claim joint_heating {
+  doc "Frictional heat generation at interfaces retained."
+  excludes no_joint_heating
+}
+
+claim internal_gradient_field {
+  doc "Spatial gradients within the element resolved (field model)."
+  excludes no_internal_gradients
+}
+
+claim frictionless {
+  doc "Coulomb/viscous interface friction dropped."
+  entails no_joint_heating, no_stick_slip
+}
+
+claim adiabatic {
+  doc "No heat exchange across the drawn boundary."
+  entails no_boundary_heat_flux
+  excludes boundary_heat_exchange
+}
+
+claim isothermal {
+  doc "Temperature held constant across the element."
+  excludes adiabatic
+}
+
+claim incompressible {
+  doc "Density constant; roughly valid below Mach 0.3."
+  excludes compressibility_effects
+}
+
+claim inviscid {
+  doc "Viscous stresses dropped; no boundary layer, no skin friction."
+  entails no_viscous_drag
+}
+
+claim lumped_element {
+  doc "Spatial gradients unresolved within the element."
+  entails no_internal_gradients
+}
+
+claim small_angle {
+  doc "sin(x) ~ x; valid for deflections well under ~10 degrees."
+}
+
+claim linear_elastic {
+  doc "Stress proportional to strain; no yielding modeled."
+  excludes plasticity
+}
+
+claim point_mass {
+  doc "Rotational inertia dropped."
+  entails no_rotational_dynamics
+}
+
+claim topology_asserted {
+  doc "Geometry core asserted its topological assumptions (spec §6.2)."
+}
+
+# Leaf claims referenced by entailments (declared so the web is closed).
+claim no_elastic_modes { doc "No structural modes are available downstream." }
+claim no_structural_damping { doc "No structural damping information exists." }
+claim no_transient_response { doc "No time-domain response information exists." }
+claim no_joint_heating { doc "Interfaces generate no frictional heat." }
+claim no_stick_slip { doc "No stick-slip limit cycles possible." }
+claim no_boundary_heat_flux { doc "Zero heat flux across the boundary." }
+claim boundary_heat_exchange { doc "Heat crosses the boundary." }
+claim compressibility_effects { doc "Density varies with pressure/velocity." }
+claim no_viscous_drag { doc "No viscous drag contribution." }
+claim no_internal_gradients { doc "No spatial gradient information inside the element." }
+claim no_rotational_dynamics { doc "No rotational inertia information." }
+claim plasticity { doc "Post-yield behavior modeled." }

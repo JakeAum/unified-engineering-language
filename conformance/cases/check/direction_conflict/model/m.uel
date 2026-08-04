@@ -1,0 +1,9 @@
+component a : physical {
+  port p : electrical { direction out }
+}
+
+component b : physical {
+  port q : electrical { direction out }
+}
+
+connect a.p -> b.q

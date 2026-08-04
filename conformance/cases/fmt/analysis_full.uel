@@ -1,0 +1,27 @@
+analysis A {
+  doc "everything an analysis can carry"
+  intent req.R-1 "the question"
+  framing {
+    model beam.euler_bernoulli
+    assume rigid because "stiffness ratio"
+    require elastic_modes because "flutter needs modes"
+    envelope {
+      load in [0, 18 kN]
+      Mach <= 0.3
+      T >= -40 degC
+    }
+  }
+  knowns {
+    load <- req.R-1.limit
+  }
+  params {
+    fudge = 1.15
+  }
+  core python "a.py"
+  outputs {
+    FoS : dimensionless ±
+    w : mm ±
+    field : artifact
+  }
+  judgment accepted "physical and converged" doubts "mesh sensitivity unquantified"
+}

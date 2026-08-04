@@ -1,0 +1,45 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "lib.domains.thermal": {
+      "kind": "domain",
+      "dclass": "power",
+      "effort": {"name": "temperature", "unit": "K"},
+      "flow": {"name": "entropy_flow", "unit": "W/K"},
+      "doc": "spec §2.2: thermal effort/flow pair; T * Sdot = power"
+    },
+    "esc_thermal": {
+      "kind": "component",
+      "level": "behavioral",
+      "doc": "ESC junction-to-case thermal model, lumped.",
+      "ports": {
+        "case": {"domain": "thermal", "dir": "out",
+                 "attrs": {"temperature": {"value": [233.0, 398.0], "unit": "K"}}}
+      },
+      "quantities": {
+        "R_jc": {"value": 1.8, "unit": "K/W", "prov": {"kind": "vendor", "detail": "datasheet p.5"}},
+        "dissipation": {"value": [0.0, 22.0], "unit": "W", "prov": {"kind": "derived", "detail": "I^2R at 90 A phase"}}
+      },
+      "envelope": {
+        "predicates": {"T_junction": {"hi": 398.0, "unit": "K"}},
+        "claims": {"lumped_element": "single-node RC; gradients inside package not resolved"}
+      }
+    },
+    "heatsink_plate": {
+      "kind": "component",
+      "level": "physical",
+      "ports": {
+        "sink_in": {"domain": "thermal", "dir": "in",
+                    "attrs": {"temperature": {"value": [233.0, 358.0], "unit": "K"}}}
+      },
+      "quantities": {
+        "R_sa": {"value": 3.2, "unit": "K/W", "unc": {"kind": "rel", "value": 0.2},
+                 "prov": {"kind": "estimate", "detail": "flat plate, 2 m/s duct flow"}}
+      }
+    }
+  },
+  "connections": [
+    {"from": "esc_thermal.case", "to": "heatsink_plate.sink_in"}
+  ]
+}

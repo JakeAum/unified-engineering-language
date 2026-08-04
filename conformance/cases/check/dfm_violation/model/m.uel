@@ -1,0 +1,14 @@
+component Bracket : functional {
+  doc "Motor mount bracket"
+}
+
+geometry bracket_geom {
+  core python "geom/bracket.py"
+  outputs { mass : g ± }
+}
+
+binding Bracket -> bracket_v2 : physical {
+  process cnc_3axis
+  material AL6061_T6 from lib.materials
+  geometry bracket_geom
+}

@@ -1,0 +1,128 @@
+# Wing primary structure: functional spar, its machined realization, the
+# geometry that defines it, and the analysis ladder standing on it —
+# static strength, modal, flutter. The flutter node is the spec §2.5 example
+# made real: it REQUIRES elastic modes, and gets them from SparDynamic.
+component MainSpar : functional {
+  doc "Primary wing bending member, root to tip"
+  port root_attach : mechanical.translation {
+    force: [0, 3 kN] ± cal
+  }
+  port skin_bond : mechanical.distributed
+  budget mass <= 470 g ± 10 g
+  budget unit_cost <= 95 USD @ qty 5
+  envelope {
+    T in [-40, 70 degC]
+  }
+}
+
+geometry spar_v8_geom {
+  doc "Round tube spar; the code is the canonical definition (spec §6.2)"
+  knowns {
+    density <- lib.materials.AL7075_T6.density
+  }
+  params {
+    outer_diameter = 30 mm
+    wall = 1.5 mm
+    length = 1200 mm
+  }
+  core python "geom/spar_v8.py"
+  outputs {
+    mass : g ±
+    section_Ixx : mm^4
+    section_area : mm^2
+    volume : mm^3
+    outer_radius : mm
+  }
+}
+
+binding MainSpar -> spar_v8 : physical {
+  doc "Machined AL7075 tube, turned between centers"
+  process cnc_turn
+  material lib.materials.AL7075_T6
+  geometry spar_v8_geom
+  length = 1200 mm
+  panel_mass_per_span = 0.834 kg/m ± 10 %
+  unit_cost = 85 USD from "HLH quote Q-2214, qty 5"
+  lead_time = 2 week from "HLH quote Q-2214"
+  envelope {
+    T in [-40, 110 degC]
+  }
+}
+
+analysis SparStaticLimit {
+  intent req.STR-014 "will the spar carry the limit root moment at 6g?"
+  framing {
+    model beam.euler_bernoulli
+    assume rigid_root because "root fitting stiffness >> spar; verify at W12 bench test"
+    assume static because "gust transients covered by SparDynamic downstream"
+    assume linear_elastic because "FoS is against yield; post-yield behavior out of scope"
+    envelope {
+      root_moment in [0, 260 N*m]
+      T in [-40, 70 degC]
+    }
+  }
+  knowns {
+    root_moment <- req.STR-014.root_moment
+    section_Ixx <- spar_v8.section_Ixx
+    outer_radius <- spar_v8.outer_radius
+    yield_strength <- lib.materials.AL7075_T6.yield_strength
+    E <- lib.materials.AL7075_T6.E
+    length <- spar_v8.length
+  }
+  core python "analysis/spar_static.py"
+  outputs {
+    FoS : dimensionless ±
+    root_stress : MPa ±
+    max_deflection : mm ±
+  }
+  judgment accepted "FoS 2.04 against 1.5 required; stress physical; deflection large but tip-moment case is conservative" doubts "root fitting stiffness assumption unverified until W12"
+}
+
+analysis SparDynamic {
+  intent req.AER-009 "first bending mode of the built-up panel, for flutter"
+  framing {
+    model beam.cantilever_modal
+    assume elastic_modes because "modal content is the product of this analysis"
+    assume linear_elastic because "small amplitudes at onset"
+    assume small_angle because "mode shapes, not large deflection"
+  }
+  knowns {
+    section_Ixx <- spar_v8.section_Ixx
+    E <- lib.materials.AL7075_T6.E
+    length <- spar_v8.length
+    m_bar <- spar_v8.panel_mass_per_span
+  }
+  core python "analysis/spar_dynamic.py"
+  outputs {
+    first_bending_mode : Hz ±
+  }
+  judgment accepted "13.3 Hz; in family with similar panels" doubts "panel mass per span is an estimate until the panel is weighed"
+}
+
+analysis WingFlutter {
+  intent req.AER-009 "does flutter clear V_NE with the required margin?"
+  framing {
+    model aeroelastic.reduced_order
+    require elastic_modes because "flutter is an elastic-inertial-aero coupling; needs the first bending mode"
+    assume incompressible because "V_NE Mach ~0.1"
+    assume linear_elastic because "onset prediction, not limit cycle"
+    envelope {
+      Mach in [0, 0.3]
+    }
+  }
+  knowns {
+    f1 <- SparDynamic.outputs.first_bending_mode
+    m_bar <- spar_v8.panel_mass_per_span
+    V_NE <- req.AER-009.V_NE
+  }
+  params {
+    semichord = 0.11 m
+    rho_air = 1.225 kg/m^3
+  }
+  core python "analysis/wing_flutter.py"
+  outputs {
+    flutter_speed : m/s ±
+    flutter_margin : dimensionless ±
+  }
+  judgment accepted "margin 1.15 vs 1.1 required — thin; watch it as the panel mass calibrates" doubts "reduced-order flutter model; XFOIL/GVT correlation pending"
+}

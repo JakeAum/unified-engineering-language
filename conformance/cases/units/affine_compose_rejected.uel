@@ -1,0 +1,3 @@
+component C : behavioral {
+  R_th = 3.2 degC/W
+}

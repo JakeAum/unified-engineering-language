@@ -1,0 +1,63 @@
+# Thermal path: ESC heat into the duct-cooled mount. The lumped model declares
+# itself lumped (spec §2.5 — declared-but-unchecked beats undeclared), and its
+# case-temperature prediction is validated against flight data at W13.
+component EscMount : functional {
+  doc "Carry the ESC, sink its heat into the cooling duct"
+  port sink_in : thermal {
+    direction in
+    temperature: [-40, 120 degC]
+  }
+}
+
+geometry esc_mount_geom {
+  doc "L-bracket with integral fins, 3-axis machined"
+  knowns {
+    density <- lib.materials.AL6061_T6.density
+  }
+  params {
+    base_thickness = 2.5 mm
+    fin_count = 6
+  }
+  core python "geom/esc_mount.py"
+  outputs {
+    mass : g ±
+    volume : mm^3
+  }
+}
+
+binding EscMount -> esc_mount_v3 : physical {
+  process cnc_3axis
+  material lib.materials.AL6061_T6
+  geometry esc_mount_geom
+  unit_cost = 28 USD from "HLH quote Q-2214, qty 5"
+  lead_time = 1 week from "HLH quote Q-2214"
+}
+
+connect esc_xr45.case -> EscMount.sink_in
+
+analysis EscThermal {
+  intent req.THM-007 "does the ESC case stay under its derating limit on a hot day?"
+  framing {
+    model thermal.rc_network
+    assume lumped_element because "single junction-to-case-to-sink chain; package gradients unresolved"
+    assume steady_state because "cruise thermal equilibrium; transients enveloped by soak"
+    envelope {
+      T_amb in [-20, 50 degC]
+    }
+  }
+  knowns {
+    esc_loss <- PowerDraw.outputs.esc_loss
+    R_jc <- esc_xr45.R_jc
+    T_amb <- req.THM-007.hot_day
+    T_limit <- req.THM-007.max_case_temp
+  }
+  params {
+    R_sa = 0.35 K/W ± 20 %
+  }
+  core python "analysis/esc_thermal.py"
+  outputs {
+    T_case : degC ±
+    margin : K ±
+  }
+  judgment accepted "81.8 degC at 40 degC day against an 85 limit — 3.2 K margin; duct sizing holds" doubts "R_sa from flat-plate correlation; validate in flight at W13"
+}

@@ -1,0 +1,76 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "lib.domains.electrical": {
+      "kind": "domain",
+      "dclass": "power",
+      "effort": {"name": "voltage", "unit": "V"},
+      "flow": {"name": "current", "unit": "A"},
+      "doc": "spec §2.2 table row 1"
+    },
+    "battery": {
+      "kind": "component",
+      "level": "physical",
+      "ports": {
+        "main_out": {
+          "domain": "electrical",
+          "dir": "out",
+          "attrs": {
+            "voltage": {"value": [19.2, 25.2], "unit": "V", "prov": {"kind": "vendor", "detail": "6S LiPo window"}},
+            "current": {"value": [0.0, 120.0], "unit": "A", "unc": {"kind": "rel", "value": 0.05}}
+          }
+        }
+      },
+      "quantities": {
+        "capacity": {"value": 5.0, "unit": "A*hr", "prov": {"kind": "vendor"}}
+      }
+    },
+    "esc": {
+      "kind": "component",
+      "level": "physical",
+      "ports": {
+        "dc_in": {
+          "domain": "electrical",
+          "dir": "in",
+          "attrs": {
+            "voltage": {"value": [8.0, 26.0], "unit": "V", "prov": {"kind": "vendor", "detail": "datasheet p.2 abs max"}},
+            "current": {"value": [0.0, 90.0], "unit": "A"}
+          }
+        },
+        "phase_out": {
+          "domain": "electrical",
+          "dir": "out",
+          "attrs": {
+            "current": {"value": [0.0, 90.0], "unit": "A"}
+          }
+        }
+      }
+    },
+    "motor": {
+      "kind": "component",
+      "level": "physical",
+      "ports": {
+        "phase_in": {
+          "domain": "electrical",
+          "dir": "in",
+          "attrs": {
+            "current": {"value": [0.0, 85.0], "unit": "A"}
+          }
+        },
+        "shaft": {
+          "domain": "mechanical.rotation",
+          "dir": "out",
+          "attrs": {
+            "torque": {"value": [0.0, 2.4], "unit": "N*m"},
+            "speed": {"value": [0.0, 12000.0], "unit": "rpm"}
+          }
+        }
+      }
+    }
+  },
+  "connections": [
+    {"from": "battery.main_out", "to": "esc.dc_in", "src": "model/power.uel:40"},
+    {"from": "esc.phase_out", "to": "motor.phase_in"}
+  ]
+}

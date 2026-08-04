@@ -1,0 +1,20 @@
+{
+  "uel_lock": "0.1",
+  "edition": "2026",
+  "tools": {},
+  "nodes": {
+    "bracket_geom": {
+      "recipe": "sha256:test",
+      "status": "fresh",
+      "outputs": {
+        "mass": {"hash": "sha256:test", "value": 41.0, "unit": "g"}
+      },
+      "features": {
+        "min_internal_radius": {"value": 1.2, "unit": "mm"},
+        "sharp_internal_corner_count": {"value": 2},
+        "min_wall_thickness": {"value": 1.1, "unit": "mm"}
+      },
+      "assertions": [{"name": "solid_watertight", "passed": true}]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+component bus : physical {
+  port out : electrical {
+    direction out
+    voltage: [11, 13 V]
+    current: [0, 60 A]
+  }
+}
+
+component pump_motor : physical {
+  port in : electrical {
+    direction in
+    voltage: [9, 15 V]
+    current: [0, 40 A]
+  }
+}
+
+component heater : physical {
+  port in : electrical {
+    direction in
+    voltage: [9, 15 V]
+    current: [0, 30 A]
+  }
+}
+
+connect bus.out -> pump_motor.in
+connect bus.out -> heater.in

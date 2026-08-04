@@ -1,0 +1,3 @@
+component C : functional {
+  budget lead_time <= 3 kg
+}

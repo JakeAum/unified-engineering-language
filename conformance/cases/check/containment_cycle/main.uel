@@ -1,0 +1,7 @@
+component A : functional {
+  contains B
+}
+
+component B : functional {
+  contains A
+}

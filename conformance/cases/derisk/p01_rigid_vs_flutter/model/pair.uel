@@ -1,0 +1,17 @@
+analysis SparStatic {
+  framing {
+    model beam.euler_bernoulli
+    assume rigid because "deflection is not the question here"
+    assume static because "quasi-static limit load case"
+  }
+  outputs { root_stress : MPa ± }
+}
+
+analysis WingFlutter {
+  framing {
+    model aeroelastic.pk_method
+    require elastic_modes because "flutter is an elastic-inertial-aero coupling; needs the first bending mode"
+  }
+  knowns { stress <- SparStatic.outputs.root_stress }
+  outputs { flutter_speed : m/s ± }
+}

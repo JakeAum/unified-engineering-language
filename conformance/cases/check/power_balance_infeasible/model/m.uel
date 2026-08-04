@@ -1,0 +1,11 @@
+component gearbox : behavioral {
+  port shaft_in : mechanical.rotation {
+    direction in
+    power: [0, 100 W]
+  }
+  port shaft_out : mechanical.rotation {
+    direction out
+    power: [140, 150 W]
+  }
+  dissipation = 10 W
+}

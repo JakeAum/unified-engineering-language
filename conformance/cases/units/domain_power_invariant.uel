@@ -1,0 +1,5 @@
+domain acoustic {
+  class power
+  effort pressure: Pa
+  flow velocity: m/s
+}

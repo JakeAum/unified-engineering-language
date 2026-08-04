@@ -1,0 +1,16 @@
+analysis EscThermalLumped {
+  framing {
+    model thermal.rc_network
+    assume lumped_element because "single junction-to-case node; package gradients unresolved"
+  }
+  outputs { T_junction : degC ± }
+}
+
+analysis FetPlacement {
+  framing {
+    model thermal.placement_study
+    require internal_gradient_field because "die-to-die coupling drives placement"
+  }
+  knowns { tj <- EscThermalLumped.outputs.T_junction }
+  outputs { spacing : mm ± }
+}

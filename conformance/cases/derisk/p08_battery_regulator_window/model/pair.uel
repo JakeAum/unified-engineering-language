@@ -1,0 +1,18 @@
+component battery_6s : physical {
+  port main_out : electrical {
+    direction out
+    voltage: [19.2, 25.2 V]
+    current: [0, 120 A]
+  }
+}
+
+component reg_tps62130 : physical {
+  doc "COTS buck regulator; datasheet abs max Vin = 17 V"
+  port vin : electrical {
+    direction in
+    voltage: [3, 17 V]
+    current: [0, 3 A]
+  }
+}
+
+connect battery_6s.main_out -> reg_tps62130.vin

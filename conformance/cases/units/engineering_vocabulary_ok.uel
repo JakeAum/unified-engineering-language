@@ -1,0 +1,19 @@
+component C : behavioral {
+  a = 12 kN
+  b = 71.7 GPa
+  c = 4.5 mm^4
+  d = 2 µm
+  e = 3.2 K/W
+  f = 9.81 kg*m/s^2
+  g = 5 A*hr
+  h = 120 degC
+  i = 2.4 N*m
+  j = 12000 rpm
+  k = 85 USD
+  l = 6 week
+  m = 0.012 kg/s
+  n = 50 Hz ± 5 %
+  o = 1.5
+  p = 22 mm ± 0.05 mm
+  q = 3 gee
+}

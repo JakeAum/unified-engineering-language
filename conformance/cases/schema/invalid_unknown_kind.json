@@ -1,0 +1,8 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "mystery": {"kind": "meeting_minutes", "text": "merely descriptive; will drift; must be cut"},
+    "sneaky": {"kind": "component", "level": "physical", "warp_drive": true}
+  }
+}

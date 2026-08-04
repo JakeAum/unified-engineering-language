@@ -1,0 +1,56 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "lib.claims.rigid": {
+      "kind": "claim",
+      "doc": "Body deforms negligibly; drops elasticity.",
+      "entails": ["no_elastic_modes", "no_structural_damping"],
+      "excludes": ["elastic_modes"]
+    },
+    "lib.claims.rigid_root": {
+      "kind": "claim",
+      "doc": "Boundary idealization: root fixture treated as rigid.",
+      "entails": []
+    },
+    "lib.claims.frictionless": {
+      "kind": "claim",
+      "doc": "Drops Coulomb/viscous friction at interfaces (spec §2.5, §10.1).",
+      "entails": ["no_joint_heating", "no_stick_slip"]
+    },
+    "lib.claims.static": {
+      "kind": "claim",
+      "doc": "Time derivatives dropped; loads applied quasi-statically.",
+      "entails": ["no_transient_response"],
+      "excludes": ["transient_response"]
+    },
+    "lib.claims.adiabatic": {
+      "kind": "claim",
+      "doc": "No heat exchange across the drawn boundary.",
+      "entails": ["no_boundary_heat_flux"],
+      "excludes": ["boundary_heat_exchange"]
+    },
+    "lib.claims.steady_state": {
+      "kind": "claim",
+      "entails": ["no_transient_response"]
+    },
+    "lib.claims.incompressible": {
+      "kind": "claim",
+      "doc": "Density constant; valid roughly below Mach 0.3.",
+      "excludes": ["compressibility_effects"]
+    },
+    "lib.claims.lumped_element": {
+      "kind": "claim",
+      "doc": "Spatial gradients unresolved within the element.",
+      "entails": ["no_internal_gradients"]
+    },
+    "lib.claims.elastic_modes": {
+      "kind": "claim",
+      "doc": "Structural flexibility retained; modes exist and are computable."
+    },
+    "lib.claims.topology_asserted": {
+      "kind": "claim",
+      "doc": "Geometry core asserted its topological assumptions (spec §6.2)."
+    }
+  }
+}

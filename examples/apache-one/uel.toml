@@ -1,0 +1,28 @@
+[project]
+name = "apache-one"
+edition = "2026"
+model = ["model"]
+
+# Hash-quantization grids (spec §4.3): a change smaller than the grid is not a
+# change. Each entry's own unit picks the dimension it grids.
+[tolerances]
+mass = "0.01 g"
+length = "0.001 mm"
+moment = "0.01 N*m"        # energy-dimension grid (also J)
+force = "0.01 N"
+stress = "0.01 MPa"
+temperature = "0.001 K"
+current = "0.001 A"
+voltage = "0.001 V"
+power = "0.01 W"
+frequency = "0.001 Hz"
+speed = "0.001 m/s"
+area = "0.001 mm^2"
+second_moment = "0.1 mm^4"
+volume = "1 mm^3"
+density = "0.1 kg/m^3"
+cost = "0.01 USD"
+mass_per_span = "0.0001 kg/m"
+thermal_resistance = "0.001 K/W"
+stiffness = "0.1 N/m"
+default_rel = 1e-6

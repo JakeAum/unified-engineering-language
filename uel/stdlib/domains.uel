@@ -1,0 +1,56 @@
+# The port domain table (spec §2.2). Library, not kernel: the kernel checks
+# whatever domains are in scope; these are the shipped ones. For every power
+# domain, effort × flow must have the dimension of power — checked at load.
+
+domain electrical {
+  class power
+  effort voltage: V
+  flow current: A
+  doc "Charge-carrying electrical connection."
+}
+
+domain mechanical.translation {
+  class power
+  effort force: N
+  flow velocity: m/s
+  doc "Translational mechanical load path."
+}
+
+domain mechanical.rotation {
+  class power
+  effort torque: N*m
+  flow speed: rad/s
+  doc "Rotational shaft interface. Angle is dimensionless; torque in N*m."
+}
+
+domain mechanical.distributed {
+  class power
+  effort force: N
+  flow velocity: m/s
+  doc "Distributed structural interface (bonded skin, distributed bearing), lumped to its resultant force. Traction fields live in analyses; the port carries the resultant so the balance is checkable."
+}
+
+domain hydraulic {
+  class power
+  effort pressure: Pa
+  flow volumetric_flow: m^3/s
+  doc "Incompressible fluid power line."
+}
+
+domain thermal {
+  class power
+  effort temperature: K
+  flow entropy_flow: W/K
+  doc "Thermal interface; T × S-dot = heat power (spec §2.2)."
+}
+
+domain material_flow {
+  class material
+  flow mass_flow: kg/s
+  doc "Material transport with composition; conserved by mass."
+}
+
+domain data_bus {
+  class data
+  doc "Typed information flow; not conserved; typed by protocol/schema."
+}

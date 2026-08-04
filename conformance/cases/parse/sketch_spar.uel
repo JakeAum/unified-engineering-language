@@ -1,0 +1,27 @@
+# The spec §5.2 sketch, adapted to the v0.1 grammar: must parse clean.
+component MainSpar : functional {
+  port root_attach : mechanical.translation { force: [0, 12 kN] ± cal }
+  port skin_bond : mechanical.distributed
+  budget mass <= 240 g ± 10 g
+  budget unit_cost <= 85 USD @ qty 25
+}
+
+binding MainSpar -> spar_v7 : physical {
+  process cnc_3axis
+  geometry code "geom/spar_v7.py"
+  material AL7075_T6 from lib.materials
+}
+
+analysis SparStaticLimit {
+  intent req.STR-014 "carry limit load, FoS >= 1.5"
+  framing {
+    model beam.euler_bernoulli
+    assume rigid_root because "root fitting stiffness >> spar; see AN-009"
+    assume static because "gust transient covered by SparDynamic"
+    envelope { load in [0, 18 kN], T in [-40, 70] degC }
+  }
+  knowns { load <- req.STR-014.limit_load ; section <- spar_v7.section_props }
+  core python "analysis/spar_static.py"
+  outputs { FoS : dimensionless ± ; max_deflection : mm ± }
+  judgment pending
+}

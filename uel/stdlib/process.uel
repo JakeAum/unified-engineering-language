@@ -1,0 +1,51 @@
+# Process/DFM rulesets as data (spec §7.1): tribal shop knowledge as statically
+# checkable claims, activated when a component binds to a process. Features are
+# quantities the geometry core declares about its own shape.
+
+process cnc_3axis {
+  doc "3-axis CNC milling."
+  rule min_internal_radius: min_internal_radius >= 2 mm
+    "internal pocket radii must clear standard cutter radius + margin so the tool sweeps rather than dwells"
+  rule no_sharp_internal_corners: forbid sharp_internal_corner_count
+    "sharp internal corners are impossible on a rotating cutter"
+  rule min_wall_thickness: min_wall_thickness >= 0.8 mm
+    "thin walls chatter and deflect under cutting load"
+  rule loaded_corner_fillet: loaded_internal_corner_min_fillet >= 1.5 mm
+    "loaded internal corners retain fillets as stress relief; a rule that saves machining minutes by seeding a crack is not a rule"
+  rule undercuts_declared: forbid undeclared_undercut_count
+    "undercuts require declared setup changes"
+}
+
+process cnc_turn {
+  doc "CNC turning (lathe)."
+  rule min_wall_thickness: min_wall_thickness >= 0.5 mm
+    "thin tube walls deflect under cutting load and chatter"
+  rule min_internal_radius: min_internal_radius >= 0.4 mm
+    "internal corner radius limited by boring bar nose radius"
+}
+
+process injection_molded {
+  doc "Thermoplastic injection molding."
+  rule min_draft_angle: min_draft_angle >= 1 deg
+    "faces along the pull direction need draft to release"
+  rule wall_uniformity: wall_thickness_ratio <= 2
+    "non-uniform walls sink and warp"
+  rule fillets_everywhere: min_internal_radius >= 0.5 mm
+    "sharp corners concentrate stress and impede flow"
+}
+
+process sla_print {
+  doc "Stereolithography printing."
+  rule min_wall_thickness: min_wall_thickness >= 0.6 mm
+    "thin resin walls warp during post-cure"
+  rule min_hole_diameter: min_hole_diameter >= 0.75 mm
+    "smaller holes seal over with uncured resin"
+}
+
+process sheet_bend {
+  doc "Sheet-metal cutting and bending."
+  rule min_bend_radius_t: min_bend_radius_per_t >= 1
+    "bends below one material thickness crack on the outer fiber"
+  rule min_flange_t: min_flange_per_t >= 4
+    "short flanges cannot be gripped by the brake"
+}

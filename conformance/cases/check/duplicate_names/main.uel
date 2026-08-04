@@ -1,0 +1,7 @@
+component Spar : functional {
+  mass = 1 kg
+}
+
+component Spar : physical {
+  mass = 2 kg
+}

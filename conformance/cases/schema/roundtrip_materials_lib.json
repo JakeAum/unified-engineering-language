@@ -1,0 +1,28 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "lib.materials.AL7075_T6": {
+      "kind": "material",
+      "doc": "Aluminum 7075-T6, bare plate.",
+      "quantities": {
+        "density": {"value": 2810.0, "unit": "kg/m^3", "prov": {"kind": "vendor", "detail": "MMPDS-2023 3.7.6"}},
+        "E": {"value": 71.7, "unit": "GPa", "prov": {"kind": "vendor", "detail": "MMPDS-2023 3.7.6"}},
+        "yield_strength": {"value": 503.0, "unit": "MPa", "unc": {"kind": "rel", "value": 0.03}, "prov": {"kind": "vendor", "detail": "A-basis, L direction"}},
+        "ultimate_strength": {"value": 572.0, "unit": "MPa", "unc": {"kind": "rel", "value": 0.03}},
+        "max_service_temp": {"value": 120.0, "unit": "degC", "prov": {"kind": "estimate", "detail": "overaging onset; conservative"}}
+      }
+    },
+    "lib.materials.CF_epoxy_UD": {
+      "kind": "material",
+      "doc": "Unidirectional carbon/epoxy prepreg, RT cure.",
+      "quantities": {
+        "density": {"value": 1600.0, "unit": "kg/m^3"},
+        "E1": {"value": 135.0, "unit": "GPa", "unc": {"kind": "rel", "value": 0.08}},
+        "ultimate_strength": {"value": 1500.0, "unit": "MPa", "unc": {"kind": "rel", "value": 0.12},
+                              "prov": {"kind": "estimate", "detail": "vendor typical; wide until coupon tests"},
+                              "conf": 0.5}
+      }
+    }
+  }
+}

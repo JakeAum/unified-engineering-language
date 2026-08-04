@@ -1,0 +1,9 @@
+component esc : physical {
+  port case : thermal { direction out }
+}
+
+component sink : physical {
+  port in : electrical { direction in }
+}
+
+connect esc.case -> sink.in

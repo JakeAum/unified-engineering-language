@@ -1,0 +1,8 @@
+{
+  "source": "W13 flight 2, hot-day thermal survey",
+  "ts": "2026-08-18T00:00:00Z",
+  "measurements": [
+    {"target": "EscThermal.outputs.T_case", "value": 84.1, "unit": "degC",
+     "unc": {"kind": "abs", "value": 0.5}}
+  ]
+}

@@ -1,0 +1,25 @@
+# Apache One — requirements slice for the wing + electric propulsion branch.
+# Every quantity here is load-bearing: analyses consume them by reference, so a
+# requirements change ripples mechanically (spec §4.2).
+requirement STR-014 {
+  text "The main spar shall carry the limit root bending moment with FoS >= 1.5 against yield."
+  root_moment = 225 N*m ± cal from "loads memo LM-3, 6g symmetric pull-up at 14 kg TOW"
+  min_FoS = 1.5
+}
+
+requirement AER-009 {
+  text "Flutter speed shall exceed V_NE with margin >= 1.1 across the operating envelope."
+  V_NE = 34 m/s
+  min_flutter_margin = 1.1
+}
+
+requirement PWR-021 {
+  text "The propulsion branch shall deliver cruise shaft power continuously without exceeding component ratings."
+  shaft_power_cruise = 950 W
+}
+
+requirement THM-007 {
+  text "ESC case temperature shall not exceed its derating limit on a hot day."
+  hot_day = 40 degC
+  max_case_temp = 85 degC
+}

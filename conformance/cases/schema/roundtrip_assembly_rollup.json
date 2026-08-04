@@ -1,0 +1,60 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "lib.domains.material_flow": {
+      "kind": "domain",
+      "dclass": "material",
+      "flow": {"name": "mass_flow", "unit": "kg/s"},
+      "doc": "Material ports carry mass flow with composition (spec §2.2)."
+    },
+    "lib.domains.telemetry_bus": {
+      "kind": "domain",
+      "dclass": "data",
+      "doc": "Typed information flow; not conserved; typed by protocol."
+    },
+    "airframe": {
+      "kind": "component",
+      "level": "functional",
+      "contains": [
+        {"ref": "MainSpar"},
+        {"ref": "rib", "count": 6},
+        {"ref": "power_module"}
+      ],
+      "budgets": {
+        "mass": {"op": "<=", "limit": {"value": 4.2, "unit": "kg"}},
+        "unit_cost": {"op": "<=", "limit": {"value": 900.0, "unit": "USD"}, "at_qty": 5},
+        "lead_time": {"op": "<=", "limit": {"value": 6.0, "unit": "week"}}
+      }
+    },
+    "rib": {
+      "kind": "component",
+      "level": "physical",
+      "quantities": {
+        "mass": {"value": 38.0, "unit": "g", "unc": {"kind": "abs", "value": 2.0}},
+        "unit_cost": {"value": 22.0, "unit": "USD", "prov": {"kind": "vendor", "ts": "2026-07-30T00:00:00Z"}, "conf": 0.8},
+        "lead_time": {"value": 2.0, "unit": "week", "prov": {"kind": "vendor", "ts": "2026-07-30T00:00:00Z"}, "conf": 0.6}
+      }
+    },
+    "power_module": {
+      "kind": "component",
+      "level": "functional",
+      "ports": {
+        "fuel_in": {
+          "domain": "material_flow",
+          "dir": "in",
+          "attrs": {"mass_flow": {"value": [0.0, 0.012], "unit": "kg/s"}}
+        },
+        "telemetry": {
+          "domain": "telemetry_bus",
+          "dir": "out",
+          "protocol": "mavlink2",
+          "attrs": {
+            "rate": {"value": 50.0, "unit": "Hz"},
+            "latency": {"value": [0.0, 20.0], "unit": "ms"}
+          }
+        }
+      }
+    }
+  }
+}

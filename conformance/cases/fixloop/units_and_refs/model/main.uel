@@ -1,0 +1,21 @@
+requirement PWR-01 {
+  text "deliver 250 W continuous"
+  p_out = 250 Watt
+}
+
+component Esc : physical {
+  port dc_in : electical {
+    voltage: [19.2, 25.2 V]
+  }
+  mass = 92 gramms
+}
+
+analysis EscLoss {
+  intent req.PWR-01
+  knowns {
+    p <- req.PWR-01.p_owt
+    v <- Esc.dc_in.voltege
+  }
+  core python "analysis/loss.py"
+  outputs { loss : W ± }
+}

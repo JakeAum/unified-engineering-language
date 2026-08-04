@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uel"
+version = "0.1.0"
+description = "UEL — Unified Engineering Language: a content-addressed, typed graph of engineering claims. Reference implementation (kernel proof)."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"  # tomllib
+authors = [{ name = "UEL program" }]
+keywords = ["engineering", "systems-engineering", "content-addressed", "units", "agents"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering",
+]
+# The kernel is deliberately zero-dependency (ADR-0002): it must run anywhere Python runs.
+dependencies = []
+
+[project.scripts]
+uel = "uel.cli:main"
+
+[project.urls]
+Repository = "https://github.com/JakeAum/unified-engineering-language"
+
+[tool.setuptools]
+packages = ["uel"]
+
+[tool.setuptools.package-data]
+uel = ["stdlib/*.uel"]
