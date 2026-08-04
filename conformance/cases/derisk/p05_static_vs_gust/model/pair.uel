@@ -1,0 +1,16 @@
+analysis SparStatic {
+  framing {
+    model beam.euler_bernoulli
+    assume static because "limit load applied quasi-statically"
+  }
+  outputs { tip_deflection : mm ± }
+}
+
+analysis GustResponse {
+  framing {
+    model loads.continuous_turbulence
+    require transient_response because "gust alleviation is a time-domain effect"
+  }
+  knowns { w <- SparStatic.outputs.tip_deflection }
+  outputs { peak_load_factor : dimensionless ± }
+}

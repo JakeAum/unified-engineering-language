@@ -1,0 +1,17 @@
+analysis SparDynamic {
+  framing {
+    model beam.modal
+    assume elastic_modes because "free-free modal extraction, first 6 modes"
+    assume linear_elastic because "amplitudes small at onset"
+  }
+  outputs { first_bending_mode : Hz ± }
+}
+
+analysis WingFlutter {
+  framing {
+    model aeroelastic.pk_method
+    require elastic_modes because "needs the first bending mode"
+  }
+  knowns { f1 <- SparDynamic.outputs.first_bending_mode }
+  outputs { flutter_speed : m/s ± }
+}

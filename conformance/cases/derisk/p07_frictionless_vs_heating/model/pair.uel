@@ -1,0 +1,16 @@
+analysis HingeKinematics {
+  framing {
+    model mech.rigid_linkage
+    assume frictionless because "loads dominated by aero hinge moment, not friction"
+  }
+  outputs { hinge_moment : N*m ± }
+}
+
+analysis ActuatorThermal {
+  framing {
+    model thermal.duty_cycle
+    require joint_heating because "duty-cycle heating of the hinge line sizes the actuator"
+  }
+  knowns { m <- HingeKinematics.outputs.hinge_moment }
+  outputs { T_rise : K ± }
+}

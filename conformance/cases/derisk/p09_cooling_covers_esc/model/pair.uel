@@ -1,0 +1,17 @@
+analysis DuctCooling {
+  framing {
+    model thermal.forced_convection
+    assume steady_state because "cruise thermal equilibrium"
+    envelope { T_case in [-20, 85] degC }
+  }
+  outputs { T_case : degC ± }
+}
+
+analysis EscDerating {
+  framing {
+    model power.derating_curve
+    envelope { T_case in [0, 70] degC }
+  }
+  knowns { t <- DuctCooling.outputs.T_case }
+  outputs { i_max : A ± }
+}

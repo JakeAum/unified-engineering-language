@@ -1,0 +1,10 @@
+component WingSkinBond : functional {
+  doc "Skin-to-spar structural bond"
+}
+
+binding WingSkinBond -> bond_ep2216 : physical {
+  material CF_epoxy_UD from lib.materials
+  envelope {
+    T in [-40, 120] degC
+  }
+}

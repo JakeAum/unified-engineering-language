@@ -183,6 +183,14 @@ def run_fixloop_case(path: Path) -> tuple[bool, str]:
         return ok, "; ".join(log)
 
 
+@handler("derisk", "*")
+def run_derisk_case(path: Path) -> tuple[bool, str]:
+    """R1 de-risk pair set (program §8.1, spec §10.1): ten real cross-domain
+    analysis pairs encoded in the draft envelope formalism; each must produce
+    the physically right verdict. Same mechanics as `check` cases."""
+    return run_check_case(path)
+
+
 @handler("check", "*")
 def run_check_case(path: Path) -> tuple[bool, str]:
     """Full-project check against expected diagnostics (expected.json)."""

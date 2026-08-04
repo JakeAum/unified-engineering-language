@@ -1,0 +1,14 @@
+requirement STR-020 {
+  text "ultimate load case"
+  ultimate_load = 21 kN
+}
+
+analysis SparUltimate {
+  intent req.STR-020
+  framing {
+    model beam.euler_bernoulli
+    envelope { load in [0, 18 kN] }
+  }
+  knowns { load <- req.STR-020.ultimate_load }
+  outputs { FoS : dimensionless ± }
+}

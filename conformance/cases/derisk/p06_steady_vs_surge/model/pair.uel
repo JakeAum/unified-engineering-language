@@ -1,0 +1,16 @@
+analysis PropDeck {
+  framing {
+    model prop.bemt
+    assume steady_state because "trimmed cruise operating points"
+  }
+  outputs { shaft_power : W ± }
+}
+
+analysis BusSurge {
+  framing {
+    model power.surge_sizing
+    require transient_response because "inrush and spool-up set the bus capacitor bank"
+  }
+  knowns { p <- PropDeck.outputs.shaft_power }
+  outputs { c_bank : F ± }
+}

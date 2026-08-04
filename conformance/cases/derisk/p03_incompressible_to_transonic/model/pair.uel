@@ -1,0 +1,17 @@
+analysis PanelPolar {
+  framing {
+    model aero.vortex_lattice
+    assume incompressible because "panel code; no compressibility correction"
+    envelope { Mach in [0, 0.3] }
+  }
+  outputs { CL_alpha : dimensionless ± }
+}
+
+analysis DashTrim {
+  framing {
+    model perf.trim_point
+    envelope { Mach in [0.1, 0.85] }
+  }
+  knowns { cla <- PanelPolar.outputs.CL_alpha }
+  outputs { trim_alpha : deg ± }
+}

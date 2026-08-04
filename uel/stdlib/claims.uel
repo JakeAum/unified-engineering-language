@@ -31,6 +31,17 @@ claim steady_state {
 
 claim transient_response {
   doc "Time-domain behavior retained."
+  excludes no_transient_response
+}
+
+claim joint_heating {
+  doc "Frictional heat generation at interfaces retained."
+  excludes no_joint_heating
+}
+
+claim internal_gradient_field {
+  doc "Spatial gradients within the element resolved (field model)."
+  excludes no_internal_gradients
 }
 
 claim frictionless {
