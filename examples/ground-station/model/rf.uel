@@ -169,5 +169,5 @@ analysis LinkMargin {
     ebn0_db : dB ±
     margin_db : dB ±
   }
-  judgment accepted "5.28 dB margin against 3 dB required at 1650000 km with every declared loss taken at once; C/N0 43.8 dB-Hz at 2000 bit/s" doubts "EIRP is ± cal from the ICD draft and moves margin 1:1; pointing loss rides on the structures PointingBudget; rain allocation is a temperate-site statistic, not this site's measurement"
+  judgment accepted "5.3 dB margin against 3 dB required at 1650000 km with every declared loss taken at once; C/N0 43.8 dB-Hz at 2000 bit/s" doubts "EIRP is ± cal from the ICD draft and moves margin 1:1; pointing loss rides on the structures PointingBudget; rain allocation is a temperate-site statistic, not this site's measurement"
 }

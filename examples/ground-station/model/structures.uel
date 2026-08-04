@@ -1,0 +1,205 @@
+# Antenna structures and servo: the 5 m reflector and its geometry, the vendor
+# az-el pedestal, the machined counterweight brackets, and the analysis ladder
+# that turns wind and stiffness into torque, bandwidth, and a pointing budget.
+# ServoBandwidth REQUIRES elastic modes and gets them from PedestalModes — the
+# spec §2.5 envelope-composition seam, made real at the servo/structure boundary.
+
+geometry reflector_geom {
+  doc "5 m prime-focus paraboloid: stretch-formed panels on a backing truss; the code is the canonical shape definition (spec §6.2). Areal density is quoted per unit APERTURE area, so mass = density x aperture + hub."
+  knowns {
+    diameter <- Reflector.aperture_diameter
+    focal_ratio <- Reflector.focal_ratio
+  }
+  params {
+    areal_density = 14 kg/m^2 ± 15 % from "stretch-formed aluminum panel + rib construction, 5 m class estimate, per unit aperture area"
+    hub_and_truss_mass = 105 kg ± 20 % from "hub casting + backing truss allowance, PAW concept sheet CS-51"
+  }
+  core python "geom/reflector_geom.py"
+  outputs {
+    mass : kg ±
+    aperture_area : m^2
+    frontal_area : m^2
+    focal_length : m
+  }
+}
+
+binding Reflector -> reflector_v1 : physical {
+  doc "Stretch-formed aluminum panels on a welded backing truss; mass carried by reflector_geom so a shape change ripples into every consumer"
+  geometry reflector_geom
+  unit_cost = 48000 USD from "Precision Antenna Works quote PAW-1187, qty 1, incl. surface metrology report"
+  lead_time = 18 week from "PAW-1187"
+  envelope {
+    T in [-40, 60 degC]
+  }
+}
+
+binding Pedestal -> pedestal_ae5 : physical {
+  doc "Vendor az-el positioner: slewing-ring azimuth, dual-pinion elevation, 24-bit encoders on both axes"
+  datasheet "vendor/ad_ae5_positioner.pdf" sha256 "4c7a1e9f0b3d5a86c2e4f7091b8d6a3c5e0f2b4d7a9c1e8f3b6d0a5c7e9f1b2d"
+  mass = 2100 kg from "datasheet p.2"
+  locked_rotor_stiffness = 85 MN*m ± 20 % from "datasheet p.7: locked-rotor torsional test, torque per radian of output deflection"
+  unit_cost = 95000 USD from "Antenna Drives GmbH quote AD-2653, qty 1"
+  lead_time = 20 week from "AD-2653"
+  envelope {
+    T in [-40, 55 degC]
+  }
+}
+
+geometry counterweight_bracket_geom {
+  doc "Machined AL6061 clamp bracket, one per counterweight stack: base plate, two cheek plates, weight-relief pocket, M12 bolt pattern; filleted throughout for 3-axis milling"
+  knowns {
+    density <- lib.materials.AL6061_T6.density
+  }
+  params {
+    base_thickness = 25 mm
+    cheek_thickness = 20 mm
+    pocket_depth = 12 mm
+    internal_radius = 6 mm
+  }
+  core python "geom/counterweight_bracket.py"
+  outputs {
+    mass : kg ±
+    volume : mm^3
+  }
+}
+
+binding CounterweightSet -> counterweight_v1 : physical {
+  doc "Four 150 kg steel plate stacks on machined AL6061 brackets; bracket shape is counterweight_bracket_geom, total set mass declared here"
+  process cnc_3axis
+  material lib.materials.AL6061_T6
+  geometry counterweight_bracket_geom
+  mass = 620 kg ± 2 % from "4x 150 kg cut-plate stacks (mill cert weights) + 4 brackets + fasteners"
+  steel_stack_mass = 600 kg from "4 stacks x 150 kg A36 cut plate, mill certs"
+  unit_cost = 6000 USD from "SteelFab quote SF-889 (plate) + HLH quote Q-3410 (brackets), qty 1 set"
+  lead_time = 6 week from "SF-889"
+}
+
+analysis WindLoads {
+  intent req.ENV-004 "what drag and overturning moment do operational and survival winds put on the mount?"
+  framing {
+    model aero.bluff_body_drag
+    assume static because "quasi-steady drag; gust dynamics carried as a pressure factor, not resolved in time"
+    assume incompressible because "site winds are Mach < 0.15"
+    envelope {
+      wind_op in [0, 50 m/s]
+    }
+  }
+  knowns {
+    wind_op <- req.ENV-004.wind_operational
+    wind_survival <- req.ENV-004.wind_survival
+    frontal_area <- reflector_v1.frontal_area
+  }
+  params {
+    rho_air = 1.225 kg/m^3 from "ISA sea level; site is low altitude"
+    cd_face_on = 1.3 ± 10 % from "solid paraboloid face-on, ESDU-class bluff-body data"
+    gust_factor = 1.6 from "3 s gust pressure over 10 min mean, open terrain"
+    stow_drag_factor = 0.3 ± 30 % from "zenith-stowed Cd*A over face-on Cd*A, dish class estimate"
+    moment_arm = 3 m ± 10 % from "aperture centroid height above the azimuth bearing plane"
+  }
+  core python "analysis/wind_loads.py"
+  outputs {
+    drag_force : kN ±
+    overturning_moment : kN*m ±
+    survival_moment : kN*m ±
+  }
+  judgment accepted "6.25 kN and 18.8 kN*m at 20 m/s face-on are in family for a 5 m solid dish; survival 45.6 kN*m sizes the foundation, not the drives" doubts "whether ENV-004 survival wind is a mean or already a gust is unconfirmed; treated as a mean with the 1.6 gust pressure factor on top, the conservative reading"
+}
+
+analysis PedestalModes {
+  intent req.PNT-003 "where is the first locked-rotor structural mode the servo loop must live below?"
+  framing {
+    model structure.locked_rotor_sdof
+    assume elastic_modes because "modal content is the product"
+    assume linear_elastic because "millidegree oscillations about a preloaded drive; no backlash traverse"
+    assume small_angle because "mode shape, not large deflection"
+  }
+  knowns {
+    stiffness <- pedestal_ae5.locked_rotor_stiffness
+    dish_mass <- reflector_v1.mass
+    cw_mass <- counterweight_v1.mass
+  }
+  params {
+    dish_radius_gyration = 2.2 m ± 10 % from "shell + backing truss about the azimuth axis, CG offset included"
+    cw_radius = 1.2 m from "counterweight stack CG offset from the elevation axis"
+    yoke_inertia = 800 kg*m^2 ± 30 % from "rotating yoke + elevation drive allowance, vendor outline drawing"
+  }
+  core python "analysis/pedestal_modes.py"
+  outputs {
+    first_locked_rotor_mode : Hz ±
+  }
+  judgment accepted "24.7 Hz with the vendor stiffness and ~3530 kg*m^2 of rotating inertia; the contract nominal of 4-6 Hz would need ~86000 kg*m^2, which this antenna does not have — deviation flagged to the architect" doubts "single-DOF lumping hides coupled dish/yoke modes below the locked-rotor line; vendor stiffness is a bench test, not in-service; GVT at site acceptance"
+}
+
+analysis ServoSizing {
+  intent req.ENV-004 "what torque and drive power must the azimuth drive deliver in operational wind?"
+  framing {
+    model drive.quasi_static_sizing
+    assume rigid because "drive sizing sees the mount as a rigid inertia; flexibility is ServoBandwidth's problem"
+    assume static because "wind moment held quasi-statically; drive thermal time constant >> gust period"
+  }
+  knowns {
+    overturning_moment <- WindLoads.outputs.overturning_moment
+    track_rate <- req.PNT-003.track_rate_max
+  }
+  params {
+    slew_rate = 6 deg/s from "acquisition and stow slew, drive class choice"
+    slew_accel = 3 deg/s^2 from "reach slew rate in 2 s"
+    rotating_inertia = 3500 kg*m^2 ± 20 % from "PedestalModes inertia stack, rounded"
+    drive_efficiency = 0.9 ± 5 % from "gear train + motor, vendor typical"
+  }
+  core python "analysis/servo_sizing.py"
+  outputs {
+    peak_torque : kN*m ±
+    peak_drive_power : W ±
+  }
+  judgment accepted "18.9 kN*m and 2.2 kW, wind moment dominated; tracking at 0.004 deg/s needs about 1.3 W, negligible" doubts "slew rate is a design choice, not yet a requirement; inertia duplicated from PedestalModes params until a proper mass model exists"
+}
+
+analysis ServoBandwidth {
+  intent req.PNT-003 "how much position-loop bandwidth can the servo close under the first structural mode?"
+  framing {
+    model control.loop_shaping
+    require elastic_modes because "loop shaping needs the first structural mode"
+    assume linear_elastic because "small-signal loop analysis about the track point"
+  }
+  knowns {
+    f1 <- PedestalModes.outputs.first_locked_rotor_mode
+  }
+  params {
+    mode_margin_factor = 3 ± 10 % from "crossover at f1/3 keeps ~45 deg phase margin against a lightly damped resonance"
+    required_tracking_bw = 0.05 Hz from "10x the highest significant apparent-motion + gust-rejection content for the L1 track"
+  }
+  core python "analysis/servo_bandwidth.py"
+  outputs {
+    usable_bandwidth : Hz ±
+    tracking_margin : dimensionless ±
+  }
+  judgment accepted "8.2 Hz usable against a 0.05 Hz need — tracking margin ~165; the loop is structure-limited, not target-limited" doubts "f1/3 is a rule of thumb; a notch could buy more but is not assumed here"
+}
+
+analysis PointingBudget {
+  intent req.PNT-003 "does the RSS pointing error stay inside 0.05 deg, and its beam loss inside the link allocation?"
+  framing {
+    model budget.rss
+    assume small_angle because "millidegree errors; linearized combination valid"
+    assume static because "budget of standing worst-case terms; the gust term is carried as a static deflection"
+  }
+  knowns {
+    hpbw <- AntennaGain.outputs.hpbw
+    gust_moment <- WindLoads.outputs.overturning_moment
+    stiffness <- pedestal_ae5.locked_rotor_stiffness
+    max_err <- req.PNT-003.max_pointing_error
+  }
+  params {
+    servo_error = 0.025 deg ± 20 % from "residual tracking jitter at the f1/3 loop bandwidth incl. drive ripple and quantization"
+    encoder_error = 0.01 deg from "24-bit encoders + axis orthogonality + mount model residual after star calibration"
+    ephemeris_error = 0.008 deg from "L1 ephemeris + station time-tag allocation"
+    thermal_error = 0.018 deg ± 30 % from "differential solar heating of pedestal and backing structure, white paint"
+  }
+  core python "analysis/pointing_budget.py"
+  outputs {
+    total_pointing_error : deg ±
+    pointing_loss_db : dB ±
+  }
+  judgment accepted "0.036 deg RSS of 0.05 required and 0.062 dB of 0.3 allocated — margin in both; the wind term takes the full operational moment as gust, which is conservative" doubts "terms treated as independent; servo jitter and gust deflection are partly the same physics, so the RSS may flatter the total by a few millidegrees"
+}
