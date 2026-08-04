@@ -296,7 +296,7 @@ class Resolver:
             if a.name in attrs:
                 self.bag.error("UEL0106", f"port attribute '{a.name}' declared twice", a.span)
                 continue
-            q = self.quantity(a.expr, file)
+            q = self.quantity(a.expr, file, a.prov_detail)
             if q is None:
                 self.bag.error("UEL0107", f"port attribute '{a.name}' must be a literal quantity", a.span)
                 continue

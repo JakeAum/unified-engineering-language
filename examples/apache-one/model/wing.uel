@@ -1,0 +1,45 @@
+# Assembly tree and budgets: mass and cost roll up by summation, lead time by
+# max-over-path (spec §7.3). Margins are computed, watchable properties.
+component rib : physical {
+  doc "SLA-printed wing rib"
+  mass = 38 g ± 2 g
+  unit_cost = 9 USD from "formlabs quote 2026-07-20"
+  lead_time = 1 week
+}
+
+component wing_skin : physical {
+  doc "Vacuum-bagged glass/foam skin set"
+  mass = 520 g ± 25 g
+  unit_cost = 120 USD from "composites shop quote"
+  lead_time = 3 week
+}
+
+component WingGroup : functional {
+  doc "Wing structural group"
+  budget mass <= 1.9 kg
+  budget unit_cost <= 400 USD @ qty 5
+  budget lead_time <= 5 week
+  contains MainSpar
+  contains rib x 6
+  contains wing_skin
+}
+
+component PowerGroup : functional {
+  doc "Propulsion electrical group"
+  budget mass <= 1.6 kg
+  budget unit_cost <= 400 USD @ qty 5
+  budget lead_time <= 5 week
+  contains PropulsionBus
+  contains EscXR45
+  contains MotorAT4130
+  contains EscMount
+}
+
+component Vehicle : functional {
+  doc "Apache One — wing + propulsion slice"
+  budget mass <= 2.8 kg
+  budget unit_cost <= 900 USD @ qty 5
+  budget lead_time <= 5 week
+  contains WingGroup
+  contains PowerGroup
+}

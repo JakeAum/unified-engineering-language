@@ -70,6 +70,7 @@ class QuantityDecl:
 class PortAttr:
     name: str
     expr: QExpr
+    prov_detail: str = ""  # `from "datasheet p.2"`
     span: Span = field(default_factory=Span)
 
 

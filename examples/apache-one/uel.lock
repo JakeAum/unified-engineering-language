@@ -1,0 +1,419 @@
+{
+  "edition": "2026",
+  "nodes": {
+    "EscThermal": {
+      "outputs": {
+        "T_case": {
+          "hash": "sha256:e3354ae98fb75d63a0a12e9bd740251bb8aac76c4204e8788f7badfd480a1836",
+          "unc": {
+            "kind": "abs",
+            "value": 4.0
+          },
+          "unit": "degC",
+          "value": 81.74000000000001
+        },
+        "margin": {
+          "hash": "sha256:e7b06d5aab0fdcafbf4dfc91ea6a61188b5006c981a845c584480afae7dbe0cd",
+          "unc": {
+            "kind": "abs",
+            "value": 4.0
+          },
+          "unit": "K",
+          "value": 3.26
+        }
+      },
+      "parts": {
+        "core": "sha256:3ca4edd06e9f6ee0480c34a0430f40d7d48043c07ac7ac5ba1248b2b71a4933c",
+        "def": "sha256:6af997276de00393e607ae6946e4dc8d789ff8261bcffdc39b2f9b0a466261d7",
+        "inputs": {
+          "R_jc": "sha256:1bf1e858aed6bcd493cd3ecec69d7a5505285962182d996576b5cfcad0642359",
+          "T_amb": "sha256:02221b39adb84234ad2af7f9d9e45f1b92eda85c126adfb5788ee2cff36a4861",
+          "T_limit": "sha256:9dfcde6254151e0d03bd23c70b3a122a48f206fd368698409fc10bfb6bed0788",
+          "esc_loss": "sha256:49df5a112d5e886343455d9b39a8f7f3024d09ce452c9bc3cd5dac0d4b43f4ae"
+        },
+        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+      },
+      "recipe": "sha256:685e5268403610baf37596dbe3cdafd51a2974e20d06d1aa2830a309c0c97979",
+      "run": {
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.1.0"
+        },
+        "ts": "2026-08-04T06:15:22Z",
+        "validation": {
+          "T_case": {
+            "measured": 84.1,
+            "source": "W13 flight 2, hot-day thermal survey",
+            "ts": "2026-08-18T00:00:00Z",
+            "unit": "degC",
+            "verdict": "consistent"
+          }
+        },
+        "wall_s": 0.025
+      },
+      "status": "fresh"
+    },
+    "PowerDraw": {
+      "outputs": {
+        "bus_current_max": {
+          "hash": "sha256:65c673c56fb8892f72f117eafe7c411783ae184cd864ec63178890e2178ff48e",
+          "unc": {
+            "kind": "rel",
+            "value": 0.05
+          },
+          "unit": "A",
+          "value": 57.97
+        },
+        "esc_input_power": {
+          "hash": "sha256:81effab7b0f25850a466df0be68ff3ae8dfd9ad8ddfe0c9ca928035271db5fc4",
+          "unc": {
+            "kind": "rel",
+            "value": 0.04
+          },
+          "unit": "W",
+          "value": 1112.9
+        },
+        "esc_loss": {
+          "hash": "sha256:49df5a112d5e886343455d9b39a8f7f3024d09ce452c9bc3cd5dac0d4b43f4ae",
+          "unc": {
+            "kind": "rel",
+            "value": 0.15
+          },
+          "unit": "W",
+          "value": 33.39
+        }
+      },
+      "parts": {
+        "core": "sha256:e87aa1b585c95a8dfaae3e834b39397e473b03243280200c07d6a6714d71772e",
+        "def": "sha256:11c240a5abe29e5cd3b904585f2db2db09de01efc36eb2ff122df5aacf93f86b",
+        "inputs": {
+          "shaft_power": "sha256:24ea78837ae1bf8f164c08ce6575de2a95cc95acc56a42a5e52459c3301d26e8",
+          "v_bus": "sha256:377b335c7959b434cb10314b14a742ca83548bbd4fee0885619f3425fd7ce09e"
+        },
+        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+      },
+      "recipe": "sha256:ffd8ecb33942985f0179beaa0f897738f1af17a6ad49195206ed84ea72a94ed0",
+      "run": {
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.1.0"
+        },
+        "ts": "2026-08-04T06:15:22Z",
+        "wall_s": 0.027
+      },
+      "status": "fresh"
+    },
+    "SparDynamic": {
+      "outputs": {
+        "first_bending_mode": {
+          "hash": "sha256:bfd1691cdfd56b79051acd945c17a01fcafbe806179adb5eb707022260b1e5b3",
+          "unc": {
+            "kind": "rel",
+            "value": 0.08
+          },
+          "unit": "Hz",
+          "value": 13.121
+        }
+      },
+      "parts": {
+        "core": "sha256:4b674d13bd13b6f6774f4e0f91460af48012115ed7d9f76fbf5bcb8632f3915c",
+        "def": "sha256:a5413ca6e45e17f96dc951e17f46b20a450b8debb7f6a52bdbf3adc4c9474bcf",
+        "inputs": {
+          "E": "sha256:5b618d8cb0a457696df353afc8cf1cf418002d25bb61d27cf8bafdef7c7a886d",
+          "length": "sha256:bc7d55d6bc3f5f4edbdc935dfa500b818aa7940c02e537bdbc4232ec109de6be",
+          "m_bar": "sha256:3cad90d966afb76307f177a64dc22d0a9c6cdc85eb813239103a555d51a8c04c",
+          "section_Ixx": "sha256:87f951dce82b81032610dd179d48174e3f428fd98c4a160adf60197cb892d508"
+        },
+        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+      },
+      "recipe": "sha256:e0b4973e3c2a4ee297651c1cc870791fd77ea32969c6e2b5d3776e52eddaf664",
+      "run": {
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.1.0"
+        },
+        "ts": "2026-08-04T06:16:52Z",
+        "wall_s": 0.04
+      },
+      "status": "fresh"
+    },
+    "SparStaticLimit": {
+      "outputs": {
+        "FoS": {
+          "hash": "sha256:ece0d58f85292405583fa6f3cd05c793d760eafd5dcc120b8a6d50501d2606d8",
+          "unc": {
+            "kind": "rel",
+            "value": 0.05
+          },
+          "value": 2.0379
+        },
+        "max_deflection": {
+          "hash": "sha256:7c72233c38cb30358a747b97d03babc5316eecb2af8eb7ad7826853928396383",
+          "unc": {
+            "kind": "rel",
+            "value": 0.05
+          },
+          "unit": "mm",
+          "value": 165.24
+        },
+        "root_stress": {
+          "hash": "sha256:6aff93f16e208e1e75875316d5c76c2e80ce8b445d6de9effd559c40521221f1",
+          "unc": {
+            "kind": "rel",
+            "value": 0.04
+          },
+          "unit": "MPa",
+          "value": 246.82
+        }
+      },
+      "parts": {
+        "core": "sha256:5f12eef15ead8bfbdffa1bd6d17d7ae2abe2a18ddbb1c83f88b1c64c93cc9dd4",
+        "def": "sha256:5518240a4aef36fa8dc0b31be2971ca0947f2c21d5de1aeacf0a171990b858c3",
+        "inputs": {
+          "E": "sha256:5b618d8cb0a457696df353afc8cf1cf418002d25bb61d27cf8bafdef7c7a886d",
+          "length": "sha256:bc7d55d6bc3f5f4edbdc935dfa500b818aa7940c02e537bdbc4232ec109de6be",
+          "outer_radius": "sha256:d5c638596a35ca9e801c2b7fca04418456f5424ee1f3e53844a3fb6a82739d8b",
+          "root_moment": "sha256:1dccb5a037ddd693e48c21c42490b7afca09b847ddb5b7ce32c9030a2863ef65",
+          "section_Ixx": "sha256:87f951dce82b81032610dd179d48174e3f428fd98c4a160adf60197cb892d508",
+          "yield_strength": "sha256:7f0fd180e784772327833a659566646eef7f3069538abed29d6e0a4f5aa840b4"
+        },
+        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+      },
+      "recipe": "sha256:f87dea2c5cbfda8d81d66c843592aa29f796feced6e247fb276e1ab1f71db369",
+      "run": {
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.1.0"
+        },
+        "ts": "2026-08-04T06:15:23Z",
+        "validation": {
+          "max_deflection": {
+            "measured": 172.0,
+            "source": "W12 bench static test, serial SN001",
+            "ts": "2026-08-11T00:00:00Z",
+            "unit": "mm",
+            "verdict": "consistent"
+          }
+        },
+        "wall_s": 0.026
+      },
+      "status": "fresh"
+    },
+    "WingFlutter": {
+      "outputs": {
+        "flutter_margin": {
+          "hash": "sha256:850aacd66d0c9916ce8e9102f8b397c21bc0cad9058eb7541391b2f66231c017",
+          "unc": {
+            "kind": "rel",
+            "value": 0.12
+          },
+          "value": 1.1462
+        },
+        "flutter_speed": {
+          "hash": "sha256:6fb0a9567242207a49ac844af11f7fc0227b05c540195ace1f61896c1247a1bd",
+          "unc": {
+            "kind": "rel",
+            "value": 0.12
+          },
+          "unit": "m/s",
+          "value": 38.972
+        }
+      },
+      "parts": {
+        "core": "sha256:d623ace2b0ed1a1bda73d4751cba0948339438f699183ba96f9e26c3f67d2888",
+        "def": "sha256:44f019d129c1ad2027c4215225926c0c348c4bc5b613d923431786b4677d1bce",
+        "inputs": {
+          "V_NE": "sha256:db1fd7ed87f7e98b110f1264f583b040ec1c49253ed230e697bbc9fbe2059528",
+          "f1": "sha256:bfd1691cdfd56b79051acd945c17a01fcafbe806179adb5eb707022260b1e5b3",
+          "m_bar": "sha256:3cad90d966afb76307f177a64dc22d0a9c6cdc85eb813239103a555d51a8c04c"
+        },
+        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+      },
+      "recipe": "sha256:5e35724db174798b42023b2b478728248346eaa54cf51f46b3db249b53628eaf",
+      "run": {
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.1.0"
+        },
+        "ts": "2026-08-04T06:16:52Z",
+        "wall_s": 0.039
+      },
+      "status": "fresh"
+    },
+    "esc_mount_geom": {
+      "assertions": [
+        {
+          "detail": "fin_count = 6",
+          "name": "fin_count_as_designed",
+          "passed": true
+        },
+        {
+          "name": "base_thickness_positive",
+          "passed": true
+        },
+        {
+          "detail": "M3 pattern at 52x37 mm clears fin roots by 4 mm",
+          "name": "bolt_pattern_clear_of_fins",
+          "passed": true
+        }
+      ],
+      "features": {
+        "loaded_internal_corner_min_fillet": {
+          "unit": "mm",
+          "value": 2.0
+        },
+        "min_internal_radius": {
+          "unit": "mm",
+          "value": 2.5
+        },
+        "min_wall_thickness": {
+          "unit": "mm",
+          "value": 1.5
+        },
+        "sharp_internal_corner_count": {
+          "unit": "",
+          "value": 0
+        },
+        "undeclared_undercut_count": {
+          "unit": "",
+          "value": 0
+        }
+      },
+      "outputs": {
+        "mass": {
+          "hash": "sha256:ca5ebf47898a4d5c8ff6a0c670c23e9d5c38f3d94a19132a4988d3a48f12ea05",
+          "unc": {
+            "kind": "rel",
+            "value": 0.05
+          },
+          "unit": "g",
+          "value": 46.08899999999999
+        },
+        "volume": {
+          "hash": "sha256:2bdb030c4e83baef315f9b8e907cef85953dd5d5f6247f8732bc6ddfc9e9ec91",
+          "unit": "mm^3",
+          "value": 17069.999999999996
+        }
+      },
+      "parts": {
+        "core": "sha256:6e8c59772c2bf1a7dca02881aa631d2b2dfc0e3850065a61c63ad680e74fe50d",
+        "def": "sha256:3b5c36c0918b53591c9103eac39961b1bf9d6f7d5915de62ac705b3e4340b79e",
+        "inputs": {
+          "density": "sha256:908d32d9793da7bdccb4860a6f29de13b112f3ddf46f4d5d2b066d53d66c2ba4"
+        },
+        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+      },
+      "recipe": "sha256:72fc13cc46d72924414d5c2a6533cdf2b3367f687efb9b590d902da10a8de362",
+      "run": {
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.1.0"
+        },
+        "ts": "2026-08-04T06:15:23Z",
+        "wall_s": 0.026
+      },
+      "status": "fresh"
+    },
+    "spar_v8_geom": {
+      "assertions": [
+        {
+          "detail": "inner diameter 27.00 mm",
+          "name": "closed_tube_section",
+          "passed": true
+        },
+        {
+          "detail": "section formulas assume a thin-walled tube",
+          "name": "thin_wall_regime",
+          "passed": true
+        },
+        {
+          "name": "wall_positive",
+          "passed": true
+        }
+      ],
+      "features": {
+        "min_internal_radius": {
+          "unit": "mm",
+          "value": 13.5
+        },
+        "min_wall_thickness": {
+          "unit": "mm",
+          "value": 1.5
+        },
+        "sharp_internal_corner_count": {
+          "unit": "",
+          "value": 0
+        }
+      },
+      "outputs": {
+        "mass": {
+          "hash": "sha256:6d3dcfca998f9480515671292ad41661b0dfa4587b96659d2b30bbfb53e22476",
+          "unc": {
+            "kind": "rel",
+            "value": 0.03
+          },
+          "unit": "g",
+          "value": 452.87000579292953
+        },
+        "outer_radius": {
+          "hash": "sha256:d5c638596a35ca9e801c2b7fca04418456f5424ee1f3e53844a3fb6a82739d8b",
+          "unit": "mm",
+          "value": 15.0
+        },
+        "section_Ixx": {
+          "hash": "sha256:87f951dce82b81032610dd179d48174e3f428fd98c4a160adf60197cb892d508",
+          "unit": "mm^4",
+          "value": 13673.732937364357
+        },
+        "section_area": {
+          "hash": "sha256:cc5b37d86bcfc1f76a73e9171f3c6c2a79d69ad509d3d5f8c6fea718cbb40003",
+          "unit": "mm^2",
+          "value": 134.30308594096368
+        },
+        "volume": {
+          "hash": "sha256:7f50da5e648ecf3e09932931ad39d3563fa02b174303904042b46f221ff9e5d8",
+          "unit": "mm^3",
+          "value": 161163.7031291564
+        }
+      },
+      "parts": {
+        "core": "sha256:63b80cde98cd417b159acd470aeedaeab1ecf94e6a08d905f8270e51edab25f6",
+        "def": "sha256:c260c5984c6970da3c542246f63fa038ab1b169fd69f4ab240271fe789896d58",
+        "inputs": {
+          "density": "sha256:f8678353e8f164a281add0f0179ae308d71e8336b48653fa33a7132348cbd91f"
+        },
+        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+      },
+      "recipe": "sha256:9748c9812da314683cdf46480062446e05279e743185c1f1378d6bc82dcd0e48",
+      "run": {
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.1.0"
+        },
+        "ts": "2026-08-04T06:15:23Z",
+        "wall_s": 0.026
+      },
+      "status": "fresh"
+    }
+  },
+  "tools": {
+    "edition": "2026",
+    "python": "3.11.15",
+    "uel": "0.1.0"
+  },
+  "uel_lock": "0.1"
+}

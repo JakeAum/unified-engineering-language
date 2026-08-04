@@ -141,7 +141,8 @@ class Formatter:
         if p.protocol:
             self.put(indent + 1, f'protocol "{_esc(p.protocol)}"')
         for a in p.attrs:
-            self.put(indent + 1, f"{a.name}: {_qexpr(a.expr)}", a.span.line)
+            prov = f' from "{_esc(a.prov_detail)}"' if a.prov_detail else ""
+            self.put(indent + 1, f"{a.name}: {_qexpr(a.expr)}{prov}", a.span.line)
         self.put(indent, "}")
 
     def envelope(self, env: A.EnvelopeBlock, indent: int) -> None:

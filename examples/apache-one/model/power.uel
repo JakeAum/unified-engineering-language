@@ -1,0 +1,99 @@
+# Electric propulsion branch: COTS battery, ESC, motor, and the analysis that
+# turns a shaft-power requirement into bus current and ESC heat. Datasheet
+# values carry vendor provenance (spec §7.2); the connections carry the static
+# face of conservation (spec §2.2).
+component PropulsionBus : functional {
+  doc "Deliver cruise shaft power from stored energy"
+}
+
+binding PropulsionBus -> battery_6s : physical {
+  doc "6S 5Ah lithium pack"
+  datasheet "vendor/tattu_6s_5ah.pdf" sha256 "3b1f0a4c2e8d7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a"
+  port main_out : electrical {
+    direction out
+    voltage: [19.2, 25.2 V] from "6S LiPo window, p.2"
+    current: [0, 120 A] from "24C continuous rating, p.2"
+  }
+  mass = 782 g from "datasheet p.1"
+  capacity = 5 A*hr from "datasheet p.1"
+  unit_cost = 120 USD from "distributor 2026-07-28"
+  lead_time = 1 week from "distributor 2026-07-28"
+}
+
+component EscXR45 : functional {
+  doc "Regulate and commutate up to 90 A continuous"
+}
+
+binding EscXR45 -> esc_xr45 : physical {
+  datasheet "vendor/xr45_esc.pdf" sha256 "9a41c1e0c8f2b7d64f0a2b9d3f5e6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3c4d5"
+  port dc_in : electrical {
+    direction in
+    voltage: [8, 26 V] from "abs max input, p.2"
+    current: [0, 90 A] from "continuous rating, p.2"
+  }
+  port phase_out : electrical {
+    direction out
+    current: [0, 90 A]
+  }
+  port case : thermal {
+    direction out
+    temperature: [-20, 98 degC]
+  }
+  mass = 92 g from "datasheet p.1"
+  R_jc = 0.9 K/W from "datasheet p.5"
+  unit_cost = 89 USD from "distributor 2026-07-28"
+  lead_time = 1 week from "distributor 2026-07-28"
+  envelope {
+    T_case in [-20, 85 degC]
+  }
+}
+
+component MotorAT4130 : functional {
+  doc "Outrunner, direct drive"
+}
+
+binding MotorAT4130 -> motor_at4130 : physical {
+  datasheet "vendor/at4130_motor.pdf" sha256 "7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d"
+  port phase_in : electrical {
+    direction in
+    current: [0, 88 A] from "continuous rating, p.3"
+  }
+  port shaft : mechanical.rotation {
+    direction out
+    torque: [0, 2.6 N*m]
+    speed: [0, 9000 rpm]
+  }
+  mass = 405 g from "datasheet p.1"
+  unit_cost = 96 USD from "distributor 2026-07-28"
+  lead_time = 2 week from "distributor 2026-07-28"
+}
+
+connect battery_6s.main_out -> esc_xr45.dc_in
+
+connect esc_xr45.phase_out -> motor_at4130.phase_in
+
+analysis PowerDraw {
+  intent req.PWR-021 "what bus current and ESC heat does cruise shaft power imply?"
+  framing {
+    model power.chain_efficiency
+    assume steady_state because "trimmed cruise; startup surge is a separate case"
+    envelope {
+      shaft_power in [0, 2200 W]
+    }
+  }
+  knowns {
+    shaft_power <- req.PWR-021.shaft_power_cruise
+    v_bus <- battery_6s.main_out.voltage
+  }
+  params {
+    eta_motor = 0.88 ± 3 %
+    eta_esc = 0.97 ± 1 %
+  }
+  core python "analysis/power_draw.py"
+  outputs {
+    bus_current_max : A ±
+    esc_loss : W ±
+    esc_input_power : W ±
+  }
+  judgment accepted "58 A worst-case at low bus voltage; inside the 90 A ESC and 120 A pack ratings" doubts "efficiencies are vendor typicals, not measured"
+}

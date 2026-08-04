@@ -401,7 +401,10 @@ class Parser:
                     expr = self.qexpr(f"value for port attribute '{attr_tok.text}'")
                     if expr is None:
                         break
-                    port.attrs.append(A.PortAttr(attr_tok.text, expr, self.span(attr_tok)))
+                    prov = ""
+                    if self.eat_ident("from"):
+                        prov = self.string("provenance detail string after 'from'")
+                    port.attrs.append(A.PortAttr(attr_tok.text, expr, prov, self.span(attr_tok)))
                 else:
                     self.err("expected a port attribute ('name: value'), 'direction', 'protocol', or 'doc'")
                     break
