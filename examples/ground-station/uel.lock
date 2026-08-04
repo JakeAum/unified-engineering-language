@@ -64,7 +64,7 @@
       },
       "parts": {
         "core": "sha256:cc8fd9a84afcf74b8b9eced74cc8eab8f1eb2917b8fc7da151b132e269005989",
-        "def": "sha256:bf68165d02b483863c8dcbf408fafc70fb1c081bbe0757fa4f532626f47a67dd",
+        "def": "sha256:ff9a6037b8ec3005248f725dfbbe9818d8b1623bb76cb28f2206b96cabe04681",
         "inputs": {
           "heater_power": "sha256:7a0fd9ed3d0dd4453b7d4fcc0796587773b96ba56dd6b2dd675be5f3c0486f0e",
           "t_amb_max": "sha256:893855c9a1b075ab36752d0ca89ba466852e52b530c71816b41e541315ea4f70",
@@ -72,7 +72,7 @@
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:ac4e5366bbec6ae745f428375a26e9f1b72e775bd7d159fd747db24ca99e168d",
+      "recipe": "sha256:2295a00cea446fe178186af397f500b86051cb247bb00c692502e09b152855c1",
       "run": {
         "seed": 0,
         "tools": {
@@ -80,21 +80,21 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.021
+        "ts": "2026-08-04T17:56:38Z",
+        "wall_s": 0.023
       },
       "status": "fresh"
     },
     "GtAnalysis": {
       "outputs": {
         "g_over_t_dbk": {
-          "hash": "sha256:fa506923bb2c164e469b5cd6c5fe107c024b626690caa9dc43efb0bda11478eb",
+          "hash": "sha256:4e091f87c8460b7c59816e519d5ece4745f1477a78acebb27720a137630dbfb0",
           "unc": {
             "kind": "abs",
-            "value": 0.554
+            "value": 0.518
           },
           "unit": "dB",
-          "value": 29.448
+          "value": 29.592
         }
       },
       "parts": {
@@ -103,11 +103,11 @@
         "inputs": {
           "feed_loss_db": "sha256:d8b2627756bb47968fa0833f9f673a40a1b9665d169fa8f5dd4da7892c8f323c",
           "gain_dbi": "sha256:83b573543a86101b661913c311ee42e9bdc06e907c1aa3c0ce498d2e5d2037ac",
-          "t_sys": "sha256:e3db0c3e6bb6365c399788db2424ca764d4859aaeb4c279c0bec361784811b0e"
+          "t_sys": "sha256:7c58e11535d3e8c9d1896b97de2fd4bc4e8d5d0a028f759b7a9917687bb87e75"
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:c7ed677c7d64c3f4811543366177e71f10641e2e6d5088564680443e6ac91efa",
+      "recipe": "sha256:3172ddfdfc6f13b001338ae9c7cd05162962a5c248a830f96ad63e5cfd06f542",
       "run": {
         "seed": 0,
         "tools": {
@@ -115,39 +115,39 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.022
+        "ts": "2026-08-04T17:58:35Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
     "LinkMargin": {
       "outputs": {
         "cn0_dbhz": {
-          "hash": "sha256:826f30b9f8bb78fe62b36ea9dbc44598bcd219340a0739d9059fac64ce3171aa",
+          "hash": "sha256:f0d674a56bb87d60a20e90c12f1848c5162142731d4011b7ca2f019df1c3ed1e",
           "unc": {
             "kind": "abs",
-            "value": 0.554
+            "value": 0.518
           },
           "unit": "dB",
-          "value": 43.754
+          "value": 43.886
         },
         "ebn0_db": {
-          "hash": "sha256:580d717e6a437dc619c50ab2c1ccdd023d0b1c3e6cf5b9e94be3629fec6eff09",
+          "hash": "sha256:ea114617275b611685fd436501fea0e94c004f88f6a0b9dca868554aaadfbbbc",
           "unc": {
             "kind": "abs",
-            "value": 0.554
+            "value": 0.518
           },
           "unit": "dB",
-          "value": 10.744
+          "value": 10.876
         },
         "margin_db": {
-          "hash": "sha256:3c135c269f04ed6de3d97b1e43d9a8a2055b77a277cb3b01fdc7299c60fb1497",
+          "hash": "sha256:2d87fbed8fd371a67fc926c495eb3352e453927946ceee9fe3bf364c8f04fe15",
           "unc": {
             "kind": "abs",
-            "value": 0.554
+            "value": 0.518
           },
           "unit": "dB",
-          "value": 5.244
+          "value": 5.376
         }
       },
       "parts": {
@@ -158,18 +158,18 @@
           "data_rate": "sha256:072128b36f0fc70c33dc624610ee6d01b3b45c9b58bfe42c48c7fed1d9a17f69",
           "eirp_dbw": "sha256:ec284feebb0c2e2a5fe5fa9aee83ed2cfa04d017cf57fa43ff5771e9d1739082",
           "freq": "sha256:9b3b516a274e34e85b10a21702a50419e531870b95e06ca9bf9e6a190b9caa14",
-          "g_over_t_dbk": "sha256:fa506923bb2c164e469b5cd6c5fe107c024b626690caa9dc43efb0bda11478eb",
+          "g_over_t_dbk": "sha256:4e091f87c8460b7c59816e519d5ece4745f1477a78acebb27720a137630dbfb0",
           "impl_loss_db": "sha256:44435e492e69d0014c8865b3541bb74cdc1f4b47040970c7f3eeda7b359eaaab",
           "max_range": "sha256:447ae3153eb18764ed71fbaddfee62986029c4b49da9a6d385d774e5a1bff669",
           "min_margin_db": "sha256:32769b214dacedac64293952bbe86f2d862ca32121a9807705018eec9cace1a0",
-          "pointing_loss_db": "sha256:5e899c29e9d0b5b8e207840e27604b1b032b662d2c0b0d8137b98546c51b8b56",
+          "pointing_loss_db": "sha256:dcb880ccef5e88e5f508040c97b24b6037460939d1242177fedeebf46f5a18ea",
           "pol_loss_db": "sha256:860f25ab4d18dceafdbd1fcb5747e5c9f4e8ffb4122a169d3be6801b3946c989",
           "rain_alloc_db": "sha256:54f7ea7a9b1dc482ffb2c304927b242488b8c537e4aef73376da002c29a4ad45",
           "required_ebn0_db": "sha256:c597302818494bc5f81fcd5ca225e96453d82ab63410dd7575dad507fa09db4e"
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:1ea833e9240674196d9c391f59355156971edeb48da5abfd61a240b200f286c9",
+      "recipe": "sha256:2f3a2649b839840ffb261433b86dbb78447ecfaf42523005e880f38ccda8677a",
       "run": {
         "seed": 0,
         "tools": {
@@ -177,7 +177,16 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
+        "ts": "2026-08-04T17:58:35Z",
+        "validation": {
+          "margin_db": {
+            "measured": 5.1,
+            "source": "T02 first light — IMAP I-ALiRT track, pass 3, Es/N0-derived margin",
+            "ts": "2026-08-27T00:00:00Z",
+            "unit": "dB",
+            "verdict": "consistent"
+          }
+        },
         "wall_s": 0.022
       },
       "status": "fresh"
@@ -192,11 +201,20 @@
           },
           "unit": "Hz",
           "value": 24.692
+        },
+        "inertia": {
+          "hash": "sha256:af38f3643c7b587d2d7abb3e8747bae84d47cc2dbf03426e3b445cc5a9d8dc20",
+          "unc": {
+            "kind": "rel",
+            "value": 0.14
+          },
+          "unit": "kg*m^2",
+          "value": 3531.5
         }
       },
       "parts": {
-        "core": "sha256:ca67b2e4194cb993d5d837a758a7a26e30a8eee121b13a689966056f29e7a3a8",
-        "def": "sha256:327f2d22941fd1c35a5c5f7ea3c841421c6078318a031f1e4f46dedbdede9937",
+        "core": "sha256:4a90a06dbda6d93b9c74a8cfc1888029b84082a80640df7e5144a5bdeb7dc764",
+        "def": "sha256:cd234aa5652f1c48cc1cef743af73a7878607256c3502cf89f3f40b1699ef52f",
         "inputs": {
           "cw_mass": "sha256:d961f56b87c5ba9b22a97598b074cfb64f0ba34e865ca8f1b9f53e44251fe470",
           "dish_mass": "sha256:079574007799aa58854ea52768ed891ea4999d936782ec3a6c57fc5926922968",
@@ -204,7 +222,7 @@
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:25d7450ad366cc4fb85d37746450652f2fbfd826dc215b5cb081e281fdfd9b4c",
+      "recipe": "sha256:d68c51624086b15a3d2852e0b69878cf67c31055ee51d16f1514f6a76ec0fcf9",
       "run": {
         "seed": 0,
         "tools": {
@@ -212,44 +230,44 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.022
+        "ts": "2026-08-04T17:56:38Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
     "PointingBudget": {
       "outputs": {
         "pointing_loss_db": {
-          "hash": "sha256:5e899c29e9d0b5b8e207840e27604b1b032b662d2c0b0d8137b98546c51b8b56",
+          "hash": "sha256:dcb880ccef5e88e5f508040c97b24b6037460939d1242177fedeebf46f5a18ea",
           "unc": {
             "kind": "rel",
-            "value": 0.26
+            "value": 0.22
           },
           "unit": "dB",
-          "value": 0.0619
+          "value": 0.074
         },
         "total_pointing_error": {
-          "hash": "sha256:74a18497f18c9e93ed38830c004df1a543ee9610e50e193eccbbb3bf87968f5e",
+          "hash": "sha256:9873f421abad5f572367127a8201289ba83ab816cdb8860b4834be3ad5f0b302",
           "unc": {
             "kind": "rel",
-            "value": 0.13
+            "value": 0.11
           },
           "unit": "deg",
-          "value": 0.0357
+          "value": 0.039
         }
       },
       "parts": {
         "core": "sha256:00ddd4c248b2eae9eb813b17b0c4e2035a4a216bfe3eb013d302528f8e8d7c5c",
-        "def": "sha256:0425fd3b299ef8fb28d6aa175a0762d4261c01c4b772748b2d613164e496a8c2",
+        "def": "sha256:66b37425a322ab2dcbae4a59dda213616489a62109f5ab734d1111e567891a05",
         "inputs": {
-          "gust_moment": "sha256:98793ade4fd4050cd1aa7bd8e603e06a0956d1fc2e2f2540ac34229081823385",
+          "gust_moment": "sha256:520632da91c7c75c690557d1387cb1fe919b0f0916c51b334bd3126c2f6b5d87",
           "hpbw": "sha256:fedc584a9bdb1a116c6ea0e8f2e2726c17f1e5f53eac5372c99d644a47cec0b1",
           "max_err": "sha256:f7bc00beda4e1a969e60499cd7e0e7f6dfc1b6391dfefbb07a8b6bdf3d80c3f8",
           "stiffness": "sha256:e24ff92597d600a9cf23e5253b3df73c7607d7694da8cafb4346fc967b438025"
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:33836601c908b898878c7cad27c30b6f91d12afed3eca7b8c27015e9016362f8",
+      "recipe": "sha256:f305ee5f0de5c5a7a0ef3ccec8aecbaf0202a4c0a6d58633abdea867ef995dbf",
       "run": {
         "seed": 0,
         "tools": {
@@ -257,7 +275,7 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
+        "ts": "2026-08-04T17:56:38Z",
         "wall_s": 0.021
       },
       "status": "fresh"
@@ -265,22 +283,22 @@
     "PowerBudget": {
       "outputs": {
         "peak_draw": {
-          "hash": "sha256:46e3c5054d37a5df1c521d1a6268cbc6e34f7523ef9c7a7f3eb78462362f390a",
+          "hash": "sha256:371c2393d11cb2796a4989c082b17ee61682448b22ef0b8fdbec912b1bbe4c3c",
           "unc": {
             "kind": "abs",
-            "value": 367.3
+            "value": 571.5
           },
           "unit": "W",
-          "value": 3964.3
+          "value": 5274.3
         },
         "supply_margin": {
-          "hash": "sha256:8a21faa3b0d482ec75ee580f75df0f6c0bf0c4c77edc19c292b00c8f9469366f",
+          "hash": "sha256:6918298447fb9f8429ff91fbe5a4674c986062e00209c2b77ecc2ee3654c138c",
           "unc": {
             "kind": "abs",
-            "value": 440.7
+            "value": 685.9
           },
           "unit": "W",
-          "value": 3242.8
+          "value": 1670.8
         },
         "total_continuous_draw": {
           "hash": "sha256:3daa1779d4c2f4bcd16e3947f82da848835cde5f782bf4e485af65625c43d2a6",
@@ -293,17 +311,18 @@
         }
       },
       "parts": {
-        "core": "sha256:30d144ea08eb18f93cafe5e509f9c092757d7c0d04d07220964726454875a9ca",
-        "def": "sha256:eb442768273a3d3bc809889836d4381f313c6660d94f8b0b2e9d9da432ca78a4",
+        "core": "sha256:0c098069b86df4cc1fc4c2d660882fb3f761b8a98a3434920fc1d084465d245b",
+        "def": "sha256:98b99de74694775ba3039925fb9206e2a6104e0fbb6c6fc25fe3f6735fb922eb",
         "inputs": {
           "heater_power": "sha256:7a0fd9ed3d0dd4453b7d4fcc0796587773b96ba56dd6b2dd675be5f3c0486f0e",
           "max_feed": "sha256:535cbe18d78c692fb6fdaaffe0ab9a9a3736c462c7d06a592223f7c51e2cb48e",
-          "peak_drive_power": "sha256:a5c2fe21b5cf9cec5d57231a0de1abfba07b97367f5fef57bf32fb55ad45c886",
+          "peak_drive_power": "sha256:46cc940463ddd04031861ca16bc146fa10fa1defbfb6bdd65e0f3a9e49dd3d81",
+          "rf_chain_dc": "sha256:9771b4ef85517d42feeae465e0a3f953e494ea421183baa04a679c203b2e2cd7",
           "server_draw": "sha256:29c0a0b438dcd2ae19437b3327eeaaa815c213c91bffd5deceee961ecd1390d7"
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:573504c5f8898d52c7a0294ac757681136f0d74908c247bd29ac4f9ce9eab257",
+      "recipe": "sha256:6fefd140e3e5803778e6fc2c087a3801ea47e5161101c7392d50afcd6fb000dd",
       "run": {
         "seed": 0,
         "tools": {
@@ -311,7 +330,7 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
+        "ts": "2026-08-04T17:56:38Z",
         "wall_s": 0.021
       },
       "status": "fresh"
@@ -360,34 +379,35 @@
     "ServoSizing": {
       "outputs": {
         "peak_drive_power": {
-          "hash": "sha256:a5c2fe21b5cf9cec5d57231a0de1abfba07b97367f5fef57bf32fb55ad45c886",
+          "hash": "sha256:46cc940463ddd04031861ca16bc146fa10fa1defbfb6bdd65e0f3a9e49dd3d81",
           "unc": {
             "kind": "rel",
             "value": 0.16
           },
           "unit": "W",
-          "value": 2204.3
+          "value": 3514.3
         },
         "peak_torque": {
-          "hash": "sha256:2253bace5524a46cf5072d10c98145610bcf44e39bbd435147e3b1b2c9d4474f",
+          "hash": "sha256:e9faacb04db402d7d56d0cc6442ad8bf523367ba1fc9a7dbc9368236d2475a94",
           "unc": {
             "kind": "rel",
             "value": 0.15
           },
           "unit": "kN*m",
-          "value": 18.9445
+          "value": 30.202900000000003
         }
       },
       "parts": {
-        "core": "sha256:60f02f441c7e9084af546b2372cae192f1064564ede7670188ab7e6ffdd25279",
-        "def": "sha256:6b7792a4997dce0713349b13eafc59981d506b108c0e446e002a81e79dfe43a8",
+        "core": "sha256:ab6a4b317f170456750d24247dd07d62ae59ef62828f609afa2bb9f438718993",
+        "def": "sha256:4aa2bd7f858b9229990c837d3d51438ba9bdbbfcf3cfac91e7ab66ba7c14be74",
         "inputs": {
-          "overturning_moment": "sha256:98793ade4fd4050cd1aa7bd8e603e06a0956d1fc2e2f2540ac34229081823385",
+          "gust_moment": "sha256:520632da91c7c75c690557d1387cb1fe919b0f0916c51b334bd3126c2f6b5d87",
+          "rotating_inertia": "sha256:af38f3643c7b587d2d7abb3e8747bae84d47cc2dbf03426e3b445cc5a9d8dc20",
           "track_rate": "sha256:f7354bcb92449796eebcc1affe3d0143a4327e3ec797dd5bc51bb8902acc4be3"
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:d87089bad83c06b7a4f71a3cbc17602db84ac15e8c30ba17ce97c8ffb1b38bc5",
+      "recipe": "sha256:b17326f52c6097570876e78d601f606dc8cf26d1b21c85aaecb2cc49a50c15ce",
       "run": {
         "seed": 0,
         "tools": {
@@ -395,35 +415,35 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.022
+        "ts": "2026-08-04T17:56:38Z",
+        "wall_s": 0.02
       },
       "status": "fresh"
     },
     "SystemNoise": {
       "outputs": {
         "t_sys": {
-          "hash": "sha256:e3db0c3e6bb6365c399788db2424ca764d4859aaeb4c279c0bec361784811b0e",
+          "hash": "sha256:7c58e11535d3e8c9d1896b97de2fd4bc4e8d5d0a028f759b7a9917687bb87e75",
           "unc": {
             "kind": "abs",
-            "value": 14.09
+            "value": 12.53
           },
           "unit": "K",
-          "value": 123.02
+          "value": 119.02
         }
       },
       "parts": {
         "core": "sha256:e0e80bc33df1713b535cbbe3e6471ce7eeb56673dff8ccf9dcc53acfdabb9657",
-        "def": "sha256:64c81d87909fcf8a2d3f61747fd190cfe62dd10e739faaf220c51b960c6aab9e",
+        "def": "sha256:9216dfc6258f9755d6b73fae515e7bf3a3bc692c56226a3a3f1b671633a3965b",
         "inputs": {
           "feed_loss_db": "sha256:d8b2627756bb47968fa0833f9f673a40a1b9665d169fa8f5dd4da7892c8f323c",
-          "lna_noise_temp": "sha256:80cf177e6a5189c5e6c4b0c02e7a7dc6418e75b782efbff7af7aa1788301e85a",
+          "lna_noise_temp": "sha256:ea4363852f63755d0c3ea59c66244fca473fd36b4a4c69a7eaa0018d36a390ab",
           "lna_physical_temp": "sha256:a69da9eee6337019dae9e8d9d2885da48e87cab89f2353eddbe419a575069c85",
           "min_elevation": "sha256:20b5e33319f599a183f6ee22ac34d4e8cffedf2ac57c8f9d63f8c3133ad55d5e"
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:22654340e7eebb002e4dfeba8ffe6a1cc326a27794181eb2e2a656b17eef3164",
+      "recipe": "sha256:cdf765a74509ee37701b3b909eb85b7026129a1492205c33ca7a611515e754ee",
       "run": {
         "seed": 0,
         "tools": {
@@ -431,8 +451,8 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.021
+        "ts": "2026-08-04T17:58:35Z",
+        "wall_s": 0.043
       },
       "status": "fresh"
     },
@@ -449,16 +469,17 @@
         }
       },
       "parts": {
-        "core": "sha256:598c6b0d46c3d6b9369c0f2f7e85ccd5a42eceabbfc7d9b934738f09aeefbd41",
-        "def": "sha256:cac615122fa142ec08f658b28411f098ffc3d4d9c1ae32fa158cbb0d24695380",
+        "core": "sha256:c821b2c5ae71c4cefe89a6211b1d628e02847ef1d2685cea7ac774c6674608d8",
+        "def": "sha256:c63cad88da78b9d4981c13756563a745f5c1c5c890beaf678cc856b3743416f5",
         "inputs": {
           "capacity": "sha256:10f2f260012665a884e898b236532e8cfc42beac23043bc581db9cb9771b6fa6",
+          "chain_dc_draw": "sha256:9771b4ef85517d42feeae465e0a3f953e494ea421183baa04a679c203b2e2cd7",
           "min_ride": "sha256:2f48cbb5f2d6b51caf3cac79fe651eb4d9d4d50032bc4b242858baedc0410253",
           "server_draw": "sha256:29c0a0b438dcd2ae19437b3327eeaaa815c213c91bffd5deceee961ecd1390d7"
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:bc83abdc9c774fc6050c085f05f4dbf6e772237544db8e2cefec9dae02544d3e",
+      "recipe": "sha256:a8ae029af9ded0beda0407ffc4963810859f9f7b760eb7c67111e54f3dda0da4",
       "run": {
         "seed": 0,
         "tools": {
@@ -466,8 +487,8 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.021
+        "ts": "2026-08-04T17:56:38Z",
+        "wall_s": 0.02
       },
       "status": "fresh"
     },
@@ -481,6 +502,15 @@
           },
           "unit": "kN",
           "value": 6.2537
+        },
+        "gust_moment": {
+          "hash": "sha256:520632da91c7c75c690557d1387cb1fe919b0f0916c51b334bd3126c2f6b5d87",
+          "unc": {
+            "kind": "rel",
+            "value": 0.15
+          },
+          "unit": "kN*m",
+          "value": 30.018
         },
         "overturning_moment": {
           "hash": "sha256:98793ade4fd4050cd1aa7bd8e603e06a0956d1fc2e2f2540ac34229081823385",
@@ -502,8 +532,8 @@
         }
       },
       "parts": {
-        "core": "sha256:88d685408224ed3e86551c08327ed9a4d1afd85f8123616716320dd3d82c02f1",
-        "def": "sha256:40f7e2f41d6394416525f67ffd2c48b49ab3a7ffab93342bcba70fcc59fe252e",
+        "core": "sha256:bac78d12f0d450bddb4e5e32341607415b7ef8247eefe371bc08b6b3dc6676a5",
+        "def": "sha256:bf014033dbdbe95ff32edfcc906a9c88fb4c24987637fd3e174e2dc04a6d25cb",
         "inputs": {
           "frontal_area": "sha256:890d8c8217acc9643860fa9d8b10da6b0c73baef08c700e6654bbf5f66668f78",
           "wind_op": "sha256:7b20462d439998fcdeb8b2898fffd9e22aeefbb34bd976094e963a03710d7e79",
@@ -511,7 +541,7 @@
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:0dda3ab1ba14c39ad40c377237702bc6117086f18986f5ecc4a20b35ff007b26",
+      "recipe": "sha256:c94198085ec1e6a3e8107e9429c37735b97c3170533aa85f18de23f1f5abd9bf",
       "run": {
         "seed": 0,
         "tools": {
@@ -519,8 +549,8 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.02
+        "ts": "2026-08-04T17:56:38Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
@@ -621,11 +651,6 @@
           "detail": "f/D = 0.40, prime-focus feed family",
           "name": "focal_ratio_in_family",
           "passed": true
-        },
-        {
-          "detail": "face-on projected area equals the aperture disc",
-          "name": "frontal_projection_is_aperture_disc",
-          "passed": true
         }
       ],
       "outputs": {
@@ -655,7 +680,7 @@
         }
       },
       "parts": {
-        "core": "sha256:a3f8e1684ae595ef21c606774afdd14a8fd4bfdf9e567dcd08a82c12c103a111",
+        "core": "sha256:27b7e16707f25cef9f2d45e4e72090b01175ee77d5829e814805f9d9c7577a84",
         "def": "sha256:b1d23a9f2b727d032baac28318e1ed72447bf9aa393f5ef8640e7788e33c787d",
         "inputs": {
           "diameter": "sha256:c8996ed71ec932f613347e164f3bc701485ea3c691063b4f18de907cdbe24e23",
@@ -663,7 +688,7 @@
         },
         "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
       },
-      "recipe": "sha256:3f3b91e0dda245f27b6692ef8a119acd5505f4d1a015cf09d8843dd4bd407b17",
+      "recipe": "sha256:38e584438b8f17d3b84f1d5f122e5f3add38160d682c69a87da0fe4b5f0a57f5",
       "run": {
         "seed": 0,
         "tools": {
@@ -671,7 +696,7 @@
           "python": "3.11.15",
           "uel": "0.1.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
+        "ts": "2026-08-04T17:56:38Z",
         "wall_s": 0.021
       },
       "status": "fresh"

@@ -1,0 +1,19 @@
+{
+  "serial": null,
+  "targets": {
+    "lna_x40k.noise_temperature": [
+      {
+        "source": "T01 station acceptance — solar Y-factor and LNA bench, day 1",
+        "ts": "2026-08-25T00:00:00Z",
+        "unc": {
+          "kind": "abs",
+          "value": 2.0
+        },
+        "unit": "K",
+        "value": 41.0,
+        "verdict": "tightening"
+      }
+    ]
+  },
+  "uel_overlay": "0.1"
+}

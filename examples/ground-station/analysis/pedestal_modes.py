@@ -45,6 +45,8 @@ json.dump({
     "outputs": {
         "first_locked_rotor_mode": {"value": round(f1, 3), "unit": "Hz",
                                     "unc": {"kind": "rel", "value": f_rel}},
+        "inertia": {"value": round(J, 1), "unit": "kg*m^2",
+                    "unc": {"kind": "rel", "value": J_rel}},
     },
     "notes": (f"J = {J:.0f} kg*m^2 (dish {J_dish:.0f} + counterweight {J_cw:.0f} "
               f"+ yoke {J_yoke:.0f}); contract nominal 4-6 Hz would need "

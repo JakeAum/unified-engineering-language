@@ -32,7 +32,7 @@ capacity = si(I["capacity"])          # J
 server = si(I["server_draw"])         # W
 min_ride = si(I["min_ride"])          # s (10 min floor; carried for the record)
 eta = si(P["eta_inv"])                # -
-chain = si(P["chain_dc_draw"])        # W
+chain = si(I["chain_dc_draw"])        # W
 eol = si(P["eol_derate"])             # -
 
 load = server + chain                                        # W
@@ -40,7 +40,7 @@ ride = capacity * eta * eol / load                           # s
 
 # load sigma in W -> relative on the quotient
 s_load_rel = math.sqrt((rel(I["server_draw"]) * server) ** 2
-                       + (rel(P["chain_dc_draw"]) * chain) ** 2) / load
+                       + (rel(I["chain_dc_draw"]) * chain) ** 2) / load
 s_rel = math.sqrt(rel(I["capacity"]) ** 2 + rel(P["eta_inv"]) ** 2
                   + rel(P["eol_derate"]) ** 2 + s_load_rel ** 2)
 

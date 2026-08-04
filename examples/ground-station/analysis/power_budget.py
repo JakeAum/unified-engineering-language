@@ -39,7 +39,7 @@ server = si(I["server_draw"])          # W
 heater = si(I["heater_power"])         # W
 drive = si(I["peak_drive_power"])      # W
 max_feed = si(I["max_feed"])           # W
-chain = si(P["rf_chain_dc"])           # W
+chain = si(I["rf_chain_dc"])           # W
 dehyd = si(P["dehydrator_draw"])       # W
 misc = si(P["misc_draw"])              # W
 duty = si(P["heater_duty_avg"])        # -
@@ -50,7 +50,7 @@ total_continuous = base + heater * duty
 peak = base + heater + drive
 margin = max_feed - peak * (1.0 + growth)
 
-s_base = rss(sigma(I["server_draw"]), sigma(P["rf_chain_dc"]),
+s_base = rss(sigma(I["server_draw"]), sigma(I["rf_chain_dc"]),
              sigma(P["dehydrator_draw"]), sigma(P["misc_draw"]))
 s_cont = rss(s_base, sigma(I["heater_power"]) * duty)
 s_peak = rss(s_base, sigma(I["heater_power"]), sigma(I["peak_drive_power"]))

@@ -35,6 +35,7 @@ arm = P["moment_arm"]              # m
 q_op = 0.5 * rho * v_op**2                          # Pa
 drag = q_op * cd * A                                # N, face-on, operational mean
 moment = drag * arm                                 # N*m about the bearing plane
+gust_moment = moment * gust                         # N*m, 3 s gust pressure at the operational wind
 q_sv = 0.5 * rho * v_sv**2
 survival = q_sv * cd * A * stow * gust * arm        # N*m, stowed, gust pressure
 
@@ -51,6 +52,8 @@ json.dump({
                        "unc": {"kind": "rel", "value": drag_rel}},
         "overturning_moment": {"value": round(moment / 1e3, 4), "unit": "kN*m",
                                "unc": {"kind": "rel", "value": moment_rel}},
+        "gust_moment": {"value": round(gust_moment / 1e3, 4), "unit": "kN*m",
+                        "unc": {"kind": "rel", "value": moment_rel}},
         "survival_moment": {"value": round(survival / 1e3, 4), "unit": "kN*m",
                             "unc": {"kind": "rel", "value": survival_rel}},
     },

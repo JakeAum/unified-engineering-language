@@ -23,11 +23,11 @@ def rel(block, name, default):
     return default
 
 
-M_wind = I["overturning_moment"]   # N*m
+M_wind = I["gust_moment"]          # N*m — 3 s gust at operational wind sizes the drive
 track = I["track_rate"]            # rad/s (deg is dimensionless pi/180)
+J = I["rotating_inertia"]          # kg*m^2, from PedestalModes — referenced, not copied
 w_slew = P["slew_rate"]            # rad/s
 a_slew = P["slew_accel"]           # rad/s^2
-J = P["rotating_inertia"]          # kg*m^2
 eta = P["drive_efficiency"]
 
 T_accel = J * a_slew                                # N*m
@@ -35,7 +35,7 @@ T_peak = M_wind + T_accel                           # N*m at the output
 P_peak = T_peak * w_slew / eta                      # W at the drive input
 P_track = M_wind * track / eta                      # W, for the note
 
-M_rel = rel(p["inputs"], "overturning_moment", 0.15)
+M_rel = rel(p["inputs"], "gust_moment", 0.15)
 eta_rel = rel(p["params"], "drive_efficiency", 0.05)
 T_rel = round(M_rel, 2)                             # accel term is ~1% of the total
 P_rel = round(math.sqrt(M_rel**2 + eta_rel**2), 2)

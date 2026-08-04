@@ -1,5 +1,21 @@
 # Ground-station interface contract — architect ⇄ engineering teams
 
+> **Errata (post-integration, adjudicated — the graph is the current truth):**
+> 1. The PedestalModes nominal "≈ 4–6 Hz" below was an architect arithmetic slip;
+>    correct physics with the contract's own stiffness and an honest inertia gives
+>    ≈ 24.7 Hz. The structures team kept correct physics and flagged it (their
+>    judgment carries the disproof). 2. ServoSizing now consumes
+>    `WindLoads.outputs.gust_moment` (3 s gust), not the 10-min mean — review
+>    finding 1; the routing below understated drive torque by ~60 %.
+>    3. PedestalModes gained an `inertia : kg*m^2` output so ServoSizing references
+>    it instead of copying a literal — review finding 5. 4. The thermal-seam
+>    containment direction stated below ("[0,35] ⊆ [−5,40]") is the unsound
+>    direction for a flowing value; SystemNoise's fence is now [−5, 40] degC
+>    (valid across the producer's whole guarantee) — review finding 2. 5. The
+>    RF-chain DC ledger is a single architect-owned quantity
+>    (`RfChainGroup.rf_chain_dc_draw`) referenced by both facilities analyses —
+>    review finding 8.
+
 *This document is the org-to-team boundary (program §7 discipline applied inward):
 node names, output names, units, envelope fences, and file ownership are fixed
 here. Teams fill in depth behind these names; nothing else crosses the boundary.

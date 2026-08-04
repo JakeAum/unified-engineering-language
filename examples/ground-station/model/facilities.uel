@@ -55,10 +55,10 @@ analysis PowerBudget {
     peak_drive_power <- ServoSizing.outputs.peak_drive_power
     heater_power <- lna_enclosure_v1.heater_power
     server_draw <- server_r1.continuous_draw
+    rf_chain_dc <- RfChainGroup.rf_chain_dc_draw
     max_feed <- req.PWR-005.max_feed_power
   }
   params {
-    rf_chain_dc = 60 W ± 20 % from "12 V rail ledger: LNA 5 W + downconverter 25 W + GPSDO 10 W + bias/monitor 20 W, incl. rectifier loss"
     dehydrator_draw = 150 W ± 10 % from "feedline dehydrator nameplate, compressor duty"
     misc_draw = 300 W ± 30 % from "allocation: network switch, cameras, lighting, enclosure TEC and controls"
     heater_duty_avg = 0.3 from "cold-case thermostat duty from EnclosureThermal sizing; annual mean is lower, so the continuous figure is conservative"
@@ -70,7 +70,7 @@ analysis PowerBudget {
     peak_draw : W ±
     supply_margin : W ±
   }
-  judgment accepted "continuous 1.2 kW, peak 3.96 kW against the 8 kW feed — 3.25 kW of margin left even after the 20 % growth policy" doubts "dehydrator and misc are allocations, not measurements, and servo peak carries the structures stub's 20 % band until their sizing lands"
+  judgment accepted "continuous 1.2 kW, peak 5.27 kW against the 8 kW feed — 1.67 kW of margin after the 20 % growth policy, with the gust-sized servo peak" doubts "dehydrator and misc are allocations, not measurements; the peak case stacks full heater and gusted drives, a cold windy day — the honest worst case"
 }
 
 analysis EnclosureThermal {
@@ -81,7 +81,8 @@ analysis EnclosureThermal {
     assume steady_state because "site extremes hold for hours against a ~20 min enclosure time constant; soak bounds the transients"
     envelope {
       lna_physical_temp in [-5, 40 degC]
-      T_amb in [-30, 45 degC]
+      t_amb_min in [-40, 10 degC]
+      t_amb_max in [10, 50 degC]
     }
   }
   knowns {
@@ -113,11 +114,11 @@ analysis UpsRideThrough {
   knowns {
     capacity <- ups_2200.energy_capacity
     server_draw <- server_r1.continuous_draw
+    chain_dc_draw <- RfChainGroup.rf_chain_dc_draw
     min_ride <- req.PWR-005.min_ride_through
   }
   params {
     eta_inv = 0.9 ± 3 % from "Vertex Power VRT-2200 datasheet rev D, double-conversion efficiency near 25 % load"
-    chain_dc_draw = 60 W ± 20 % from "receive-chain DC ledger — same figure PowerBudget carries"
     eol_derate = 0.8 from "VRLA end-of-life capacity retention per vendor cycle-life curve; ride-through is sized at end of life"
   }
   core python "analysis/ups_ride_through.py"

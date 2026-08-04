@@ -99,9 +99,10 @@ analysis WindLoads {
   outputs {
     drag_force : kN ±
     overturning_moment : kN*m ±
+    gust_moment : kN*m ±
     survival_moment : kN*m ±
   }
-  judgment accepted "6.25 kN and 18.8 kN*m at 20 m/s face-on are in family for a 5 m solid dish; survival 45.6 kN*m sizes the foundation, not the drives" doubts "whether ENV-004 survival wind is a mean or already a gust is unconfirmed; treated as a mean with the 1.6 gust pressure factor on top, the conservative reading"
+  judgment accepted "6.25 kN and 18.8 kN*m mean at 20 m/s face-on; the 3 s gust moment 30.0 kN*m is what sizes the drives, survival 45.6 kN*m sizes the foundation" doubts "whether ENV-004 survival wind is a mean or already a gust is unconfirmed; treated as a mean with the 1.6 gust pressure factor on top, the conservative reading"
 }
 
 analysis PedestalModes {
@@ -125,6 +126,7 @@ analysis PedestalModes {
   core python "analysis/pedestal_modes.py"
   outputs {
     first_locked_rotor_mode : Hz ±
+    inertia : kg*m^2 ±
   }
   judgment accepted "24.7 Hz with the vendor stiffness and ~3530 kg*m^2 of rotating inertia; the contract nominal of 4-6 Hz would need ~86000 kg*m^2, which this antenna does not have — deviation flagged to the architect" doubts "single-DOF lumping hides coupled dish/yoke modes below the locked-rotor line; vendor stiffness is a bench test, not in-service; GVT at site acceptance"
 }
@@ -137,13 +139,13 @@ analysis ServoSizing {
     assume static because "wind moment held quasi-statically; drive thermal time constant >> gust period"
   }
   knowns {
-    overturning_moment <- WindLoads.outputs.overturning_moment
+    gust_moment <- WindLoads.outputs.gust_moment
+    rotating_inertia <- PedestalModes.outputs.inertia
     track_rate <- req.PNT-003.track_rate_max
   }
   params {
     slew_rate = 6 deg/s from "acquisition and stow slew, drive class choice"
     slew_accel = 3 deg/s^2 from "reach slew rate in 2 s"
-    rotating_inertia = 3500 kg*m^2 ± 20 % from "PedestalModes inertia stack, rounded"
     drive_efficiency = 0.9 ± 5 % from "gear train + motor, vendor typical"
   }
   core python "analysis/servo_sizing.py"
@@ -151,7 +153,7 @@ analysis ServoSizing {
     peak_torque : kN*m ±
     peak_drive_power : W ±
   }
-  judgment accepted "18.9 kN*m and 2.2 kW, wind moment dominated; tracking at 0.004 deg/s needs about 1.3 W, negligible" doubts "slew rate is a design choice, not yet a requirement; inertia duplicated from PedestalModes params until a proper mass model exists"
+  judgment accepted "30.2 kN*m and 3.5 kW sized to the 3 s gust at operational wind (review finding 1); tracking at 0.004 deg/s needs about 2 W, negligible" doubts "slew rate is a design choice, not yet a requirement; gust and slew assumed non-simultaneous at full rate"
 }
 
 analysis ServoBandwidth {
@@ -185,7 +187,7 @@ analysis PointingBudget {
   }
   knowns {
     hpbw <- AntennaGain.outputs.hpbw
-    gust_moment <- WindLoads.outputs.overturning_moment
+    gust_moment <- WindLoads.outputs.gust_moment
     stiffness <- pedestal_ae5.locked_rotor_stiffness
     max_err <- req.PNT-003.max_pointing_error
   }
@@ -200,5 +202,5 @@ analysis PointingBudget {
     total_pointing_error : deg ±
     pointing_loss_db : dB ±
   }
-  judgment accepted "0.036 deg RSS of 0.05 required and 0.062 dB of 0.3 allocated — margin in both; the wind term takes the full operational moment as gust, which is conservative" doubts "terms treated as independent; servo jitter and gust deflection are partly the same physics, so the RSS may flatter the total by a few millidegrees"
+  judgment accepted "0.039 deg RSS of 0.05 required and 0.074 dB of 0.3 allocated — margin in both; the wind term carries the true 3 s gust moment from WindLoads" doubts "terms treated as independent; servo jitter and gust deflection are partly the same physics, so the RSS may flatter the total by a few millidegrees"
 }

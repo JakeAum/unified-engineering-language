@@ -88,6 +88,7 @@ is deliberately zero-dependency (ADR-0002).
 | `conformance/` | The suite all work is graded against — incl. the R1 de-risk pair set (11/11) and the mechanical fix-loop driver |
 | `tests/` | Implementation unit tests (50-node staleness demo, core-protocol contracts, calibration loop, red-team pins) |
 | `examples/apache-one/` | The vertical slice: cross-coupled, built, calibrated, leverage-measured |
+| `examples/ground-station/` | An IMAP I-ALiRT X-band ground station, designed by an agent org: architect contract → three parallel engineering agents → adversarial review → calibration |
 | `docs/` | Constitution, frozen schema, syntax reference, core protocol, decision log, boot library |
 | `.github/workflows/ci.yml` | The merge gate |
 

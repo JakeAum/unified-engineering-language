@@ -27,6 +27,7 @@ component AntennaGroup : functional {
 
 component RfChainGroup : functional {
   doc "Feed output to decoded frames"
+  rf_chain_dc_draw = 60 W ± 20 % from "12 V rail ledger: LNA 5 W + downconverter 25 W + GPSDO 10 W + bias/monitor 20 W, incl. rectifier loss — single source for PowerBudget and UpsRideThrough"
   budget mass <= 60 kg
   budget unit_cost <= 40000 USD @ qty 1
   budget lead_time <= 12 week

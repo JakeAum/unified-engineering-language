@@ -25,6 +25,10 @@ jobs:
       - name: Self-check the vertical slice
         run: |
           if [ -d examples/apache-one ]; then python -m uel check examples/apache-one; fi
+      - name: Self-check the ground station
+        run: |
+          if [ -d examples/ground-station ]; then python -m uel check examples/ground-station; fi
       - name: Formatter is canonical
         run: |
           if [ -d examples/apache-one ]; then python -m uel fmt --check examples/apache-one; fi
+          if [ -d examples/ground-station ]; then python -m uel fmt --check examples/ground-station; fi

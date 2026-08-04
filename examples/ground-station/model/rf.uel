@@ -92,7 +92,7 @@ analysis SystemNoise {
     assume steady_state because "temperatures at thermal equilibrium; diurnal drift enters only through the enclosure hot-case input"
     assume lumped_element because "each stage is a single noise temperature; no spectral structure across the 4 kHz channel"
     envelope {
-      lna_physical_temp in [0, 35 degC]
+      lna_physical_temp in [-5, 40 degC]
       min_elevation in [5, 90 deg]
     }
   }
@@ -115,7 +115,7 @@ analysis SystemNoise {
   outputs {
     t_sys : K ±
   }
-  judgment accepted "121.9 K worst case at 10 deg elevation and enclosure hot case; LNA and spillover dominate the stack" doubts "spillover temperature is a prime-focus class estimate, not a pattern integral — validate by cold-sky Y-factor at commissioning; single-plane additive bookkeeping is conservative by a few kelvin"
+  judgment accepted "123.0 K worst case at 10 deg elevation and the integrated 31.7 degC enclosure hot case; LNA and spillover dominate the stack" doubts "spillover temperature is a prime-focus class estimate, not a pattern integral — validate by cold-sky Y-factor at commissioning; single-plane additive bookkeeping is conservative by a few kelvin"
 }
 
 analysis GtAnalysis {
@@ -133,7 +133,7 @@ analysis GtAnalysis {
   outputs {
     g_over_t_dbk : dB ±
   }
-  judgment accepted "29.49 dB/K at the LNA input at minimum elevation — carries the 3 dB link margin requirement with room" doubts "inherits the antenna-temperature estimate from SystemNoise; a 1 dB gain shortfall at the pattern test takes G/T down 1:1"
+  judgment accepted "29.45 dB/K at the LNA input at minimum elevation — carries the 3 dB link margin requirement with room" doubts "inherits the antenna-temperature estimate from SystemNoise; a 1 dB gain shortfall at the pattern test takes G/T down 1:1"
 }
 
 analysis LinkMargin {
@@ -166,5 +166,5 @@ analysis LinkMargin {
     ebn0_db : dB ±
     margin_db : dB ±
   }
-  judgment accepted "5.3 dB margin against 3 dB required at 1650000 km with every declared loss taken at once; C/N0 43.8 dB-Hz at 2000 bit/s" doubts "EIRP is ± cal from the ICD draft and moves margin 1:1; pointing loss rides on the structures PointingBudget; rain allocation is a temperate-site statistic, not this site's measurement"
+  judgment accepted "5.23 dB margin against 3 dB required at 1650000 km with every declared loss taken at once, including the gusted pointing term; C/N0 43.7 dB-Hz at 2000 bit/s" doubts "EIRP is ± cal from the ICD draft and moves margin 1:1; pointing loss rides on the structures PointingBudget; rain allocation is a temperate-site statistic, not this site's measurement"
 }

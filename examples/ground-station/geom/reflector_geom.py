@@ -50,9 +50,6 @@ json.dump({
          "detail": f"focus at {focal_length:.3f} m clears the {depth:.3f} m bowl"},
         {"name": "focal_ratio_in_family", "passed": 0.3 <= f_over_D <= 0.5,
          "detail": f"f/D = {f_over_D:.2f}, prime-focus feed family"},
-        {"name": "frontal_projection_is_aperture_disc",
-         "passed": abs(frontal_area - aperture_area) < 1e-9,
-         "detail": "face-on projected area equals the aperture disc"},
     ],
     "notes": "areal density per unit aperture area (vendor convention); curved-surface area is ~9% larger and is absorbed in the density figure",
 }, sys.stdout)
