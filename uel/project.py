@@ -35,9 +35,16 @@ STDLIB_DIR = Path(__file__).resolve().parent / "stdlib"
 
 @dataclass
 class TolerancePolicy:
-    """Quantization grid for hashing: absolute per dimension name, else relative."""
+    """Quantization grid for hashing (spec §4.3 draft rule).
 
-    abs_tol: dict[str, tuple[float, str]] = field(default_factory=dict)  # dim-name -> (SI value, unit text)
+    Each `[tolerances]` entry is a labeled quantity like `mass = "0.1 g"`; the
+    entry's *own unit* determines which dimension it grids (so `Ixx = "0.001 mm^4"`
+    just works). Quantities whose dimension has no absolute grid quantize to
+    `default_rel` significant precision.
+    """
+
+    abs_tol: dict[tuple, float] = field(default_factory=dict)  # Dim -> grid in SI units
+    labels: dict[str, str] = field(default_factory=dict)  # label -> original text (docs)
     default_rel: float = 1e-6
 
     @classmethod
@@ -66,7 +73,14 @@ class TolerancePolicy:
             if mag <= 0:
                 bag.error("UEL0705", f"tolerance for '{k}' must be positive, got {mag}", Span(file))
                 continue
-            pol.abs_tol[k] = (unit.to_si(mag) - unit.offset, unit.text)
+            grid = mag * unit.factor  # affine offset irrelevant for a grid spacing
+            if unit.dim in pol.abs_tol and pol.abs_tol[unit.dim] != grid:
+                bag.error("UEL0705",
+                          f"tolerance '{k}' conflicts with an earlier entry for the same dimension",
+                          Span(file))
+                continue
+            pol.abs_tol[unit.dim] = grid
+            pol.labels[k] = v
         return pol
 
 
