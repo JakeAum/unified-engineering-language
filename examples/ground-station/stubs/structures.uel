@@ -1,0 +1,18 @@
+# ARCHITECT STUB — contract nominals for Structures outputs consumed by others.
+analysis PointingBudget {
+  intent req.PNT-003 "stub: contract-nominal pointing"
+  core python "analysis/stub_pointing_budget.py"
+  outputs {
+    total_pointing_error : deg ±
+    pointing_loss_db : dB ±
+  }
+}
+
+analysis ServoSizing {
+  intent req.ENV-004 "stub: contract-nominal servo power"
+  core python "analysis/stub_servo_sizing.py"
+  outputs {
+    peak_torque : kN*m ±
+    peak_drive_power : W ±
+  }
+}

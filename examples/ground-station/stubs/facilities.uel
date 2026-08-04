@@ -1,0 +1,14 @@
+# ARCHITECT STUB — contract nominals for Facilities outputs consumed by others.
+analysis EnclosureThermal {
+  intent req.ENV-004 "stub: contract-nominal enclosure temperature"
+  framing {
+    envelope {
+      lna_physical_temp in [-5, 40] degC
+    }
+  }
+  core python "analysis/stub_enclosure_thermal.py"
+  outputs {
+    lna_physical_temp : degC ±
+    heater_duty : dimensionless ±
+  }
+}

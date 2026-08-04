@@ -31,7 +31,10 @@ for the v0.1 grammar; `uel fmt` is the normative layout.*
 Unit expressions: `kN`, `kg/m^3`, `N*m`, `mm^4`, `kg/(m*s^2)`, `W/K`, `A*hr`.
 SI prefixes n µ m c d k M G T on prefixable symbols. Affine units (`degC`, `degF`)
 are standalone-only. Angle is dimensionless (`rad` = 1, `deg` = π/180), so
-torque `N*m` × speed `rad/s` = power.
+torque `N*m` × speed `rad/s` = power. `dB` is a dimensionless *ratio label*
+(gains, losses, margins) carried on the dB scale; absolute log-referenced levels
+are not units — carry the reference in the name (`eirp_dbw = 22 dB`,
+`cn0_dbhz`).
 
 ## Top-level items
 

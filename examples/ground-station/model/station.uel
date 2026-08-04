@@ -1,0 +1,282 @@
+# Ground-station functional skeleton — the architect's contract (spec §9.2):
+# the assembly tree, every functional component, every port, and every connect
+# live here. Domain teams bind realizations and hang analyses off these names;
+# the architecture acquires depth, margin, and evidence without changing shape.
+# Sizing anchors that belong to the architecture (dish diameter, surface spec)
+# are declared here so every team references one source.
+
+component GroundStation : functional {
+  doc "IMAP I-ALiRT receive-only X-band ground station"
+  budget mass <= 4500 kg
+  budget unit_cost <= 260000 USD @ qty 1
+  budget lead_time <= 26 week
+  contains AntennaGroup
+  contains RfChainGroup
+  contains FacilitiesGroup
+}
+
+component AntennaGroup : functional {
+  doc "Reflector, pedestal, feed — the aperture"
+  budget mass <= 3400 kg
+  budget unit_cost <= 165000 USD @ qty 1
+  budget lead_time <= 26 week
+  contains Reflector
+  contains Pedestal
+  contains FeedAssembly
+  contains CounterweightSet
+}
+
+component RfChainGroup : functional {
+  doc "Feed output to decoded frames"
+  budget mass <= 60 kg
+  budget unit_cost <= 40000 USD @ qty 1
+  budget lead_time <= 12 week
+  contains Lna
+  contains Downconverter
+  contains SdrReceiver
+  contains RefOscillator
+}
+
+component FacilitiesGroup : functional {
+  doc "Power, protection, environment, compute, site works"
+  budget mass <= 900 kg
+  budget unit_cost <= 55000 USD @ qty 1
+  budget lead_time <= 16 week
+  contains PowerDistribution
+  contains UpsUnit
+  contains LnaEnclosure
+  contains StationServer
+  contains SiteWorks
+}
+
+# ---------------------------------------------------------------------------
+# Antenna group
+# ---------------------------------------------------------------------------
+
+component Reflector : functional {
+  doc "Prime-focus parabolic reflector; architecture-owned sizing anchors"
+  aperture_diameter = 5 m
+  focal_ratio = 0.4
+  surface_rms_spec = 0.6 mm from "manufacturing surface accuracy spec"
+  aperture_efficiency = 0.62 ± 5 % from "prime focus w/ feed blockage, class estimate"
+  port collected_rf : rf_coax {
+    direction out
+    protocol "focused X-band field at feed point, 8.4-8.5 GHz RHCP"
+  }
+}
+
+component Pedestal : functional {
+  doc "Azimuth-elevation positioner carrying the reflector"
+  port mount : mechanical.translation {
+    force: [0, 60 kN] ± cal
+  }
+  port drive_power : electrical {
+    direction in
+    voltage: [360, 440 V] from "3-phase drive bus"
+    current: [0, 8 A]
+  }
+  envelope {
+    T in [-30, 45] degC
+  }
+}
+
+component CounterweightSet : functional {
+  doc "Elevation-axis counterweights and their machined mounting brackets"
+}
+
+component FeedAssembly : functional {
+  doc "X-band feed horn, polarizer, OMT; RHCP receive"
+  port rf_in : rf_coax {
+    direction in
+    protocol "focused X-band field at feed point, 8.4-8.5 GHz RHCP"
+  }
+  port rf_out : rf_coax {
+    direction out
+    protocol "WR-112/coax X-band, 8.4-8.5 GHz"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# RF chain group
+# ---------------------------------------------------------------------------
+
+component Lna : functional {
+  doc "X-band low-noise amplifier at the feed"
+  port rf_in : rf_coax {
+    direction in
+    protocol "X-band 8.4-8.5 GHz"
+  }
+  port rf_out : rf_coax {
+    direction out
+    protocol "X-band 8.4-8.5 GHz, +40 dB"
+  }
+  port dc_in : electrical {
+    direction in
+    voltage: [11, 13 V]
+    current: [0, 0.5 A]
+  }
+}
+
+component Downconverter : functional {
+  doc "X-band to L-band IF block converter, locked to station reference"
+  port rf_in : rf_coax {
+    direction in
+    protocol "X-band 8.4-8.5 GHz"
+  }
+  port if_out : rf_coax {
+    direction out
+    protocol "IF 1100-1200 MHz"
+  }
+  port ref_in : freq_ref {
+    direction in
+    protocol "10 MHz"
+  }
+  port dc_in : electrical {
+    direction in
+    voltage: [11, 13 V]
+    current: [0, 1.2 A]
+  }
+}
+
+component SdrReceiver : functional {
+  doc "SDR digitizer + software demodulator/decoder (CCSDS turbo)"
+  port if_in : rf_coax {
+    direction in
+    protocol "IF 1100-1200 MHz"
+  }
+  port ref_in : freq_ref {
+    direction in
+    protocol "10 MHz"
+  }
+  port frames_out : data_bus {
+    direction out
+    protocol "CCSDS frames over TCP"
+  }
+}
+
+component RefOscillator : functional {
+  doc "GPS-disciplined 10 MHz station reference"
+  port ref_out : freq_ref {
+    direction out
+    protocol "10 MHz"
+  }
+  port dc_in : electrical {
+    direction in
+    voltage: [11, 13 V]
+    current: [0, 0.8 A]
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Facilities group
+# ---------------------------------------------------------------------------
+
+component PowerDistribution : functional {
+  doc "Station AC/DC distribution: mains in, protected branches out"
+  port mains_in : electrical {
+    direction in
+    voltage: [360, 440 V] from "3-phase utility feed"
+    current: [0, 20 A]
+  }
+  port drives_out : electrical {
+    direction out
+    voltage: [360, 440 V]
+    current: [0, 8 A]
+  }
+  port dc_12v_out : electrical {
+    direction out
+    voltage: [11.5, 12.5 V]
+    current: [0, 8 A]
+  }
+  port ac_protected_out : electrical {
+    direction out
+    voltage: [210, 250 V]
+    current: [0, 12 A]
+  }
+}
+
+component UtilityFeed : functional {
+  doc "Site utility service point (not part of the shipped station)"
+  port mains_out : electrical {
+    direction out
+    voltage: [360, 440 V]
+    current: [0, 25 A]
+  }
+}
+
+component UpsUnit : functional {
+  doc "Ride-through for the receive chain and server (not the drives)"
+  port ac_in : electrical {
+    direction in
+    voltage: [210, 250 V]
+    current: [0, 6 A]
+  }
+  port ac_out : electrical {
+    direction out
+    voltage: [210, 250 V]
+    current: [0, 5 A]
+  }
+}
+
+component LnaEnclosure : functional {
+  doc "Weatherized, temperature-managed enclosure for LNA + downconverter at the hub"
+  port heater_in : electrical {
+    direction in
+    voltage: [210, 250 V]
+    current: [0, 4 A]
+  }
+  envelope {
+    T in [-30, 45] degC
+  }
+}
+
+component SiteWorks : functional {
+  doc "Foundation, conduit, and grounding. Cost and schedule carry here; the concrete's mass belongs to the site, not the shipped station, so mass is declared zero by convention."
+}
+
+component StationServer : functional {
+  doc "Demod host, monitoring, frame delivery"
+  port ac_in : electrical {
+    direction in
+    voltage: [210, 250 V]
+    current: [0, 3 A]
+  }
+  port frames_in : data_bus {
+    direction in
+    protocol "CCSDS frames over TCP"
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Nets — the whole topology is architect-owned
+# ---------------------------------------------------------------------------
+
+connect UtilityFeed.mains_out -> PowerDistribution.mains_in
+
+connect Reflector.collected_rf -> FeedAssembly.rf_in
+
+connect FeedAssembly.rf_out -> Lna.rf_in
+
+connect Lna.rf_out -> Downconverter.rf_in
+
+connect Downconverter.if_out -> SdrReceiver.if_in
+
+connect RefOscillator.ref_out -> Downconverter.ref_in
+
+connect RefOscillator.ref_out -> SdrReceiver.ref_in
+
+connect SdrReceiver.frames_out -> StationServer.frames_in
+
+connect PowerDistribution.drives_out -> Pedestal.drive_power
+
+connect PowerDistribution.dc_12v_out -> Lna.dc_in
+
+connect PowerDistribution.dc_12v_out -> Downconverter.dc_in
+
+connect PowerDistribution.dc_12v_out -> RefOscillator.dc_in
+
+connect PowerDistribution.ac_protected_out -> UpsUnit.ac_in
+
+connect UpsUnit.ac_out -> StationServer.ac_in
+
+connect PowerDistribution.ac_protected_out -> LnaEnclosure.heater_in

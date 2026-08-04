@@ -1,0 +1,11 @@
+# ARCHITECT STUB — contract nominals for RF outputs consumed by other teams.
+# Never loaded by the real project (lives outside model/). Replaced by the RF
+# team's real model/rf.uel at integration.
+analysis AntennaGain {
+  intent req.LNK-002 "stub: contract-nominal antenna gain"
+  core python "analysis/stub_antenna_gain.py"
+  outputs {
+    gain_dbi : dB ±
+    hpbw : deg
+  }
+}

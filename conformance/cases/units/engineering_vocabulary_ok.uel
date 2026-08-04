@@ -16,4 +16,6 @@ component C : behavioral {
   o = 1.5
   p = 22 mm ± 0.05 mm
   q = 3 gee
+  r = 3 dB
+  s = 50.85 dB ± 0.5 dB
 }

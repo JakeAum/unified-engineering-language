@@ -1,0 +1,15 @@
+# Project-local domains for the RF signal path. RF signal flow is typed
+# information about a waveform, not a conserved balance the compile-time
+# checker can settle — so it is a data-class domain typed by protocol
+# (spec §2.2: data ports are typed by protocol/schema, not by balance).
+# The DC and mains feeds use the stdlib electrical domain, which IS conserved.
+
+domain rf_coax {
+  class data
+  doc "Guided RF/IF signal path over coaxial or waveguide; protocol names band and level plan."
+}
+
+domain freq_ref {
+  class data
+  doc "Frequency reference distribution (10 MHz / 1 PPS)."
+}

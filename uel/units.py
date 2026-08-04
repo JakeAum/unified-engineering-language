@@ -147,6 +147,11 @@ UNITS: dict[str, UnitDef] = {
     "rad": UnitDef(1.0, DIMENSIONLESS),
     "deg": UnitDef(_PI / 180.0, DIMENSIONLESS),
     "rev": UnitDef(2.0 * _PI, DIMENSIONLESS),
+    # decibel: a dimensionless RATIO label (gains, losses, margins). The value is
+    # carried on the dB scale; the group law is untouched because no conversion is
+    # implied. Absolute log-referenced levels (dBW, dBm, dB-Hz) are NOT units —
+    # carry the reference in the quantity name (eirp_dbw, cn0_dbhz).
+    "dB": UnitDef(1.0, DIMENSIONLESS),
     # time, engineering
     "min": UnitDef(60.0, D_TIME),
     "hr": UnitDef(3600.0, D_TIME),
