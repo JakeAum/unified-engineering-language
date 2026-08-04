@@ -1,0 +1,273 @@
+# The 1/10-cost design: bindings and the analysis ladder. Everything is a
+# catalog part; the three cost-crushing moves are (1) coherent array of two
+# COTS apertures instead of one precision dish, (2) steptrack software instead
+# of mechanical pointing precision, (3) ballast instead of concrete.
+binding ApertureElement -> element_a1 : physical {
+  doc "3.0 m offset-fed solid VSAT reflector (Ku-rated surface, fine at X) on a worm-drive az-el rotator; machined septum feed + PHEMT LNA at the focus in a heated micro-enclosure"
+  dish_cost = 3800 USD from "VSAT distributor list, 3.0 m offset Rx reflector + AZ/EL cap mount kit"
+  rotator_cost = 1700 USD from "heavy worm-drive az-el rotator + controller, amateur EME class"
+  feed_cost = 700 USD from "small-shop machined septum horn + choke, qty 2 batch"
+  lna_cost = 600 USD from "connectorized X-band PHEMT LNA module, 0.6 dB NF class"
+  enclosure_cost = 500 USD from "heated feed-arm micro-enclosure, 150 W strip heater"
+  unit_cost = 7300 USD from "sum of element line items above, per element"
+  mass = 92 kg from "dish 55 + rotator 25 + feed 2 + LNA 0.4 + enclosure 8 + arm hardware"
+  lead_time = 6 week from "dish distributor stock; rotator 4 wk; feed shop 5 wk"
+  surface_rms = 0.5 mm from "Ku-band VSAT surface spec carried at X"
+  aperture_diameter = 3 m
+  aperture_efficiency = 0.62 ± 5 % from "offset feed, no blockage; class estimate"
+  lna_noise_temp = 50 K ± 20 % from "0.6 dB NF class module at 25 degC flange"
+  feed_loss_db = 0.4 dB ± 0.1 dB from "septum horn + short flex to LNA"
+  rotator_hold_torque = 6 kN*m from "rotator vendor spec, worm drive static holding"
+  rotator_backlash = 0.15 deg ± 30 % from "worm preload adjusted at install; vendor spec 0.2 before preload"
+  envelope {
+    T in [-30, 50 degC]
+  }
+}
+
+binding CentralChain -> central_c1 : physical {
+  doc "Two-channel shared-LO block downconverter (one LO = phase coherence by construction), dual-channel coherent SDR on a common clock, GPSDO, fanless demod host, consumer distribution + UPS"
+  downconverter_cost = 1900 USD from "dual-channel X-to-L block converter, shared LO, small-RF-house quote"
+  sdr_cost = 2400 USD from "2-channel coherent SDR, shared sample clock"
+  gpsdo_cost = 400 USD from "GPSDO 10 MHz, OCXO"
+  server_cost = 900 USD from "fanless mini-PC demod host"
+  power_ups_cost = 900 USD from "consumer distribution board, SPD, 1500 VA line-interactive UPS"
+  coax_cost = 900 USD from "2x 25 m LMR-600 runs + jumpers + weatherproofing"
+  unit_cost = 7400 USD from "sum of central line items above"
+  mass = 30 kg
+  lead_time = 5 week from "downconverter build dominates"
+  ups_capacity = 0.45 kW*hr ± 10 % from "1500 VA consumer UPS nameplate battery energy"
+  server_draw = 250 W ± 10 % from "fanless host + SDR, measured class value"
+  chain_dc_draw = 40 W ± 20 % from "2x LNA + downconverter + GPSDO on the 12 V rail"
+}
+
+binding SiteKit -> site_kit_v1 : physical {
+  doc "Two non-penetrating ballast mounts (precast blocks on pads) with two earth anchors each — anchors carry the stowed survival moment the ballast alone cannot; armored cable on grade; ground rods"
+  unit_cost = 3400 USD from "precast blocks + anchors 2600; cable, rods, hardware, spares kit 800"
+  mass = 380 kg from "ballast blocks 2x 180 kg + hardware (site mass, ships with station)"
+  lead_time = 2 week
+}
+
+# ---------------------------------------------------------------------------
+# Analysis ladder — same capability chain as the baseline, array edition
+# ---------------------------------------------------------------------------
+analysis ElementNoise {
+  intent req.LNK-002 "system noise temperature of one array element at minimum elevation, hot case"
+  framing {
+    model noise.friis_cascade
+    assume steady_state because "thermal equilibrium; the heated micro-enclosure holds the LNA near its rating point"
+    assume lumped_element because "single noise temperature per stage"
+    envelope {
+      min_elevation in [5, 90 deg]
+    }
+  }
+  knowns {
+    lna_noise_temp <- element_a1.lna_noise_temp
+    feed_loss_db <- element_a1.feed_loss_db
+    min_elevation <- req.ENV-004.min_elevation
+  }
+  params {
+    zenith_atm_temp = 3 K ± 30 % from "clear-air zenith sky brightness at 8.4 GHz; airmass-scaled in the core"
+    cmb_temp = 2.7 K from "cosmic microwave background"
+    spillover_temp = 22 K ± 30 % from "offset feed: no blockage, less rear spillover than prime focus"
+    feed_physical_temp = 290 K ± 10 K from "feed at ambient, hot-case bias"
+    downstream_temp = 3 K ± 50 % from "shared-LO downconverter (~2600 K) referred through 36 dB LNA gain plus coax run"
+  }
+  core python "analysis/element_noise.py"
+  outputs {
+    t_sys : K ±
+  }
+  judgment accepted "123 K per element at 10 deg elevation — 10 K worse than the baseline's cryo-quality chain, bought back by the array factor" doubts "spillover on a catalog offset dish is a class estimate; coax-run noise depends on install workmanship"
+}
+
+analysis ArrayGain {
+  intent req.LNK-002 "effective array gain of two coherently combined 3.0 m elements"
+  framing {
+    model antenna.aperture_ruze_array
+    assume lumped_element because "one efficiency factor per element; no pattern integration"
+    assume steady_state because "combining weights converge in seconds against a minutes-scale geometry drift"
+    envelope {
+      freq in [8, 8.9 GHz]
+      n_elements in [1, 4]
+    }
+  }
+  knowns {
+    freq <- req.MIS-001.carrier_freq
+    diameter <- element_a1.aperture_diameter
+    efficiency <- element_a1.aperture_efficiency
+    surface_rms <- element_a1.surface_rms
+  }
+  params {
+    n_elements = 2 from "two elements; the envelope and core scale to 4 if margin is ever bought back"
+    combining_loss_db = 0.3 dB ± 50 % from "residual phase-cal error across shared-LO channels, correlation-calibrated on the I-ALiRT carrier"
+  }
+  core python "analysis/array_gain.py"
+  outputs {
+    g_array_dbi : dB ±
+    element_gain_dbi : dB ±
+    hpbw : deg
+  }
+  judgment accepted "46.27 dBi per element, 49.0 dBi effective for the pair after combining loss — 1.7 dB under the baseline's single 5 m; the price of the price" doubts "combining loss is the honest unknown: it is a software-quality number, measured only at first light"
+}
+
+analysis GtArray {
+  intent req.LNK-002 "array figure of merit at the LNA input"
+  framing {
+    model link.gt_figure_of_merit
+    assume steady_state because "worst-case constants at one reference plane"
+  }
+  knowns {
+    g_array_dbi <- ArrayGain.outputs.g_array_dbi
+    t_sys <- ElementNoise.outputs.t_sys
+    feed_loss_db <- element_a1.feed_loss_db
+  }
+  core python "analysis/gt_array.py"
+  outputs {
+    g_over_t_dbk : dB ±
+  }
+  judgment accepted "27.5 dB/K for the pair — 2.1 dB under the baseline single-dish figure; the link analysis says that is still enough" doubts "inherits the element spillover estimate; both elements assumed identical, which install tolerances will test"
+}
+
+analysis SteptrackPointing {
+  intent req.PNT-003 "pointing loss with consumer rotators closed around the I-ALiRT carrier itself"
+  framing {
+    model track.steptrack_dither
+    assume steady_state because "steptrack dither period (seconds) is far inside the minutes-scale L1 drift; loop treated at its converged operating point"
+    assume rigid because "dish-on-rotator structural modes (>3 Hz) are far above the steptrack dither rate; flexibility invisible to this loop"
+    envelope {
+      wind_full_track in [0, 15 m/s]
+    }
+  }
+  knowns {
+    hpbw <- ArrayGain.outputs.hpbw
+    backlash <- element_a1.rotator_backlash
+    wind_full_track <- req.ENV-004.wind_full_track
+    track_rate <- req.PNT-003.track_rate_max
+  }
+  params {
+    steptrack_residual_frac = 0.08 ± 30 % from "carrier-power peaking residual as a fraction of HPBW, EME/VSAT steptrack practice"
+    wind_jitter = 0.04 deg ± 50 % from "gust excursion inside the worm-drive deadband at full-track wind"
+    ephemeris_bias = 0.01 deg from "L1 ephemeris + mount model feed-forward residual"
+  }
+  core python "analysis/steptrack_pointing.py"
+  outputs {
+    total_pointing_error : deg ±
+    pointing_loss_db : dB ±
+  }
+  judgment accepted "0.107 deg RSS on a 0.83 deg beam — 0.20 dB of a 0.30 dB allocation; software precision on hardware imprecision, the second cost move" doubts "steptrack residual assumes the carrier stays demod-lockable through the dither; verify at first light before trusting the fraction"
+}
+
+analysis LinkMargin {
+  intent req.LNK-002 "does the I-ALiRT downlink still close with >= 3 dB margin on the tenth-cost station?"
+  framing {
+    model link.budget_ebn0
+    assume static because "worst-case snapshot at maximum range, all declared losses simultaneous"
+    envelope {
+      eirp_dbw in [18, 26 dB]
+      freq in [8, 8.9 GHz]
+    }
+  }
+  knowns {
+    eirp_dbw <- req.LNK-002.eirp_dbw
+    max_range <- req.LNK-002.max_range
+    freq <- req.MIS-001.carrier_freq
+    data_rate <- req.MIS-001.data_rate
+    required_ebn0_db <- req.LNK-002.required_ebn0_db
+    impl_loss_db <- req.LNK-002.impl_loss_db
+    atm_loss_db <- req.LNK-002.atm_loss_db
+    rain_alloc_db <- req.LNK-002.rain_alloc_db
+    pol_loss_db <- req.LNK-002.pol_loss_db
+    min_margin_db <- req.LNK-002.min_margin_db
+    g_over_t_dbk <- GtArray.outputs.g_over_t_dbk
+    pointing_loss_db <- SteptrackPointing.outputs.pointing_loss_db
+  }
+  core python "analysis/link_margin.py"
+  outputs {
+    cn0_dbhz : dB ±
+    ebn0_db : dB ±
+    margin_db : dB ±
+  }
+  judgment accepted "3.2 dB against 3 required — the excursion closes, with essentially zero luxury; every dB the baseline had in hand was spent buying the 10x" doubts "margin is one combining-loss surprise from the floor; the 4-element growth path in ArrayGain's envelope is the recovery plan"
+}
+
+analysis WindLoadsElement {
+  intent req.ENV-004 "wind loads on one 3.0 m element and what the rotator and ballast must hold"
+  framing {
+    model aero.bluff_body_drag
+    assume static because "quasi-steady drag with a gust pressure factor"
+    assume incompressible because "site winds are Mach < 0.15"
+    envelope {
+      wind_operational in [0, 50 m/s]
+    }
+  }
+  knowns {
+    wind_full_track <- req.ENV-004.wind_full_track
+    wind_operational <- req.ENV-004.wind_operational
+    wind_survival <- req.ENV-004.wind_survival
+    hold_torque <- element_a1.rotator_hold_torque
+  }
+  params {
+    rho_air = 1.225 kg/m^3 from "ISA sea level"
+    frontal_area = 7.07 m^2 from "3.0 m disc; offset dish face-on"
+    cd = 1.2 ± 10 % from "offset paraboloid face-on, bluff-body class data"
+    gust_factor = 1.6 from "3 s gust over 10 min mean"
+    stow_drag_factor = 0.3 ± 30 % from "zenith stow"
+    moment_arm = 1.5 m from "aperture centroid above the ballast mount interface"
+  }
+  core python "analysis/wind_loads_element.py"
+  outputs {
+    gust_moment_full_track : kN*m ±
+    gust_moment_operational : kN*m ±
+    survival_moment : kN*m ±
+    hold_margin : dimensionless ±
+  }
+  judgment accepted "2.8 kN*m gusted at full-track wind against 6 kN*m rotator holding — track to 15 m/s, hold to 20, stow above; survival 7.6 kN*m goes into the earth anchors, not the ballast" doubts "hold-vs-track derate is the declared availability price of consumer rotators; anchor pull-out capacity is a site-soil number the install must verify"
+}
+
+analysis PowerBudget {
+  intent req.PWR-005 "does the whole station live on one consumer circuit?"
+  framing {
+    model power.load_ledger
+    assume steady_state because "sustained worst-case draws; rotator stall transients are breaker items"
+  }
+  knowns {
+    server_draw <- central_c1.server_draw
+    chain_dc_draw <- central_c1.chain_dc_draw
+    max_feed <- req.PWR-005.max_feed_power
+  }
+  params {
+    rotator_peak = 360 W ± 20 % from "2x 180 W worm-drive motors, simultaneous slew"
+    heater_power = 300 W ± 10 % from "2x 150 W feed-enclosure strip heaters"
+    heater_duty_avg = 0.35 ± 30 % from "cold-season thermostat duty at the smaller enclosure UA"
+    misc_draw = 100 W ± 30 % from "network switch, controller electronics"
+  }
+  core python "analysis/power_budget_lc.py"
+  outputs {
+    total_continuous_draw : W ±
+    peak_draw : W ±
+    supply_margin : W ±
+  }
+  judgment accepted "0.5 kW continuous, 1.05 kW peak on a 3 kW circuit — the tenth-cost station is also a fifth of the power" doubts "rotator peak is a vendor nameplate, not a measured stall profile"
+}
+
+analysis UpsRideThrough {
+  intent req.PWR-005 "ride-through of the receive chain on the consumer UPS"
+  framing {
+    model energy.reservoir_discharge
+    assume steady_state because "constant-power discharge; converter dynamics folded into efficiency"
+  }
+  knowns {
+    capacity <- central_c1.ups_capacity
+    server_draw <- central_c1.server_draw
+    chain_dc_draw <- central_c1.chain_dc_draw
+    min_ride <- req.PWR-005.min_ride_through
+  }
+  params {
+    eta_inv = 0.85 ± 5 % from "line-interactive consumer UPS at ~20% load"
+    eol_derate = 0.7 from "consumer VRLA end-of-life retention; sized at end of life"
+  }
+  core python "analysis/ups_ride_through_lc.py"
+  outputs {
+    ride_through_time : min ±
+  }
+  judgment accepted "55 min against 10 required at end of life — consumer batteries, still 5x cover" doubts "consumer UPS low-battery cutoff voltage varies by unit; verify the usable fraction on the bench"
+}

@@ -28,7 +28,11 @@ jobs:
       - name: Self-check the ground station
         run: |
           if [ -d examples/ground-station ]; then python -m uel check examples/ground-station; fi
+      - name: Self-check the low-cost excursion
+        run: |
+          if [ -d examples/ground-station-lc ]; then python -m uel check examples/ground-station-lc; fi
       - name: Formatter is canonical
         run: |
           if [ -d examples/apache-one ]; then python -m uel fmt --check examples/apache-one; fi
           if [ -d examples/ground-station ]; then python -m uel fmt --check examples/ground-station; fi
+          if [ -d examples/ground-station-lc ]; then python -m uel fmt --check examples/ground-station-lc; fi

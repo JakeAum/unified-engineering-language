@@ -89,6 +89,7 @@ is deliberately zero-dependency (ADR-0002).
 | `tests/` | Implementation unit tests (50-node staleness demo, core-protocol contracts, calibration loop, red-team pins) |
 | `examples/apache-one/` | The vertical slice: cross-coupled, built, calibrated, leverage-measured |
 | `examples/ground-station/` | An IMAP I-ALiRT X-band ground station, designed by an agent org: architect contract → three parallel engineering agents → adversarial review → calibration |
+| `examples/ground-station-lc/` | The same capability at 1/10 the cost: coherent COTS array + steptrack software + ballast site — a trade-study excursion run in the graph |
 | `docs/` | Constitution, frozen schema, syntax reference, core protocol, decision log, boot library |
 | `.github/workflows/ci.yml` | The merge gate |
 

@@ -1,0 +1,50 @@
+# Low-cost excursion: the SAME capability — receive IMAP I-ALiRT continuously
+# with >= 3 dB link margin at max L1 range — at ONE TENTH the program cost.
+# MIS-001 and LNK-002 are carried over unchanged from the baseline: capability
+# is not negotiable. PNT-003 is restated in capability terms (pointing LOSS,
+# not a beam-specific error angle). What the money buys instead: aperture is
+# arrayed COTS, precision is software, civil works are ballast.
+requirement MIS-001 {
+  text "The station shall receive the IMAP I-ALiRT X-band direct broadcast and deliver decoded frames to the network continuously during view periods."
+  carrier_freq = 8447.5 MHz ± cal from "I-ALiRT RF ICD draft — near-Earth X-band downlink allocation"
+  data_rate = 2000 Hz from "I-ALiRT ICD draft; information bit rate (1/s)"
+}
+
+requirement LNK-002 {
+  text "The receive chain shall close the I-ALiRT link with margin >= 3 dB at maximum L1 range, worst-case declared conditions."
+  eirp_dbw = 22 dB ± cal from "I-ALiRT ICD draft: broadcast EIRP toward Earth, edge of coverage"
+  max_range = 1650000 km from "L1 halo apogee + margin"
+  required_ebn0_db = 4 dB from "CCSDS turbo r=1/2 BPSK at FER 1e-5"
+  impl_loss_db = 1.5 dB from "demod implementation loss allocation"
+  min_margin_db = 3 dB
+  atm_loss_db = 0.2 dB from "clear air, 10 deg elevation, X-band"
+  rain_alloc_db = 0.5 dB from "rain allocation for 99.5% availability, temperate site"
+  pol_loss_db = 0.2 dB from "axial ratio allocation, RHCP"
+}
+
+requirement PNT-003 {
+  text "Total pointing loss shall not exceed 0.3 dB while tracking — the capability metric; the error angle that delivers it is a design output of the beamwidth in hand."
+  max_pointing_loss_db = 0.3 dB
+  track_rate_max = 0.004 deg/s from "L1 sidereal-class apparent motion + halo"
+}
+
+requirement ENV-004 {
+  text "The station shall track to specification in full-track wind, hold position to operational wind, and survive stowed in survival wind."
+  wind_full_track = 15 m/s from "declared derate: consumer-class rotators track to spec below this"
+  wind_operational = 20 m/s
+  wind_survival = 45 m/s
+  min_elevation = 10 deg
+  t_amb_min = -30 degC
+  t_amb_max = 45 degC
+}
+
+requirement PWR-005 {
+  text "The station shall run from a single consumer utility circuit with UPS ride-through for the receive chain."
+  max_feed_power = 3 kW
+  min_ride_through = 10 min
+}
+
+requirement CST-006 {
+  text "The station shall be buildable for one tenth of the baseline program cost cap, entirely from catalog parts and ballast-mounted site work."
+  cost_cap = 26000 USD from "1/10 of baseline CST-006 cap"
+}

@@ -1,0 +1,23 @@
+[project]
+name = "ground-station"
+edition = "2026"
+model = ["model"]
+
+[tolerances]
+mass = "0.01 g"
+length = "0.001 mm"
+force = "0.01 N"
+moment = "0.01 N*m"
+temperature = "0.001 K"
+current = "0.001 A"
+voltage = "0.001 V"
+power = "0.01 W"
+frequency = "0.001 Hz"
+speed = "0.001 m/s"
+area = "0.001 mm^2"
+volume = "1 mm^3"
+density = "0.1 kg/m^3"
+cost = "0.01 USD"
+time = "0.01 s"
+thermal_resistance = "0.001 K/W"
+default_rel = 1e-6

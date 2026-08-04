@@ -1,0 +1,73 @@
+# Low-cost skeleton: a coherent pair of identical COTS aperture elements feeding
+# a shared-LO downconverter and a two-channel coherent SDR. `contains
+# ApertureElement x 2` makes the rollup machinery price and weigh the array
+# honestly — one definition, counted twice (spec §7.3).
+component Station : functional {
+  doc "IMAP I-ALiRT receive station, 1/10-cost excursion: 2x 3.0 m coherent array"
+  budget mass <= 800 kg
+  budget unit_cost <= 26000 USD @ qty 1
+  budget lead_time <= 10 week
+  contains ApertureElement x 2
+  contains CentralChain
+  contains SiteKit
+}
+
+component ApertureElement : functional {
+  doc "One array element: COTS 3.0 m offset dish on a consumer az-el rotator, X-band feed + LNA at the focus, heated micro-enclosure"
+  port rf_out : rf_coax {
+    direction out
+    protocol "X-band 8.4-8.5 GHz, LNA output over LMR-600"
+  }
+  port dc_in : electrical {
+    direction in
+    voltage: [11, 13 V]
+    current: [0, 2 A]
+  }
+}
+
+component CentralChain : functional {
+  doc "Shared-LO dual downconverter, two-channel coherent SDR, GPSDO, demod host, consumer power distribution + UPS"
+  port rf_in_a : rf_coax {
+    direction in
+    protocol "X-band 8.4-8.5 GHz"
+  }
+  port rf_in_b : rf_coax {
+    direction in
+    protocol "X-band 8.4-8.5 GHz"
+  }
+  port dc_out : electrical {
+    direction out
+    voltage: [11, 13 V]
+    current: [0, 6 A]
+  }
+  port mains_in : electrical {
+    direction in
+    voltage: [210, 250 V]
+    current: [0, 13 A]
+  }
+  port frames_out : data_bus {
+    direction out
+    protocol "CCSDS frames over TCP"
+  }
+}
+
+component SiteKit : functional {
+  doc "Non-penetrating ballast mounts with earth anchors, on-grade armored cable, ground rods. No concrete: the 3 m elements do not need it"
+}
+
+component UtilityFeed : functional {
+  doc "Single consumer utility circuit (not part of the shipped station)"
+  port mains_out : electrical {
+    direction out
+    voltage: [210, 250 V]
+    current: [0, 16 A]
+  }
+}
+
+connect UtilityFeed.mains_out -> CentralChain.mains_in
+
+connect ApertureElement.rf_out -> CentralChain.rf_in_a
+
+connect ApertureElement.rf_out -> CentralChain.rf_in_b
+
+connect CentralChain.dc_out -> ApertureElement.dc_in
