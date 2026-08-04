@@ -1,0 +1,55 @@
+# Shipped materials library (spec §5.3): a schema and a starter set. Values carry
+# provenance and uncertainty; project libraries extend under lib.<name>.
+
+material AL7075_T6 {
+  doc "Aluminum 7075-T6 bare plate."
+  density = 2810 kg/m^3 from "MMPDS-2023 3.7.6"
+  E = 71.7 GPa from "MMPDS-2023 3.7.6"
+  yield_strength = 503 MPa ± 3 % from "MMPDS-2023 A-basis, L"
+  ultimate_strength = 572 MPa ± 3 % from "MMPDS-2023 A-basis, L"
+  max_service_temp = 120 degC
+}
+
+material AL6061_T6 {
+  doc "Aluminum 6061-T6 extrusion/plate."
+  density = 2700 kg/m^3 from "MMPDS-2023 3.6.2"
+  E = 68.3 GPa from "MMPDS-2023 3.6.2"
+  yield_strength = 241 MPa ± 3 % from "MMPDS-2023 A-basis"
+  ultimate_strength = 290 MPa ± 3 % from "MMPDS-2023 A-basis"
+  max_service_temp = 150 degC
+}
+
+material Ti_6Al_4V {
+  doc "Titanium Ti-6Al-4V annealed."
+  density = 4430 kg/m^3 from "MMPDS-2023 5.4.1"
+  E = 114 GPa from "MMPDS-2023 5.4.1"
+  yield_strength = 880 MPa ± 4 % from "MMPDS-2023 A-basis"
+  ultimate_strength = 950 MPa ± 4 % from "MMPDS-2023 A-basis"
+  max_service_temp = 350 degC
+}
+
+material steel_4130_N {
+  doc "AISI 4130 normalized."
+  density = 7850 kg/m^3 from "MMPDS-2023 2.4.1"
+  E = 200 GPa from "MMPDS-2023 2.4.1"
+  yield_strength = 435 MPa ± 4 %
+  ultimate_strength = 670 MPa ± 4 %
+  max_service_temp = 400 degC
+}
+
+material CF_epoxy_UD {
+  doc "Unidirectional carbon/epoxy prepreg, RT cure. Wide bands until coupon tests."
+  density = 1600 kg/m^3
+  E1 = 135 GPa ± 8 %
+  ultimate_strength = 1500 MPa ± 12 % from "vendor typical"
+  max_service_temp = 110 degC
+}
+
+material PA12_MJF {
+  doc "Nylon PA12, HP MJF printed, XY orientation."
+  density = 1010 kg/m^3
+  E = 1.8 GPa ± 10 %
+  yield_strength = 48 MPa ± 10 % from "HP datasheet, XY"
+  ultimate_strength = 48 MPa ± 10 %
+  max_service_temp = 80 degC
+}

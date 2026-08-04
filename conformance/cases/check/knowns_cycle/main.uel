@@ -1,0 +1,11 @@
+analysis A {
+  knowns { x <- B.outputs.y }
+  core python "a.py"
+  outputs { z : m }
+}
+
+analysis B {
+  knowns { w <- A.outputs.z }
+  core python "b.py"
+  outputs { y : m }
+}

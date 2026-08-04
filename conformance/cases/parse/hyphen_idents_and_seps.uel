@@ -1,0 +1,11 @@
+requirement STR-014 {
+  text "hyphenated names survive lexing"
+  limit_load = 12 kN
+}
+
+analysis A-1 {
+  intent req.STR-014
+  knowns { a <- req.STR-014.limit_load ; b <- req.STR-014.limit_load }
+  core python "a.py"
+  outputs { x : m }
+}

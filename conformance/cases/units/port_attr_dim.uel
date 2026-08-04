@@ -1,0 +1,6 @@
+component Battery : physical {
+  port out : electrical {
+    direction out
+    voltage: [0, 90 A]
+  }
+}

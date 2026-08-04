@@ -1,0 +1,3 @@
+component C : functional {
+  envelope { load in [18, 0 kN] }
+}

@@ -1,0 +1,7 @@
+compnent Widget : functional {
+  mass = 1 kg
+}
+
+component Gadget : functional {
+  mass = 2 kg
+}

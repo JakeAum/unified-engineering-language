@@ -1,0 +1,5 @@
+# leading file comment
+component C : functional {
+  # explains the mass
+  mass = 1 kg  # trailing note
+}

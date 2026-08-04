@@ -1,0 +1,10 @@
+analysis Producer {
+  core python "p.py"
+  outputs { y : m }
+}
+
+analysis Consumer {
+  knowns { a <- Producer.y }
+  core python "c.py"
+  outputs { b : m }
+}

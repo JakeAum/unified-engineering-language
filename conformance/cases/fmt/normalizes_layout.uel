@@ -1,0 +1,4 @@
+component    Messy:functional{port p:electrical{voltage:[10,14 V]}
+    mass=1.5 kg
+budget mass<=2 kg}
+connect Messy.p    ->    Messy.p
