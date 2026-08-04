@@ -1,0 +1,30 @@
+# The merge gate (program §2.2). No agent's claim of completion means anything;
+# only what passes this gate exists.
+name: merge-gate
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # Zero-dependency kernel: no pip install step for deps, by design (ADR-0002).
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Conformance suite
+        run: python -m conformance.runner
+      - name: Self-check the vertical slice
+        run: |
+          if [ -d examples/apache-one ]; then python -m uel check examples/apache-one; fi
+      - name: Formatter is canonical
+        run: |
+          if [ -d examples/apache-one ]; then python -m uel fmt --check examples/apache-one; fi
