@@ -1,0 +1,30 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "MainSpar": {
+      "kind": "component",
+      "level": "functional",
+      "doc": "Primary wing bending member (spec §5.2 sketch).",
+      "src": "model/structure.uel:4",
+      "ports": {
+        "root_attach": {
+          "domain": "mechanical.translation",
+          "attrs": {
+            "force": {"value": [0.0, 12.0], "unit": "kN", "unc": {"kind": "cal"}}
+          }
+        },
+        "skin_bond": {"domain": "mechanical.distributed"}
+      },
+      "budgets": {
+        "mass": {"op": "<=", "limit": {"value": 240.0, "unit": "g", "unc": {"kind": "abs", "value": 10.0}}},
+        "unit_cost": {"op": "<=", "limit": {"value": 85.0, "unit": "USD"}, "at_qty": 25}
+      },
+      "envelope": {
+        "predicates": {
+          "T": {"lo": -40.0, "hi": 70.0, "unit": "degC"}
+        }
+      }
+    }
+  }
+}

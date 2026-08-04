@@ -1,0 +1,45 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "spar_v7": {
+      "kind": "component",
+      "level": "physical",
+      "realizes": "MainSpar",
+      "process": "lib.process.cnc_3axis",
+      "material": "lib.materials.AL7075_T6",
+      "geometry": "spar_v7_geom",
+      "src": "model/structure.uel:22",
+      "quantities": {
+        "length": {"value": 850.0, "unit": "mm"},
+        "wall": {"value": 1.6, "unit": "mm"}
+      }
+    },
+    "spar_v7_geom": {
+      "kind": "analysis",
+      "akind": "geometry",
+      "doc": "Parametric tube spar; canonical definition is the code (spec §6.2).",
+      "core": {"path": "geom/spar_v7.py"},
+      "params": {
+        "outer_diameter": {"value": 22.0, "unit": "mm"},
+        "wall": {"value": 1.6, "unit": "mm"},
+        "length": {"value": 850.0, "unit": "mm"}
+      },
+      "knowns": {"density": "lib.materials.AL7075_T6.density"},
+      "outputs": {
+        "mass": {"unit": "g", "unc": true},
+        "section_Ixx": {"unit": "mm^4"},
+        "section_area": {"unit": "mm^2"},
+        "min_internal_radius": {"unit": "mm"},
+        "min_wall_thickness": {"unit": "mm"},
+        "mesh": {"artifact": true}
+      },
+      "framing": {
+        "model": "geometry.parametric_tube",
+        "envelope": {
+          "claims": {"topology_asserted": "core asserts tube topology: 2 circular faces, wall > 0"}
+        }
+      }
+    }
+  }
+}

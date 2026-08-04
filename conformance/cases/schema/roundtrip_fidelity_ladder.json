@@ -1,0 +1,56 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "WingLiftHandCalc": {
+      "kind": "analysis",
+      "intent": {"ref": "req.AER-002", "text": "Cruise L/D sufficient for mission radius?"},
+      "framing": {
+        "model": "aero.lifting_line",
+        "envelope": {
+          "predicates": {
+            "Mach": {"lo": 0.0, "hi": 0.3},
+            "alpha": {"lo": -2.0, "hi": 8.0, "unit": "deg"}
+          },
+          "claims": {"incompressible": "cruise Mach 0.12", "steady_state": "trimmed cruise"}
+        }
+      },
+      "params": {"aspect_ratio": {"value": 7.5}, "e_oswald": {"value": 0.85, "unc": {"kind": "abs", "value": 0.05}}},
+      "core": {"path": "analysis/lifting_line.py"},
+      "outputs": {"CL": {"unc": true}, "CDi": {"unc": true}},
+      "judgment": {"status": "accepted", "text": "within class experience; surrogate for early sizing"}
+    },
+    "WingLiftRANS": {
+      "kind": "analysis",
+      "doc": "Same intent, higher rung of the fidelity ladder (spec §3.3).",
+      "intent": {"ref": "req.AER-002"},
+      "framing": {
+        "model": "aero.rans_sa",
+        "envelope": {
+          "predicates": {
+            "Mach": {"lo": 0.0, "hi": 0.85},
+            "alpha": {"lo": -4.0, "hi": 12.0, "unit": "deg"}
+          },
+          "claims": {"steady_state": "converged RANS; buffet onset outside envelope"}
+        }
+      },
+      "knowns": {"mesh": "wing_geom.outputs.mesh"},
+      "core": {"path": "analysis/rans_case.py"},
+      "outputs": {"CL": {"unc": true}, "CD": {"unc": true}, "Cp_field": {"artifact": true}},
+      "judgment": {"status": "pending"}
+    },
+    "LiftDiscrepancy_W12": {
+      "kind": "analysis",
+      "doc": "Investigation node opened by a measurement outside the predicted envelope (spec §8.4).",
+      "intent": {"ref": "WingLiftHandCalc", "text": "why was prediction wrong at W12 flight 3?"},
+      "framing": {"model": "investigation.discrepancy"},
+      "knowns": {
+        "predicted_CL": "WingLiftHandCalc.outputs.CL",
+        "measured_CL": "flight_W12.outputs.CL_measured"
+      },
+      "core": {"path": "analysis/lift_discrepancy.py"},
+      "outputs": {"resolution": {"unc": false}},
+      "judgment": {"status": "pending", "doubts": "airspeed calibration itself suspect"}
+    }
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "lib.process.cnc_3axis": {
+      "kind": "process",
+      "doc": "3-axis CNC milling DFM ruleset (spec §7.1). Tribal shop knowledge as statically checkable claims.",
+      "rules": {
+        "min_internal_radius": {
+          "feature": "min_internal_radius",
+          "op": ">=",
+          "limit": {"value": 2.0, "unit": "mm"},
+          "message": "internal pocket radii must clear standard cutter radius + margin so the tool sweeps rather than dwells"
+        },
+        "no_sharp_internal_corners": {
+          "feature": "sharp_internal_corner_count",
+          "op": "forbid",
+          "message": "sharp internal corners are impossible on a rotating cutter"
+        },
+        "min_wall_thickness": {
+          "feature": "min_wall_thickness",
+          "op": ">=",
+          "limit": {"value": 0.8, "unit": "mm"},
+          "message": "thin walls chatter and deflect under cutting load"
+        },
+        "loaded_corner_fillet": {
+          "feature": "loaded_internal_corner_min_fillet",
+          "op": ">=",
+          "limit": {"value": 1.5, "unit": "mm"},
+          "message": "loaded internal corners retain fillets as stress relief — a rule that saves machining minutes by seeding a crack is not a rule"
+        },
+        "undercuts_declared": {
+          "feature": "undeclared_undercut_count",
+          "op": "forbid",
+          "message": "undercuts require declared setup changes"
+        }
+      }
+    },
+    "lib.process.injection_molded": {
+      "kind": "process",
+      "rules": {
+        "min_draft_angle": {
+          "feature": "min_draft_angle",
+          "op": ">=",
+          "limit": {"value": 1.0, "unit": "deg"},
+          "message": "faces along pull direction need draft to release"
+        },
+        "wall_uniformity": {
+          "feature": "wall_thickness_ratio",
+          "op": "<=",
+          "limit": {"value": 2.0},
+          "message": "non-uniform walls sink and warp"
+        },
+        "fillets_everywhere": {
+          "feature": "min_internal_radius",
+          "op": ">=",
+          "limit": {"value": 0.5, "unit": "mm"},
+          "message": "sharp corners concentrate stress and impede flow"
+        }
+      }
+    }
+  }
+}

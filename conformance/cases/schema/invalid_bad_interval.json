@@ -1,0 +1,14 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "bad": {
+      "kind": "component",
+      "level": "functional",
+      "quantities": {
+        "inverted": {"value": [18.0, 0.0], "unit": "kN"},
+        "triple": {"value": [0.0, 1.0, 2.0]}
+      }
+    }
+  }
+}

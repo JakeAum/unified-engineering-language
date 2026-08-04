@@ -1,0 +1,39 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "Reg3V3": {
+      "kind": "component",
+      "level": "functional",
+      "doc": "Regulate 3.3 V at <= 500 mA (spec §2.3).",
+      "ports": {
+        "vin": {"domain": "electrical", "dir": "in",
+                "attrs": {"voltage": {"value": [4.5, 17.0], "unit": "V"}}},
+        "vout": {"domain": "electrical", "dir": "out",
+                 "attrs": {"voltage": {"value": 3.3, "unit": "V", "unc": {"kind": "rel", "value": 0.02}},
+                           "current": {"value": [0.0, 0.5], "unit": "A"}}}
+      },
+      "envelope": {
+        "predicates": {"T": {"lo": 0.0, "hi": 85.0, "unit": "degC"}}
+      }
+    },
+    "tps62130": {
+      "kind": "component",
+      "level": "physical",
+      "realizes": "Reg3V3",
+      "datasheet": {"source": "vendor/tps62130.pdf", "sha256": "9a41c1e0c8f2b7d64f0a2b9d3f5e6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3c4d5", "title": "TPS62130 3-17V 3A Step-Down Converter"},
+      "quantities": {
+        "vin_abs_max": {"value": 20.0, "unit": "V", "prov": {"kind": "vendor", "detail": "datasheet p.3 abs max"}, "conf": 0.9},
+        "iout_max": {"value": 3.0, "unit": "A", "prov": {"kind": "vendor", "detail": "datasheet p.1"}, "conf": 0.9},
+        "mass": {"value": 0.05, "unit": "g", "unc": {"kind": "rel", "value": 0.5}, "prov": {"kind": "estimate", "detail": "QFN-16 typical; wide until measured"}},
+        "unit_cost": {"value": 1.85, "unit": "USD", "prov": {"kind": "vendor", "ts": "2026-07-28T00:00:00Z"}, "conf": 0.7}
+      },
+      "envelope": {
+        "predicates": {
+          "T": {"lo": -40.0, "hi": 125.0, "unit": "degC"},
+          "vin": {"lo": 3.0, "hi": 17.0, "unit": "V"}
+        }
+      }
+    }
+  }
+}

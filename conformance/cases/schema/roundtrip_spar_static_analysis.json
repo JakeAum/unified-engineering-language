@@ -1,0 +1,48 @@
+{
+  "uel_schema": "0.1",
+  "edition": "2026",
+  "nodes": {
+    "req.STR-014": {
+      "kind": "requirement",
+      "text": "The main spar shall carry limit load with a factor of safety >= 1.5.",
+      "src": "model/requirements.uel:9",
+      "quantities": {
+        "limit_load": {"value": 12.0, "unit": "kN", "prov": {"detail": "loads memo LM-3, Mach 1 pull-up"}},
+        "min_FoS": {"value": 1.5}
+      }
+    },
+    "SparStaticLimit": {
+      "kind": "analysis",
+      "src": "analysis/spar.uel:3",
+      "intent": {"ref": "req.STR-014", "text": "Will the spar carry limit load at Mach 1 pull-up?"},
+      "framing": {
+        "model": "beam.euler_bernoulli",
+        "envelope": {
+          "predicates": {
+            "load": {"lo": 0.0, "hi": 18.0, "unit": "kN"},
+            "T": {"lo": -40.0, "hi": 70.0, "unit": "degC"}
+          },
+          "claims": {
+            "rigid_root": "root fitting stiffness >> spar; see AN-009",
+            "static": "gust transient covered by SparDynamic"
+          }
+        }
+      },
+      "knowns": {
+        "load": "req.STR-014.limit_load",
+        "section_Ixx": "spar_v7_geom.outputs.section_Ixx",
+        "yield_strength": "lib.materials.AL7075_T6.yield_strength"
+      },
+      "core": {"path": "analysis/spar_static.py"},
+      "outputs": {
+        "FoS": {"unc": true},
+        "max_deflection": {"unit": "mm", "unc": true}
+      },
+      "judgment": {
+        "status": "accepted",
+        "text": "FoS 1.9 against 1.5 required; deflection small vs. envelope; result physical.",
+        "doubts": "root fitting stiffness assumption unverified until AN-009 ground test"
+      }
+    }
+  }
+}
