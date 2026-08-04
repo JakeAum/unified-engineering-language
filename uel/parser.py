@@ -504,6 +504,10 @@ class Parser:
             t = self.expect(T.NUMBER, "count after 'x'")
             if t and t.value is not None:
                 count = int(t.value)
+                if count < 1 or t.value != count:
+                    self.bag.error("UEL0107", f"contains count must be a positive integer, got '{t.text}'",
+                                   self.span(t))
+                    count = 1
         return A.ContainsDecl(ref, count, self.span(kw))
 
     # -- bindings ----------------------------------------------------------

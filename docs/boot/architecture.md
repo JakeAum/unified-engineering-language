@@ -13,12 +13,15 @@ Kept deliberately short; prune as aggressively as you grow it.*
 | Syntax | `uel/formatter.py` | The one zero-config formatter (idempotent, AST-preserving). |
 | Semantics | `uel/units.py` | Dimensions as a free-abelian-group checker; unit table; affine temperature. |
 | Semantics | `uel/resolver.py` | Names → graph; builds `GraphDoc` from ASTs + libraries. |
-| Checks | `uel/conservation.py` | Port/domain compatibility, static junction balance, budget rollups. |
-| Checks | `uel/envelopes.py` | Value-predicate containment; structural-claim entailment closure. |
-| Identity | `uel/hashing.py` | Tolerance-quantized content hashes; Merkle recipe hashes. |
-| Identity | `uel/staleness.py` | Lockfile diff → stale set with reasons. |
-| Runtime | `uel/scheduler.py` | Topological walk of the stale set; executes cores via the JSON core protocol. |
-| Loop | `uel/calibration.py` | Measurement write-back, envelope tightening, discrepancy events. |
+| Checks | `uel/conservation.py` | Port/domain compatibility, net effort/flow checks, energy balance, budget rollups. |
+| Checks | `uel/envelopes.py` | Value-predicate containment; structural-claim entailment closure; binding covers. |
+| Checks | `uel/dfm.py` | Process rulesets vs lock-recorded geometry feature claims. |
+| Checks | `uel/checker.py` | The compile-time pipeline orchestrator (gates the scheduler). |
+| Identity | `uel/hashing.py` | Tolerance-quantized, SI-normalized content hashes; recipe hashes with per-part breakdowns. |
+| Identity | `uel/lockfile.py` | uel.lock: recorded recipes, outputs, features, assertions, run provenance. |
+| Identity | `uel/staleness.py` | Lock diff → fresh/stale/missing with named reasons; topological order. |
+| Runtime | `uel/scheduler.py` | Topological walk of the stale set; executes cores via the JSON core protocol; early cutoff. |
+| Loop | `uel/calibration.py` | Measurement write-back (overlays, per-serial as-built), tightening, discrepancy events. |
 | Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status. |
 | Surfaces | `uel/diagnostics.py` | Structured diagnostics (JSON + human render). Error-code registry. |
 | Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / calibrate / query`. |
@@ -32,5 +35,11 @@ Kept deliberately short; prune as aggressively as you grow it.*
 
 ## Open problems (live status)
 
-Tracked in `docs/spec.md` §10. R1 (envelope formalism) de-risk pair set lives at
-`conformance/cases/derisk/`. R2 (leverage) instrumented in `examples/apache-one/`.
+Tracked in `docs/spec.md` §10. R1 (envelope formalism): **discharged 11/11**
+(ADR-0003, `conformance/cases/derisk/`). R2 (leverage): substrate-mechanical
+numbers recorded in `docs/boot/leverage-v0.1.md`; org-level claim open until the
+user org flies. R4 (gate gamed): round 1 findings fixed and pinned (ADR-0004).
+R5 (hash semantics): tolerance grids + pinned seeds shipped; sensitivity-aware
+staleness is v0.2. Deliberately not built in v0.1 (spec §11 puts them in
+v0.2/0.3): LSP, FMU transport, surrogates, remote execution, SysML bridges,
+distributor refresh, sensitivity staleness.

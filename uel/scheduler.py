@@ -222,12 +222,18 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
         # normalize into the declared unit for lock stability
         def conv(v: float) -> float:
             return du.from_si(gu.to_si(float(v)))
-        if isinstance(raw, list) and len(raw) == 2:
+        import math as _math
+
+        def finite(v: object) -> bool:
+            return isinstance(v, (int, float)) and not isinstance(v, bool) and _math.isfinite(float(v))
+        if isinstance(raw, list) and len(raw) == 2 and all(finite(v) for v in raw):
             value: object = [conv(raw[0]), conv(raw[1])]
-        elif isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        elif finite(raw):
             value = conv(raw)
         else:
-            bag.error("UEL0704", f"{name}: output '{oname}' value must be a number or [lo, hi]", sp)
+            bag.error("UEL0704", f"{name}: output '{oname}' must be a finite number or [lo, hi] "
+                      f"(got {raw!r})", sp,
+                      reason="NaN/Inf are not representable in the graph; a diverged solve is a failed run, not a value")
             ok = False
             continue
         unc = got.get("unc") if isinstance(got.get("unc"), dict) else None

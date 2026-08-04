@@ -72,3 +72,14 @@ Rules enforced by the shell:
 - Determinism: any stochastic step must derive from `seed`. Two runs of the same
   recipe should produce equal-within-tolerance outputs; the tolerance policy
   (`[tolerances]` in uel.toml) absorbs float noise below the declared grid.
+- Non-finite outputs (NaN/Inf) are rejected (UEL0704): a diverged solve is a
+  failed run, not a value.
+
+## Trust model
+
+`uel build` executes project code — cores run with the invoker's privileges,
+exactly like `make` or `cargo build` running build scripts. Check out models
+only from sources you would run a build for. `uel check` never executes cores
+(compile time never opens them, spec §3.2). The lock is a local cache with the
+same trust standing as any build cache: tampering with it can misreport
+freshness until the next build, never alter checked semantics.

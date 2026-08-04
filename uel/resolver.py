@@ -108,6 +108,14 @@ class Resolver:
         return f"{ns}.{base}" if ns else base
 
     def declare(self, name: str, span: Span) -> bool:
+        if name in ("req", "lib") or name.startswith(("req.req", "lib.lib")):
+            self.bag.error(
+                "UEL0201",
+                f"'{name}' collides with a reserved namespace ('req.', 'lib.')",
+                span,
+                reason="requirements live under req.*, libraries under lib.*; a node with that bare name would shadow them",
+            )
+            return False
         if name in self.decl_spans:
             self.bag.error(
                 "UEL0201",
@@ -303,8 +311,27 @@ class Resolver:
             attrs[a.name] = q
         return G.Port(p.domain.text, p.dir or "inout", attrs, p.protocol, p.doc)
 
+    def _check_member_collisions(self, name: str, ports, quantities, budgets) -> None:
+        """Ports, quantities, and budgets share the component's member namespace
+        (dotted refs must be unambiguous)."""
+        seen: dict[str, tuple[str, Span]] = {}
+        for kind, decls in (("port", ports), ("quantity", quantities), ("budget", budgets)):
+            for d in decls:
+                if d.name in seen:
+                    okind, ospan = seen[d.name]
+                    self.bag.error(
+                        "UEL0201",
+                        f"'{name}.{d.name}' is both a {okind} and a {kind}",
+                        d.span,
+                        reason="members share one namespace: 'comp.member' must resolve unambiguously",
+                        related=[(f"{okind} declared here", ospan)],
+                    )
+                else:
+                    seen[d.name] = (kind, d.span)
+
     def build_component(self, c: A.ComponentDecl, ns: str, file: str) -> None:
         name = self.qualify(c, ns)
+        self._check_member_collisions(name, c.ports, c.quantities, c.budgets)
         for p in c.ports:
             self.member_spans[("port", name, p.name)] = p.domain.span
         for cd in c.contains:
@@ -405,6 +432,7 @@ class Resolver:
 
     def build_binding(self, b: A.BindingDecl, ns: str, file: str) -> None:
         name = self.qualify(b, ns)
+        self._check_member_collisions(name, b.ports, b.quantities, [])
         self.member_spans[("realizes", name)] = b.source.span
         if b.process:
             self.member_spans[("process", name)] = b.process.span
