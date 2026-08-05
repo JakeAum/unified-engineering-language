@@ -59,6 +59,8 @@ class Resolution:
     expr_programs: dict[str, list[X.ExprStmt]] = field(default_factory=dict)
     # v0.2: resolved output-target references: (node, output) -> ResolvedRef
     target_refs: dict[tuple[str, str], ResolvedRef] = field(default_factory=dict)
+    # v0.3: resolved verify-against references: (node, verify index) -> ResolvedRef
+    verify_refs: dict[tuple[str, int], ResolvedRef] = field(default_factory=dict)
 
 
 _BUDGET_DIMS = {"mass": D_MASS, "unit_cost": D_CURRENCY, "lead_time": D_TIME}
@@ -551,6 +553,21 @@ class Resolver:
                     reason="geometry cores must return topological assertions (spec §6.2); "
                            "expression bodies have no way to assert shape",
                 )
+        for t in a.core_tools:
+            if t.name in core.tools:
+                self.bag.error("UEL0106", f"tool '{t.name}' pinned twice", t.span)
+                continue
+            core.tools[t.name] = t.version
+        if a.core_interface_path:
+            core.interface = G.Datasheet(a.core_interface_path, a.core_interface_sha)
+        verifies: list[G.Verify] = []
+        for i, v in enumerate(a.verifies):
+            gv = G.Verify(v.kind, v.output, v.ref.text if v.ref else "", v.known,
+                          v.direction, v.path, v.tol, self.unit_of(v.tol_unit, v.tol_unit_span))
+            if v.ref is not None:
+                self.member_spans[("verify", name, i)] = v.ref.span
+            self._check_verify(name, a, gv, v)
+            verifies.append(gv)
         self.doc.nodes[name] = G.Analysis(
             name=name,
             akind=a.akind,
@@ -560,10 +577,46 @@ class Resolver:
             params=self.quantity_decls(a.params, file, f"{a.akind} {a.name}"),
             core=core,
             outputs=outputs,
+            verifies=verifies,
             judgment=judgment,
             doc=a.doc,
             src=f"{file}:{a.span.line}",
         )
+
+    def _check_verify(self, name: str, a: A.AnalysisDecl, gv: G.Verify, v: A.VerifyDecl) -> None:
+        outputs = {o.name: o for o in a.outputs}
+        if gv.kind in ("against", "monotone"):
+            if gv.output not in outputs:
+                self.unresolved(gv.output, v.span, f"verify output on {name}", outputs)
+                return
+            if outputs[gv.output].artifact:
+                self.bag.error("UEL0107", f"verify on '{name}.{gv.output}': artifact outputs "
+                               "have no comparable value", v.span)
+                return
+        if gv.kind == "monotone":
+            input_pool = {k.name for k in a.knowns} | {p.name for p in a.params}
+            if gv.known not in input_pool:
+                self.unresolved(gv.known, v.span, f"verify input on {name}", input_pool)
+        if gv.tol_unit and gv.kind in ("against",):
+            # absolute tolerance must be the same quantity type as the output
+            try:
+                tt = parse_unit(gv.tol_unit).vtype
+                ot = parse_unit(outputs[gv.output].unit).vtype
+                if tt != ot:
+                    self.bag.error(
+                        "UEL0302",
+                        f"verify tolerance for '{name}.{gv.output}' is {type_name(*tt)}, "
+                        f"but the output is {type_name(*ot)}",
+                        v.tol_unit_span,
+                    )
+            except UnitError:
+                pass
+        if gv.kind == "case":
+            p = self.project.root / gv.path
+            if not p.is_file():
+                self.bag.warning("UEL0809", f"{name}: golden case file '{gv.path}' does not exist yet",
+                                 v.span,
+                                 reason="the case runs at build time; a missing file will fail the run")
 
     def _check_target_type(self, node: str, out_name: str, od: G.OutputDecl,
                            target_unit: str, span: Span) -> None:
@@ -754,6 +807,29 @@ class Resolver:
             od.target_ref = rr.target
             self.res.target_refs[(name, out_name)] = rr
             self._check_target_type(name, out_name, od, rr.unit, tsp)
+        for i, gv in enumerate(an.verifies):
+            if gv.kind != "against" or not gv.ref:
+                continue
+            vsp = self.mspan("verify", name, i, default=sp)
+            rr = self.resolve_value_ref(gv.ref, vsp, f"verify reference on {name}.{gv.output}")
+            if rr is None:
+                continue
+            gv.ref = rr.target
+            self.res.verify_refs[(name, i)] = rr
+            out = an.outputs.get(gv.output)
+            if out is not None:
+                try:
+                    ot = parse_unit(out.unit).vtype
+                    rt = parse_unit(rr.unit).vtype
+                    if ot != rt:
+                        self.bag.error(
+                            "UEL0302",
+                            f"verify on '{name}.{gv.output}' ({type_name(*ot)}) cross-checks "
+                            f"against '{rr.target}' ({type_name(*rt)}) — different quantity types",
+                            vsp,
+                        )
+                except UnitError:
+                    pass
 
     def resolve_value_ref(self, ref: str, span: Span, what: str) -> ResolvedRef | None:
         parts = ref.split(".")

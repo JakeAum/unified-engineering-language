@@ -16,17 +16,17 @@ Kept deliberately short; prune as aggressively as you grow it.*
 | Semantics | `uel/expr.py` | The declarative expression layer (v0.2, ADR-0005): AST, canonical printing, dimensional/level inference, interval evaluation. |
 | Checks | `uel/conservation.py` | Port/domain compatibility, net effort/flow checks, energy balance, budget rollups. |
 | Checks | `uel/envelopes.py` | Value-predicate containment; structural-claim entailment closure; binding covers; seam values vs locked flow (v0.2). |
-| Checks | `uel/contracts.py` | Output targets re-verdicted against the lock; stub maturity ledger (v0.2, ADR-0007). |
+| Checks | `uel/contracts.py` | Output targets re-verdicted against the lock; verify-against cross-checks; stub maturity ledger (ADR-0007/0008). |
 | Checks | `uel/dfm.py` | Process rulesets vs lock-recorded geometry feature claims. |
 | Checks | `uel/checker.py` | The compile-time pipeline orchestrator (gates the scheduler). |
 | Identity | `uel/hashing.py` | Tolerance-quantized, SI-normalized content hashes; recipe hashes with per-part breakdowns. |
 | Identity | `uel/lockfile.py` | uel.lock: recorded recipes, outputs, features, assertions, run provenance. |
 | Identity | `uel/staleness.py` | Lock diff → fresh/stale/missing with named reasons; topological order. |
-| Runtime | `uel/scheduler.py` | Topological walk of the stale set; Python cores via the JSON core protocol, expr/stub cores kernel-evaluated; early cutoff. |
+| Runtime | `uel/scheduler.py` | Topological walk of the stale set; Python cores via the JSON core protocol, expr/stub cores kernel-evaluated; early cutoff; monotone/case verification probes (ADR-0008). |
 | Loop | `uel/calibration.py` | Measurement write-back (overlays, per-serial as-built), tightening, discrepancy events. |
-| Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status. |
+| Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status, and the `uel pack` review dossier (ADR-0008). |
 | Surfaces | `uel/diagnostics.py` | Structured diagnostics (JSON + human render). Error-code registry. |
-| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / calibrate / query` (provenance + instances). |
+| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / pack / calibrate / query` (provenance + instances). |
 
 ## Grading artifacts
 
@@ -45,9 +45,12 @@ R5 (hash semantics): tolerance grids + pinned seeds shipped; sensitivity-aware
 staleness still open.
 
 v0.2 (ADR-0005/0006/0007) closed the retrospective's top findings: the
-expression layer (`uel/expr.py` — inference, interval evaluation, canonical
-printing; `uel/contracts.py` — targets + maturity), level quantities in
-`uel/units.py`, seam-value checks in `uel/envelopes.py`. Still deliberately
-unbuilt (spec §11 + ADRs, v0.3+): LSP, FMU transport, surrogates, remote
+expression layer (`uel/expr.py`), level quantities (`uel/units.py`),
+targets/seams (`uel/contracts.py`, `uel/envelopes.py`). v0.3 (ADR-0008)
+operationalized zero-trust review: verification contracts (against/monotone/
+case), declared tool pins + interface manifests, the `uel pack` dossier, and
+the trust ledger. Still deliberately unbuilt (v0.4+): LSP, FMU import (the
+manifest pattern exists; the shell generator waits for a real FMU), remote
 execution, SysML bridges, distributor refresh, sensitivity staleness,
-expression conditionals, per-instance graph state, statistical uncertainty.
+expression conditionals/interp tables, per-instance graph state, statistical
+uncertainty, property contracts beyond monotone.

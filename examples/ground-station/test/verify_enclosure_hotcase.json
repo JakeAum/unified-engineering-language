@@ -1,0 +1,10 @@
+{
+  "doc": "golden case (ADR-0008): a milder 35 degC ambient must land the box at 21.7 degC with the TEC engaged — re-run at every build; a silent regression in the thermal balance fails the node",
+  "inputs": {
+    "t_amb_max": {"value": 35, "unit": "degC"}
+  },
+  "expect": {
+    "lna_physical_temp": {"value": 21.67, "unit": "degC"},
+    "heater_duty": {"value": 0.3, "unit": ""}
+  }
+}

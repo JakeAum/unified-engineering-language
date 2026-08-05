@@ -209,6 +209,36 @@ class JudgmentDecl:
 
 
 @dataclass
+class VerifyDecl:
+    """v0.3 (ADR-0008): a machine-checkable reason to believe an opaque core.
+
+    kind 'against': output cross-checked vs another node's value, within tol.
+    kind 'monotone': output must move the declared direction when an input rises.
+    kind 'case': re-run the core on a golden input file; expected outputs within tol.
+    """
+
+    kind: str  # against | monotone | case
+    output: str = ""
+    ref: Optional[DottedRef] = None  # against
+    known: str = ""  # monotone: the input to perturb
+    direction: str = ""  # monotone: rising | falling
+    path: str = ""  # case: JSON file with inputs + expect
+    tol: Optional[float] = None  # against/case (fraction when relative)
+    tol_unit: str = ""  # "" = relative (%); else absolute in this unit
+    tol_unit_span: Span = field(default_factory=Span)
+    span: Span = field(default_factory=Span)
+
+
+@dataclass
+class CoreToolDecl:
+    """A pinned external tool a python core invokes: identity, not prose."""
+
+    name: str
+    version: str = ""
+    span: Span = field(default_factory=Span)
+
+
+@dataclass
 class AnalysisDecl:
     name: str
     akind: str = "analysis"  # analysis | geometry
@@ -219,6 +249,10 @@ class AnalysisDecl:
     core_lang: str = ""
     core_path: str = ""
     core_body: list = field(default_factory=list)  # v0.2: expr.ExprStmt for expr/stub cores
+    core_tools: list[CoreToolDecl] = field(default_factory=list)  # v0.3: pinned externals
+    core_interface_path: str = ""  # v0.3: black-box interface manifest (e.g. FMU XML)
+    core_interface_sha: str = ""
+    verifies: list[VerifyDecl] = field(default_factory=list)  # v0.3
     outputs: list[OutputDeclA] = field(default_factory=list)
     judgment: Optional[JudgmentDecl] = None
     doc: str = ""

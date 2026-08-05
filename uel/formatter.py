@@ -220,7 +220,19 @@ class Formatter:
                 self.put(2, E.format_stmt(st), st.span.line)
             self.put(1, "}")
         elif a.core_path:
-            self.put(1, f'core {a.core_lang or "python"} "{_esc(a.core_path)}"')
+            head = f'core {a.core_lang or "python"} "{_esc(a.core_path)}"'
+            if a.core_tools or a.core_interface_path:
+                self.put(1, head + " {")
+                for t in a.core_tools:
+                    self.put(2, f'tool "{_esc(t.name)}" "{_esc(t.version)}"', t.span.line)
+                if a.core_interface_path:
+                    sha = f' sha256 "{a.core_interface_sha}"' if a.core_interface_sha else ""
+                    self.put(2, f'interface "{_esc(a.core_interface_path)}"{sha}')
+                self.put(1, "}")
+            else:
+                self.put(1, head)
+        for v in a.verifies:
+            self.put(1, _verify_text(v), v.span.line)
         if a.outputs:
             self.put(1, "outputs {")
             for o in a.outputs:
@@ -297,6 +309,17 @@ class Formatter:
             if r.message:
                 self.put(2, f'"{_esc(r.message)}"')
         self.put(0, "}")
+
+
+def _verify_text(v: A.VerifyDecl) -> str:
+    tol = ""
+    if v.tol is not None:
+        tol = f" within {_num(v.tol * 100)} %" if not v.tol_unit else f" within {_num(v.tol)} {v.tol_unit}"
+    if v.kind == "case":
+        return f'verify case "{_esc(v.path)}"{tol}'
+    if v.kind == "against":
+        return f"verify {v.output} against {v.ref.text if v.ref else '?'}{tol}"
+    return f"verify {v.output} monotone with {v.known} {v.direction}"
 
 
 def _esc(s: str) -> str:

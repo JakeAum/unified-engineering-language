@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.3.0 — zero-trust, operationalized (2026-08-05)
+
+The review posture the program demands: an agent auditing an analysis should
+never have to believe its author — and everything needed to audit, including
+the wrapper around a black box, should arrive packaged for a context window.
+
+- **Verification contracts** (ADR-0008) — `verify <out> against <ref> within
+  tol` (lock-vs-lock cross-check; its natural oracle is a transparent expr
+  surrogate — the fidelity ladder's real job), `verify <out> monotone with
+  <input> rising|falling` (the kernel perturbs and re-runs the core at build
+  time), `verify case "file" within tol` (golden inputs re-proven every
+  build). A run that breaks its own contract is a failed run (UEL0808), the
+  same principle as geometry's mandatory assertions; unbuilt sides are
+  pending (UEL0809); evidence lands in the lock (`run.verify`). The pinned
+  test scenario: a core computing k·(50−w)² instead of k·w² agrees exactly
+  at the operating point — the cross-check passes, the monotone probe and
+  golden case both kill it.
+- **Declared wrappers** — `core python "…" { tool "su2" "8.0.1"  interface
+  "model.xml" sha256 "…" }`: pinned external tools and the black box's own
+  interface manifest (the FMU modelDescription pattern) are identity, hash
+  into the recipe, and surface in the dossier.
+- **`uel pack <node>`** — the review dossier: one context-sized document
+  carrying the claim, the framing fence, every flowing value with
+  provenance, the argument itself (expr body verbatim / capped python
+  source / interface manifest), contract verdicts, targets, measured
+  validations, blast radius, the author's judgment verbatim, and the recipe
+  hashes to cite. Upstream nodes are one-liners — pack them separately.
+- **The trust ledger** — the status projection now names where belief is
+  load-bearing: verified by construction / by contract (with verdicts) /
+  trusted on the author's word.
+- Applied: the ground station carries live contracts (WindLoads vs a
+  first-principles oracle + monotone probe; PedestalModes mode rising with
+  stiffness; EnclosureThermal 35 °C golden case). 63 conformance cases,
+  54 unit tests.
+
 ## v0.2.0 — the compiler sees inside the physics (2026-08-05)
 
 Every feature in this release is a fix for a weakness the v0.1 retrospective

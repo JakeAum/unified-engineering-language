@@ -65,7 +65,7 @@
       },
       "parts": {
         "core": "sha256:cc8fd9a84afcf74b8b9eced74cc8eab8f1eb2917b8fc7da151b132e269005989",
-        "def": "sha256:ff9a6037b8ec3005248f725dfbbe9818d8b1623bb76cb28f2206b96cabe04681",
+        "def": "sha256:05555839e1e1b3c740fa3b002a7d6491a9f8d569648411ce28847b02d95cac8b",
         "inputs": {
           "heater_power": "sha256:7a0fd9ed3d0dd4453b7d4fcc0796587773b96ba56dd6b2dd675be5f3c0486f0e",
           "t_amb_max": "sha256:893855c9a1b075ab36752d0ca89ba466852e52b530c71816b41e541315ea4f70",
@@ -73,7 +73,7 @@
         },
         "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:bf1a400c6ca00e262db72f006497618ba4f83d291a62093739758304d6805276",
+      "recipe": "sha256:7f913806174cf65c9131a2a540caa33b2bfc7f19582fd0c049f07dc01ce53b59",
       "run": {
         "seed": 0,
         "tools": {
@@ -81,8 +81,15 @@
           "python": "3.11.15",
           "uel": "0.2.0"
         },
-        "ts": "2026-08-05T01:15:42Z",
-        "wall_s": 0.032
+        "ts": "2026-08-05T03:24:52Z",
+        "verify": [
+          {
+            "contract": "verify case \"test/verify_enclosure_hotcase.json\"",
+            "detail": "2 expected output(s) reproduced",
+            "ok": true
+          }
+        ],
+        "wall_s": 0.027
       },
       "status": "fresh"
     },
@@ -225,7 +232,7 @@
       },
       "parts": {
         "core": "sha256:4a90a06dbda6d93b9c74a8cfc1888029b84082a80640df7e5144a5bdeb7dc764",
-        "def": "sha256:cd234aa5652f1c48cc1cef743af73a7878607256c3502cf89f3f40b1699ef52f",
+        "def": "sha256:f14e30bbdfc0ffc2b11865741857d95298130b6779bb1ce74c9131ff8946def2",
         "inputs": {
           "cw_mass": "sha256:d961f56b87c5ba9b22a97598b074cfb64f0ba34e865ca8f1b9f53e44251fe470",
           "dish_mass": "sha256:079574007799aa58854ea52768ed891ea4999d936782ec3a6c57fc5926922968",
@@ -233,7 +240,7 @@
         },
         "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:b77e970b1b011fb42929e96c61025bc3f3104b38ce4813e13c353013c300e5c1",
+      "recipe": "sha256:bf68b777a797379feda76d127591090bbf266811b2d911f9f0970b48803ff4fa",
       "run": {
         "seed": 0,
         "tools": {
@@ -241,8 +248,15 @@
           "python": "3.11.15",
           "uel": "0.2.0"
         },
-        "ts": "2026-08-05T01:15:42Z",
-        "wall_s": 0.022
+        "ts": "2026-08-05T03:24:52Z",
+        "verify": [
+          {
+            "contract": "verify first_locked_rotor_mode monotone with stiffness rising",
+            "detail": "stiffness +4.25e+06 (SI) moved first_locked_rotor_mode 24.692 -> 25.302 (SI); declared rising",
+            "ok": true
+          }
+        ],
+        "wall_s": 0.026
       },
       "status": "fresh"
     },
@@ -545,7 +559,7 @@
       },
       "parts": {
         "core": "sha256:bac78d12f0d450bddb4e5e32341607415b7ef8247eefe371bc08b6b3dc6676a5",
-        "def": "sha256:bf014033dbdbe95ff32edfcc906a9c88fb4c24987637fd3e174e2dc04a6d25cb",
+        "def": "sha256:29798c4697492e58b0eeb8f7f4e433cbb07c6e17a8f42f3707c39b4443c6a32b",
         "inputs": {
           "frontal_area": "sha256:890d8c8217acc9643860fa9d8b10da6b0c73baef08c700e6654bbf5f66668f78",
           "wind_op": "sha256:7b20462d439998fcdeb8b2898fffd9e22aeefbb34bd976094e963a03710d7e79",
@@ -553,7 +567,7 @@
         },
         "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:e2ef1a2167606568fd2ee36b58bc58ddad54d53a336406a14a496c9427378834",
+      "recipe": "sha256:044c39ab9fa67dfd151d035eb98df7618b44096820b1fcaf11a530d78a9a1517",
       "run": {
         "seed": 0,
         "tools": {
@@ -561,8 +575,46 @@
           "python": "3.11.15",
           "uel": "0.2.0"
         },
-        "ts": "2026-08-05T01:15:42Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T03:24:52Z",
+        "verify": [
+          {
+            "contract": "verify gust_moment monotone with wind_op rising",
+            "detail": "wind_op +1 (SI) moved gust_moment 30018 -> 33094.8 (SI); declared rising",
+            "ok": true
+          }
+        ],
+        "wall_s": 0.03
+      },
+      "status": "fresh"
+    },
+    "WindLoadsOracle": {
+      "outputs": {
+        "gust_moment": {
+          "hash": "sha256:d73d955e54f04c996c2f2dc6f493438c897ce326b02fbaf38ebd0c0142cf16ff",
+          "unit": "kN*m",
+          "value": 30.018
+        }
+      },
+      "parts": {
+        "core": "sha256:0aa97cbc6124732ee0f19bd772920f8ddb91158b342e0271c3d4a89054d9e453",
+        "def": "sha256:dcae95476df3f4355f7ce0d25862e08c2a62804d5ba7e5c33f6d3b1bd430918f",
+        "inputs": {
+          "frontal_area": "sha256:890d8c8217acc9643860fa9d8b10da6b0c73baef08c700e6654bbf5f66668f78",
+          "wind_op": "sha256:7b20462d439998fcdeb8b2898fffd9e22aeefbb34bd976094e963a03710d7e79"
+        },
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
+      },
+      "recipe": "sha256:65dc0c05b66529f012ec61a2f2f110342c029416a8ffe109cee19154917071dc",
+      "run": {
+        "engine": "expr",
+        "seed": 0,
+        "tools": {
+          "edition": "2026",
+          "python": "3.11.15",
+          "uel": "0.2.0"
+        },
+        "ts": "2026-08-05T03:24:52Z",
+        "wall_s": 5.8e-05
       },
       "status": "fresh"
     },

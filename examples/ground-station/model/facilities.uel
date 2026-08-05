@@ -98,6 +98,7 @@ analysis EnclosureThermal {
     heater_setpoint = 10 degC from "hold above site dew point and inside the LNA gain-stability band in cold soak"
   }
   core python "analysis/enclosure_thermal.py"
+  verify case "test/verify_enclosure_hotcase.json" within 1 %
   outputs {
     lna_physical_temp : degC ±
     heater_duty : dimensionless ±

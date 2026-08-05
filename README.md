@@ -9,15 +9,21 @@ consumed primarily by AI engineering agents, and compiled outward into the
 artifacts (geometry, BOMs, travelers, status views) through which a design is born
 into the physical world.
 
-**Status: v0.2 — the compiler sees inside the physics.** Everything v0.1 proved
-(parser → units → conservation → envelopes → content hashing → staleness →
-scheduler → DFM → calibration → projections), plus the three features the v0.1
-retrospective demanded: **level quantities as types** (`22 dBW`, `dB/K`, dBHz
-derived not asserted — ADR-0006), **expression cores** (formulas in the
-language, dimension-checked before anything runs, interval uncertainty —
-ADR-0005), and **targets + seam values** (acceptance computed against the lock
-on every build; fences checked against the values actually flowing —
-ADR-0007).
+**Status: v0.3 — zero-trust, operationalized.** v0.2 made the compiler see
+inside the physics; v0.3 makes every opaque core answer for itself:
+**verification contracts** (cross-check against a transparent oracle, monotone
+probes, golden cases — a run that breaks its own contract is a failed run),
+**declared wrappers** (pinned tools + hashed interface manifests, the FMU
+pattern), and **`uel pack`** — one command that compiles a node's entire
+epistemic chain into a context-sized review dossier, with a ledger naming
+where belief is still load-bearing (ADR-0008). Beneath it: v0.2's **level
+quantities as types** (`22 dBW`, `dB/K`, dBHz derived not asserted —
+ADR-0006), **expression cores** (formulas in the language, dimension-checked
+before anything runs, interval uncertainty — ADR-0005), **targets + seam
+values** (acceptance computed against the lock; fences checked against the
+values actually flowing — ADR-0007), and the whole v0.1 kernel proof (parser →
+units → conservation → envelopes → content hashing → staleness → scheduler →
+DFM → calibration → projections).
 
 ## The two documents
 
@@ -87,6 +93,7 @@ python3 -m uel stale examples/apache-one     # what does the current state inval
 python3 -m uel project all examples/apache-one   # BOM/ICD/travelers/status, hash-stamped
 python3 -m uel calibrate examples/apache-one/test/W12_static.json examples/apache-one
 python3 -m uel query provenance spar_v8.panel_mass_per_span examples/apache-one
+python3 -m uel pack WindLoads examples/ground-station   # the review dossier: audit without believing
 python3 -m uel graph examples/apache-one --dot | dot -Tsvg > graph.svg
 python3 examples/apache-one/leverage.py      # the R2 instrumentation, measured live
 ```
@@ -111,19 +118,21 @@ is deliberately zero-dependency (ADR-0002).
 ## Grading
 
 ```sh
-python3 -m unittest discover -s tests    # 50 tests
-python3 -m conformance.runner            # 60 cases: schema/parse/units/fmt/fixloop/check/derisk
+python3 -m unittest discover -s tests    # 54 tests
+python3 -m conformance.runner            # 63 cases: schema/parse/units/fmt/fixloop/check/derisk
 ```
 
 Both run in CI on every push; the checker gates the scheduler; nothing merges on
 trust (program §2.2).
 
-## What v0.2 deliberately does not do
+## What v0.3 deliberately does not do
 
-LSP, FMU transport, surrogates, remote execution, SysML bridges, distributor
-refresh, sensitivity-aware staleness, expression conditionals, per-instance
-graph state, statistical (non-enclosure) uncertainty — all named for v0.3+ in
-spec §11 and the ADRs.
+LSP, FMU *import* (the interface-manifest pattern is here; the shell generator
+waits for the first real FMU — load-bearing or dead), remote execution, SysML
+bridges, distributor refresh, sensitivity-aware staleness, expression
+conditionals and interpolation tables, per-instance graph state, statistical
+(non-enclosure) uncertainty, property contracts beyond monotone — all named
+for v0.4+ in spec §11 and the ADRs.
 The open problems are held honestly in spec §10; current status per problem is
 tracked in [`docs/boot/architecture.md`](docs/boot/architecture.md).
 

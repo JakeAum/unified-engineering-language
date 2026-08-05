@@ -771,6 +771,12 @@ class Parser:
                     an.core_body = self.expr_block(lang)
                 else:
                     an.core_path = self.string("path string to the core script")
+                    if self.at(T.LBRACE):
+                        self.core_meta_block(an)
+            elif self.at_ident("verify"):
+                v = self.verify_decl()
+                if v is not None:
+                    an.verifies.append(v)
             elif self.at_ident("outputs"):
                 self.bump()
                 if self.expect(T.LBRACE, "'{' after 'outputs'"):
@@ -804,12 +810,96 @@ class Parser:
                 an.doc = self.string("doc string")
             else:
                 self.err(
-                    "expected an analysis item: intent, framing, knowns, params, core, outputs, judgment, or doc"
+                    "expected an analysis item: intent, framing, knowns, params, core, verify, outputs, judgment, or doc"
                 )
                 break
             self.skip_seps()
         self.expect(T.RBRACE, f"'}}' to close {akind} '{name}'")
         return an
+
+    def core_meta_block(self, an: A.AnalysisDecl) -> None:
+        """v0.3 (ADR-0008): `core python "path" { tool "name" "ver"  interface "file" sha256 "…" }`
+        — what wraps the black box is declarable, hashed, and packed for review."""
+        self.bump()  # '{'
+        self.skip_seps()
+        while not self.at(T.RBRACE) and not self.at(T.EOF):
+            if self.at_ident("tool"):
+                tt = self.bump()
+                tname = self.string("tool name string (e.g. \"su2\")")
+                tver = self.string("tool version string (pin it — versions are identity)")
+                an.core_tools.append(A.CoreToolDecl(tname, tver, self.span(tt)))
+            elif self.at_ident("interface"):
+                self.bump()
+                an.core_interface_path = self.string("interface manifest path (e.g. an FMU modelDescription.xml)")
+                if self.eat_ident("sha256"):
+                    an.core_interface_sha = self.string("sha256 hex string")
+            else:
+                self.err("expected 'tool \"name\" \"version\"' or 'interface \"path\" [sha256 \"…\"]' in core block")
+                break
+            self.skip_seps()
+        self.expect(T.RBRACE, "'}' to close the core block")
+
+    def verify_decl(self) -> Optional[A.VerifyDecl]:
+        """`verify <out> against <ref> within <tol>` | `verify <out> monotone with
+        <input> rising|falling` | `verify case "file" within <tol>` (ADR-0008)."""
+        kw = self.bump()
+        if self.at_ident("case"):
+            self.bump()
+            path = self.string("golden case file path (JSON with inputs + expect)")
+            if not self.expect_ident_val("within", "after the case file"):
+                return None
+            tol, unit, usp = self.tol_tail()
+            if tol is None:
+                return None
+            return A.VerifyDecl("case", path=path, tol=tol, tol_unit=unit,
+                                tol_unit_span=usp, span=self.span(kw))
+        out = self.ident("output name to verify (or 'case')")
+        if out is None:
+            return None
+        if self.at_ident("against"):
+            self.bump()
+            ref = self.dotted("value reference to cross-check against")
+            if ref is None:
+                return None
+            if not self.expect_ident_val("within", "after the cross-check reference"):
+                return None
+            tol, unit, usp = self.tol_tail()
+            if tol is None:
+                return None
+            return A.VerifyDecl("against", output=out, ref=ref, tol=tol, tol_unit=unit,
+                                tol_unit_span=usp, span=self.span(kw))
+        if self.at_ident("monotone"):
+            self.bump()
+            if not self.expect_ident_val("with", "after 'monotone'"):
+                return None
+            known = self.ident("input name to perturb")
+            if known is None:
+                return None
+            d = self.ident("'rising' or 'falling'")
+            if d not in ("rising", "falling"):
+                self.bag.error("UEL0107", f"monotone direction must be rising or falling, got '{d}'",
+                               self.span(self.toks[self.i - 1]))
+                return None
+            return A.VerifyDecl("monotone", output=out, known=known, direction=d, span=self.span(kw))
+        self.err(f"expected 'against', 'monotone', or 'case' after 'verify {out}'",
+                 reason="verification contracts are machine-checkable reasons to believe an opaque core (ADR-0008)")
+        return None
+
+    def tol_tail(self) -> tuple[Optional[float], str, Span]:
+        """`within 10 %` (relative, stored as fraction) or `within 0.5 dB` (absolute)."""
+        usp = self.span(self.cur())
+        v = self.signed_number("tolerance after 'within'")
+        if v is None:
+            return None, "", usp
+        if v <= 0:
+            self.bag.error("UEL0107", f"verification tolerance must be positive, got {v:g}",
+                           self.span(self.toks[self.i - 1]))
+            return None, "", usp
+        if self.at(T.PERCENT):
+            self.bump()
+            return v / 100.0, "", usp
+        unit, usp = self.unit_tokens()
+        return v, unit, usp
 
     def framing_block(self) -> A.FramingDecl:
         kw = self.bump()

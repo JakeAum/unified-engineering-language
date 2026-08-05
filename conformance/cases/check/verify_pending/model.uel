@@ -1,0 +1,18 @@
+analysis Oracle {
+  core expr {
+    x = 2 N
+  }
+  outputs {
+    x : N
+  }
+}
+
+analysis Tool {
+  core expr {
+    x = 2.05 N
+  }
+  verify x against Oracle.outputs.x within 5 %
+  outputs {
+    x : N
+  }
+}

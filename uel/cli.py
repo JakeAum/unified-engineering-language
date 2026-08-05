@@ -81,7 +81,8 @@ def cmd_build(args: argparse.Namespace) -> int:
         from . import contracts, envelopes
         from .lockfile import Lock
 
-        bag.items = [d for d in bag.items if d.code not in ("UEL0804", "UEL0805", "UEL0806")]
+        bag.items = [d for d in bag.items
+                     if d.code not in ("UEL0804", "UEL0805", "UEL0806", "UEL0808", "UEL0809")]
         lk = Lock.load(project.lock_path, bag)
         envelopes.check_locked(res, bag, lk)
         contracts.check(res, bag, lk)
@@ -231,6 +232,19 @@ def cmd_project(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pack(args: argparse.Namespace) -> int:
+    bag = Bag()
+    project, res, _ = _load_and_resolve(args.path, bag, checks=False)
+    if res is None:
+        print(bag.render(project.sources_map()))
+        return 1
+    from .lockfile import Lock
+    from .projections import pack
+
+    sys.stdout.write(pack(res, Lock.load(project.lock_path, bag), args.node))
+    return 0
+
+
 def cmd_graph(args: argparse.Namespace) -> int:
     bag = Bag()
     project, res, _ = _load_and_resolve(args.path, bag, checks=False)
@@ -319,6 +333,10 @@ def main(argv: list[str] | None = None) -> int:
     p_proj.add_argument("-o", "--out", default="out", help="output directory (default: out/)")
     p_proj.add_argument("--serial", default="", help="apply an as-built overlay (calibration/<serial>.json)")
 
+    p_pack = sub.add_parser("pack", help="review dossier: one node's full epistemic chain, context-sized (ADR-0008)")
+    p_pack.add_argument("node", help="analysis node to pack (e.g. LinkMargin)")
+    p_pack.add_argument("path", nargs="?", default=".")
+
     p_graph = sub.add_parser("graph", help="export the dependency graph")
     p_graph.add_argument("path", nargs="?", default=".")
     p_graph.add_argument("--dot", action="store_true", help="Graphviz DOT to stdout (default)")
@@ -348,6 +366,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_hash(args)
     if args.cmd == "project":
         return cmd_project(args)
+    if args.cmd == "pack":
+        return cmd_pack(args)
     if args.cmd == "graph":
         return cmd_graph(args)
     if args.cmd == "calibrate":

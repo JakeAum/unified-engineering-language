@@ -87,6 +87,9 @@ CODES: dict[str, str] = {
     "UEL0805": "output target pending",
     "UEL0806": "seam value outside consumer fence",
     "UEL0807": "stub core in the graph",
+
+    "UEL0808": "verification contract failed",
+    "UEL0809": "verification contract pending",
 }
 
 SEVERITIES = ("error", "warning", "info")
@@ -190,11 +193,11 @@ class Bag:
     def ok(self) -> bool:
         return not self.errors
 
-    # Lock-derived verdicts (a violated target, a seam value outside its fence)
-    # compare computed state against declared intent: they red-gate a merge, but
-    # they must not gate the scheduler — only a rebuild can refresh the very
-    # values they complain about.
-    _RESULT_CODES = ("UEL0804", "UEL0806")
+    # Lock-derived verdicts (a violated target, a seam value outside its fence,
+    # a failed cross-check) compare computed state against declared intent: they
+    # red-gate a merge, but they must not gate the scheduler — only a rebuild
+    # can refresh the very values they complain about.
+    _RESULT_CODES = ("UEL0804", "UEL0806", "UEL0808")
 
     def gates_runtime(self) -> bool:
         return any(d.code not in self._RESULT_CODES for d in self.errors)

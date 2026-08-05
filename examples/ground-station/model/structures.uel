@@ -73,6 +73,32 @@ binding CounterweightSet -> counterweight_v1 : physical {
   lead_time = 6 week from "SF-889"
 }
 
+analysis WindLoadsOracle {
+  doc "independent quasi-steady drag estimate — the falsification oracle WindLoads is contracted against (ADR-0008). It declares its own coefficients on purpose: an oracle that shares its subject's inputs can only confirm arithmetic, not physics."
+  intent req.ENV-004 "sanity-bound the gusted overturning moment from first principles"
+  framing {
+    model aero.bluff_body_drag
+    assume static because "single dynamic-pressure estimate; no spectrum"
+  }
+  knowns {
+    wind_op <- req.ENV-004.wind_operational
+    frontal_area <- reflector_v1.frontal_area
+  }
+  params {
+    rho_air = 1.225 kg/m^3 from "ISA sea level"
+    cd_face_on = 1.3 from "solid paraboloid face-on, bluff-body class data"
+    gust_factor = 1.6 from "3 s gust pressure over 10 min mean"
+    moment_arm = 3 m from "aperture centroid above the azimuth bearing plane"
+  }
+  core expr {
+    gust_moment = 0.5 * rho_air * wind_op ^ 2 * cd_face_on * frontal_area * gust_factor * moment_arm
+  }
+  outputs {
+    gust_moment : kN*m
+  }
+  judgment accepted "30.0 kN*m from one line of first-principles drag — this node's whole job is to catch WindLoads drifting; agreement is the contract, not the insight"
+}
+
 analysis WindLoads {
   intent req.ENV-004 "what drag and overturning moment do operational and survival winds put on the mount?"
   framing {
@@ -96,6 +122,8 @@ analysis WindLoads {
     moment_arm = 3 m ± 10 % from "aperture centroid height above the azimuth bearing plane"
   }
   core python "analysis/wind_loads.py"
+  verify gust_moment against WindLoadsOracle.outputs.gust_moment within 10 %
+  verify gust_moment monotone with wind_op rising
   outputs {
     drag_force : kN ±
     overturning_moment : kN*m ±
@@ -124,6 +152,7 @@ analysis PedestalModes {
     yoke_inertia = 800 kg*m^2 ± 30 % from "rotating yoke + elevation drive allowance, vendor outline drawing"
   }
   core python "analysis/pedestal_modes.py"
+  verify first_locked_rotor_mode monotone with stiffness rising
   outputs {
     first_locked_rotor_mode : Hz ±
     inertia : kg*m^2 ±

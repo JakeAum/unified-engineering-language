@@ -103,6 +103,8 @@ def build(res: Resolution, bag: Bag, only: list[str] | None = None,
             entry = _run_expr_core(res, an, name, lock, bag)
         else:
             entry = _run_core(res, an, name, lock, bag)
+        if entry.status == "fresh" and any(v.kind in ("monotone", "case") for v in an.verifies):
+            run_verify_probes(res, an, name, entry, lock, bag)
         entry.recipe = current.recipe
         entry.parts = current.parts
         lock.nodes[name] = entry
@@ -115,26 +117,23 @@ def build(res: Resolution, bag: Bag, only: list[str] | None = None,
     return result
 
 
-def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) -> LockEntry:
-    sp = _node_span(res, name)
-    entry = LockEntry(status="failed")
-    pol = res.project.tolerances
-    root = res.project.root
-
-    # assemble inputs: static values from the graph, upstream outputs from the lock
+def _assemble_payload(res: Resolution, an: G.Analysis, name: str, lock: Lock,
+                      bag: Bag, sp: Span) -> dict | None:
+    """The core-protocol stdin object: static values from the graph, upstream
+    outputs from the lock. Shared by the main run and verification probes."""
     inputs: dict[str, dict] = {}
     for local in sorted(an.knowns):
         rr = res.known_refs.get((name, local))
         if rr is None:
             bag.error("UEL0703", f"{name}: known '{local}' is unresolved at run time", sp)
-            return entry
+            return None
         if rr.kind == "output":
             producer = lock.nodes.get(rr.node)
             out_name = rr.target.rsplit(".", 1)[1]
             out = producer.outputs.get(out_name) if producer else None
             if out is None:
                 bag.error("UEL0703", f"{name}: upstream output '{rr.target}' has never been produced", sp)
-                return entry
+                return None
             inputs[local] = {"value": out.value, "unit": out.unit, **({"unc": out.unc} if out.unc else {})}
             try:
                 u = parse_unit(out.unit)
@@ -147,8 +146,7 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
         else:
             assert rr.quantity is not None
             inputs[local] = _payload_quantity(rr.quantity)
-
-    payload = {
+    return {
         "node": name,
         "kind": an.akind,
         "seed": PINNED_SEED,
@@ -157,6 +155,40 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
         "outputs_declared": {k: {"unit": o.unit, "artifact": o.artifact}
                              for k, o in sorted(an.outputs.items())},
     }
+
+
+def _invoke(root, core_path: str, payload: dict) -> tuple[dict | None, str]:
+    """Run a python core once; return (stdout object, error text)."""
+    cmd = [sys.executable, str(root / core_path)]
+    try:
+        proc = subprocess.run(
+            cmd, input=json.dumps(payload).encode("utf-8"),
+            capture_output=True, timeout=CORE_TIMEOUT_S, cwd=root,
+        )
+    except subprocess.TimeoutExpired:
+        return None, f"core timed out after {CORE_TIMEOUT_S}s ({core_path})"
+    except OSError as e:
+        return None, f"cannot execute core: {e}"
+    if proc.returncode != 0:
+        tail = proc.stderr.decode("utf-8", "replace").strip().splitlines()[-6:]
+        return None, f"core exited {proc.returncode}: " + ("; ".join(tail) or "no stderr")
+    try:
+        obj = json.loads(proc.stdout.decode("utf-8"))
+        assert isinstance(obj, dict)
+        return obj, ""
+    except (ValueError, AssertionError):
+        return None, "core did not emit a JSON object on stdout"
+
+
+def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) -> LockEntry:
+    sp = _node_span(res, name)
+    entry = LockEntry(status="failed")
+    pol = res.project.tolerances
+    root = res.project.root
+
+    payload = _assemble_payload(res, an, name, lock, bag, sp)
+    if payload is None:
+        return entry
 
     cmd = [sys.executable, str(root / an.core.path)]
     t0 = time.monotonic()
@@ -315,6 +347,42 @@ def _si_iv(value, unit_text: str, unc: dict | None) -> X.IV | None:
     return (si - half, si, si + half)
 
 
+def _expr_ivs(res: Resolution, an: G.Analysis, name: str, lock: Lock,
+              bag: Bag, sp: Span) -> dict[str, X.IV] | None:
+    """Canonical-SI interval inputs for an expr/stub core. Shared by the main
+    run and verification probes."""
+    ivs: dict[str, X.IV] = {}
+    for local in sorted(an.knowns):
+        rr = res.known_refs.get((name, local))
+        if rr is None:
+            bag.error("UEL0703", f"{name}: known '{local}' is unresolved at run time", sp)
+            return None
+        if rr.kind == "output":
+            producer = lock.nodes.get(rr.node)
+            out_name = rr.target.rsplit(".", 1)[1]
+            out = producer.outputs.get(out_name) if producer else None
+            if out is None:
+                bag.error("UEL0703", f"{name}: upstream output '{rr.target}' has never been produced", sp)
+                return None
+            iv = _si_iv(out.value, out.unit, out.unc if isinstance(out.unc, dict) else None)
+        else:
+            assert rr.quantity is not None
+            q = rr.quantity
+            iv = _si_iv(list(q.value) if isinstance(q.value, tuple) else q.value,
+                        q.unit, q.unc.to_obj())
+        if iv is None:
+            bag.error("UEL0703", f"{name}: known '{local}' has no numeric value to evaluate", sp)
+            return None
+        ivs[local] = iv
+    for pname, q in sorted(an.params.items()):
+        iv = _si_iv(list(q.value) if isinstance(q.value, tuple) else q.value, q.unit, q.unc.to_obj())
+        if iv is None:
+            bag.error("UEL0703", f"{name}: param '{pname}' has no numeric value to evaluate", sp)
+            return None
+        ivs[pname] = iv
+    return ivs
+
+
 def _run_expr_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) -> LockEntry:
     sp = _node_span(res, name)
     entry = LockEntry(status="failed")
@@ -325,35 +393,9 @@ def _run_expr_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
                   "(graph loaded without sources?)", sp)
         return entry
 
-    ivs: dict[str, X.IV] = {}
-    for local in sorted(an.knowns):
-        rr = res.known_refs.get((name, local))
-        if rr is None:
-            bag.error("UEL0703", f"{name}: known '{local}' is unresolved at run time", sp)
-            return entry
-        if rr.kind == "output":
-            producer = lock.nodes.get(rr.node)
-            out_name = rr.target.rsplit(".", 1)[1]
-            out = producer.outputs.get(out_name) if producer else None
-            if out is None:
-                bag.error("UEL0703", f"{name}: upstream output '{rr.target}' has never been produced", sp)
-                return entry
-            iv = _si_iv(out.value, out.unit, out.unc if isinstance(out.unc, dict) else None)
-        else:
-            assert rr.quantity is not None
-            q = rr.quantity
-            iv = _si_iv(list(q.value) if isinstance(q.value, tuple) else q.value,
-                        q.unit, q.unc.to_obj())
-        if iv is None:
-            bag.error("UEL0703", f"{name}: known '{local}' has no numeric value to evaluate", sp)
-            return entry
-        ivs[local] = iv
-    for pname, q in sorted(an.params.items()):
-        iv = _si_iv(list(q.value) if isinstance(q.value, tuple) else q.value, q.unit, q.unc.to_obj())
-        if iv is None:
-            bag.error("UEL0703", f"{name}: param '{pname}' has no numeric value to evaluate", sp)
-            return entry
-        ivs[pname] = iv
+    ivs = _expr_ivs(res, an, name, lock, bag, sp)
+    if ivs is None:
+        return entry
 
     t0 = time.monotonic()
     try:
@@ -389,3 +431,160 @@ def _run_expr_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
         "engine": an.core.lang,
     }
     return entry
+
+
+# ---------------------------------------------------------------------------
+# Verification probes (v0.3, ADR-0008): monotone + golden-case contracts,
+# executed right after a successful run; the evidence lives in the lock.
+# ---------------------------------------------------------------------------
+
+
+def _out_si(value, unit_text: str) -> float | None:
+    try:
+        u = parse_unit(unit_text)
+    except UnitError:
+        return None
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return u.to_si(float(value))
+    return None
+
+
+def _rerun_outputs(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag,
+                   sp: Span, overrides: dict[str, float]) -> tuple[dict[str, float] | None, str]:
+    """Re-execute a core with SI-value input overrides; return {output: si}."""
+    if an.core.lang in ("expr", "stub"):
+        prog = res.expr_programs.get(name)
+        ivs = _expr_ivs(res, an, name, lock, bag, sp)
+        if prog is None or ivs is None:
+            return None, "inputs unavailable for probe"
+        for k, si in overrides.items():
+            ivs[k] = (si, si, si)
+        try:
+            outs = X.evaluate_program(prog, ivs, list(an.outputs))
+        except X.ExprEvalError as e:
+            return None, f"probe evaluation failed at '{e.target}': {e}"
+        return {o: iv[1] for o, iv in outs.items()}, ""
+    payload = _assemble_payload(res, an, name, lock, bag, sp)
+    if payload is None:
+        return None, "inputs unavailable for probe"
+    for k, si in overrides.items():
+        slot = payload["inputs"].get(k) if k in payload["inputs"] else payload["params"].get(k)
+        if slot is None:
+            return None, f"probe input '{k}' is not an input of this core"
+        slot["si"] = si
+        try:
+            u = parse_unit(str(slot.get("unit", "")))
+            if isinstance(slot.get("value"), (int, float)):
+                slot["value"] = u.from_si(si)
+        except UnitError:
+            pass
+    obj, err = _invoke(res.project.root, an.core.path, payload)
+    if obj is None:
+        return None, err
+    outs: dict[str, float] = {}
+    for oname, got in (obj.get("outputs", {}) or {}).items():
+        if isinstance(got, dict) and isinstance(got.get("value"), (int, float)):
+            si = _out_si(got["value"], str(got.get("unit", "")))
+            if si is not None:
+                outs[oname] = si
+    return outs, ""
+
+
+def _current_input_si(res: Resolution, an: G.Analysis, name: str, lock: Lock, key: str) -> float | None:
+    rr = res.known_refs.get((name, key))
+    if rr is not None:
+        if rr.kind == "output":
+            producer = lock.nodes.get(rr.node)
+            out = producer.outputs.get(rr.target.rsplit(".", 1)[1]) if producer else None
+            return _out_si(out.value, out.unit) if out else None
+        q = rr.quantity
+    else:
+        q = an.params.get(key)
+    if q is None or q.value is None:
+        return None
+    v = q.value
+    if isinstance(v, tuple):
+        v = (v[0] + v[1]) / 2.0
+    return _out_si(float(v), q.unit)
+
+
+def run_verify_probes(res: Resolution, an: G.Analysis, name: str, entry: LockEntry,
+                      lock: Lock, bag: Bag) -> None:
+    sp = _node_span(res, name)
+    records: list[dict] = []
+    for v in an.verifies:
+        if v.kind == "monotone":
+            rec = _probe_monotone(res, an, name, entry, lock, bag, sp, v)
+        elif v.kind == "case":
+            rec = _probe_case(res, an, name, lock, bag, sp, v)
+        else:
+            continue  # 'against' is a lock-vs-lock comparison, judged at check time
+        records.append(rec)
+        if not rec["ok"]:
+            entry.status = "failed"
+            bag.error(
+                "UEL0808", f"{name}: {rec['contract']} FAILED — {rec['detail']}", sp,
+                reason="a verification contract is the declared reason to believe this core "
+                       "(ADR-0008); a run that breaks its own contract is not a result",
+            )
+    if records:
+        entry.run["verify"] = records
+
+
+def _probe_monotone(res, an, name, entry, lock, bag, sp, v: G.Verify) -> dict:
+    contract = f"verify {v.output} monotone with {v.known} {v.direction}"
+    base_out = entry.outputs.get(v.output)
+    base_si = _out_si(base_out.value, base_out.unit) if base_out else None
+    in_si = _current_input_si(res, an, name, lock, v.known)
+    if base_si is None or in_si is None:
+        return {"contract": contract, "ok": False, "detail": "baseline value unavailable for probe"}
+    delta = 0.05 * abs(in_si) if in_si != 0.0 else 1.0
+    outs, err = _rerun_outputs(res, an, name, lock, bag, sp, {v.known: in_si + delta})
+    if outs is None or v.output not in outs:
+        return {"contract": contract, "ok": False, "detail": err or "probe produced no output"}
+    probed = outs[v.output]
+    eps = 1e-9 * max(1.0, abs(base_si))
+    ok = probed >= base_si - eps if v.direction == "rising" else probed <= base_si + eps
+    detail = (f"{v.known} +{delta:g} (SI) moved {v.output} {base_si:g} -> {probed:g} (SI); "
+              f"declared {v.direction}")
+    return {"contract": contract, "ok": ok, "detail": detail}
+
+
+def _probe_case(res, an, name, lock, bag, sp, v: G.Verify) -> dict:
+    contract = f'verify case "{v.path}"'
+    p = res.project.root / v.path
+    try:
+        case = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return {"contract": contract, "ok": False, "detail": f"cannot read case file: {e}"}
+    overrides: dict[str, float] = {}
+    for k, spec in (case.get("inputs", {}) or {}).items():
+        try:
+            u = parse_unit(str(spec.get("unit", "")))
+            overrides[k] = u.to_si(float(spec["value"]))
+        except (UnitError, KeyError, TypeError, ValueError):
+            return {"contract": contract, "ok": False, "detail": f"malformed case input '{k}'"}
+    outs, err = _rerun_outputs(res, an, name, lock, bag, sp, overrides)
+    if outs is None:
+        return {"contract": contract, "ok": False, "detail": err}
+    misses: list[str] = []
+    for oname, spec in (case.get("expect", {}) or {}).items():
+        want = _out_si(spec.get("value"), str(spec.get("unit", ""))) if isinstance(spec, dict) else None
+        got = outs.get(oname)
+        if want is None or got is None:
+            misses.append(f"{oname}: no comparable value")
+            continue
+        if v.tol_unit:
+            try:
+                tol_si = float(v.tol or 0.0) * parse_unit(v.tol_unit).factor
+            except UnitError:
+                tol_si = 0.0
+            ok = abs(got - want) <= tol_si
+        else:
+            ok = abs(got - want) <= float(v.tol or 0.0) * max(abs(want), 1e-30)
+        if not ok:
+            misses.append(f"{oname}: got {got:g}, expected {want:g} (SI)")
+    if misses:
+        return {"contract": contract, "ok": False, "detail": "; ".join(misses)}
+    n = len(case.get("expect", {}) or {})
+    return {"contract": contract, "ok": True, "detail": f"{n} expected output(s) reproduced"}

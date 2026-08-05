@@ -336,7 +336,7 @@ def status(res: Resolution, lock: Lock) -> str:
         lines.append("|---|---|---|---|")
         lines.extend(trows)
 
-    # -- maturity: what still stands on placeholders (v0.2) --
+    # -- maturity + verification ledger (v0.2/v0.3): where belief is load-bearing --
     kinds: dict[str, list[str]] = {"python": [], "expr": [], "stub": []}
     for aname, an in sorted(analyses.items()):
         if an.core.path or an.core.text:
@@ -344,7 +344,7 @@ def status(res: Resolution, lock: Lock) -> str:
     total = sum(len(v) for v in kinds.values())
     if total:
         lines.append("")
-        lines.append("## Maturity")
+        lines.append("## Maturity and verification")
         lines.append("")
         lines.append(f"{total} executable nodes: "
                      f"{len(kinds['expr'])} expr (kernel-checked formulas), "
@@ -355,6 +355,30 @@ def status(res: Resolution, lock: Lock) -> str:
             lines.append("**Still standing on stubs**: "
                          + ", ".join(f"`{n}`" for n in kinds["stub"])
                          + " — every number downstream of these is a placeholder.")
+        naked: list[str] = []
+        contracted: list[str] = []
+        for aname in kinds["python"]:
+            an = analyses[aname]
+            if not an.verifies:
+                naked.append(aname)
+                continue
+            entry = lock.nodes.get(aname)
+            recs = (entry.run.get("verify", []) if entry else []) or []
+            marks = []
+            n_against = sum(1 for v in an.verifies if v.kind == "against")
+            if n_against:
+                marks.append(f"against×{n_against}")
+            for r in recs:
+                marks.append(("✅" if r.get("ok") else "❌") + " " + str(r.get("contract", "")).removeprefix("verify "))
+            contracted.append(f"`{aname}` ({'; '.join(marks)})")
+        if contracted:
+            lines.append("")
+            lines.append("**Verified by contract** (ADR-0008): " + "; ".join(contracted))
+        if naked:
+            lines.append("")
+            lines.append("**Trusted on the author's word** (no contract): "
+                         + ", ".join(f"`{n}`" for n in sorted(naked))
+                         + " — the review dossier (`uel pack`) marks these; belief is load-bearing here.")
     lines.append("")
     return "\n".join(lines)
 
@@ -407,6 +431,303 @@ def dot(res: Resolution) -> str:
             out.append(f'  {nid(an.intent.ref)} -> {nid(aname)} [style=dotted, color="#137333", label="intent", fontsize=8];')
     out.append("}")
     return "\n".join(out) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# The review dossier (v0.3, ADR-0008): `uel pack <node>`
+# ---------------------------------------------------------------------------
+
+
+def pack(res: Resolution, lock: Lock, node_name: str) -> str:
+    """One node's full epistemic chain, sized for a reviewing agent's context.
+
+    The zero-trust posture made operational: everything needed to audit this
+    claim without believing its author — the intent, the framing, every value
+    flowing in with its provenance, the argument itself (expr body verbatim, a
+    size-capped python source, or the black box's interface manifest), the
+    verification contracts with their latest verdicts, the acceptance targets,
+    the blast radius, and the content hashes to cite. Deliberately bounded:
+    upstream nodes appear as one-line summaries — pack them separately."""
+    doc = res.doc
+    an = doc.nodes.get(node_name)
+    if an is None:
+        return f"pack: no node named '{node_name}'\n"
+    if not isinstance(an, G.Analysis):
+        return (f"pack: '{node_name}' is a {an.KIND}; the dossier covers analyses — "
+                f"try `uel query provenance` for values\n")
+
+    rep = compute(res, lock)
+    st = rep.states.get(node_name)
+    entry = lock.nodes.get(node_name)
+    root = res.project.root
+    L: list[str] = []
+
+    h = graph_hash(doc, res.project.tolerances)[7:19]
+    L.append(f"# Review dossier — {node_name}")
+    L.append("")
+    L.append(f"> Compiled projection (spec §9.1) — graph {h} · edition {doc.edition}.")
+    if st is not None:
+        mark = "FRESH" if st.status == "fresh" else st.status.upper()
+        L.append(f"> State: **{mark}**"
+                 + (f" — {'; '.join(st.reasons)}" if st.status != "fresh" and st.reasons else "")
+                 + (". Numbers below are the current lock." if st.status == "fresh"
+                    else ". **Rebuild before trusting numbers below.**"))
+    L.append("")
+
+    # -- the claim --
+    L.append("## Claim")
+    L.append("")
+    if an.intent.ref:
+        req = doc.nodes.get(an.intent.ref)
+        rtext = f" — “{req.text}”" if isinstance(req, G.Requirement) and req.text else ""
+        L.append(f"- intent: `{an.intent.ref}`{rtext}")
+        if an.intent.text:
+            L.append(f"- the question: “{an.intent.text}”")
+    else:
+        L.append("- **no recorded intent** — an answer detached from its intent is meaningless (spec §3.1)")
+    if an.doc:
+        L.append(f"- doc: {an.doc}")
+    L.append("")
+
+    # -- the framing --
+    L.append("## Framing (the fence this argument lives inside)")
+    L.append("")
+    if an.framing.model:
+        L.append(f"- model: `{an.framing.model}`")
+    for c, r in sorted(an.framing.envelope.claims.items()):
+        L.append(f"- assumes `{c}`" + (f" because “{r}”" if r else ""))
+    for c, r in sorted(an.framing.envelope.requires.items()):
+        L.append(f"- requires `{c}` of upstream" + (f" because “{r}”" if r else ""))
+    for var, p in sorted(an.framing.envelope.predicates.items()):
+        L.append(f"- valid only for `{var}` in {_fmt_pred_text(p)}")
+    if not (an.framing.model or not an.framing.envelope.is_empty()):
+        L.append("- (no declared framing)")
+    L.append("")
+
+    # -- what flows in --
+    L.append("## Knowns (every value flowing in — references, never copies)")
+    L.append("")
+    L.append("| local | from | value | provenance |")
+    L.append("|---|---|---|---|")
+    for local in sorted(an.knowns):
+        rr = res.known_refs.get((node_name, local))
+        if rr is None:
+            L.append(f"| {local} | {an.knowns[local]} | *unresolved* | — |")
+            continue
+        if rr.kind == "output":
+            pe = lock.nodes.get(rr.node)
+            o = pe.outputs.get(rr.target.rsplit('.', 1)[1]) if pe else None
+            val = _lock_out_text(o) if o else "*not built*"
+            prov = f"computed by `{rr.node}`"
+        else:
+            q = rr.quantity
+            val = _fmt_q(q)
+            prov = q.prov.kind + (f" — {q.prov.detail}" if q.prov.detail else "") if q else "—"
+        fence = an.framing.envelope.predicates.get(local)
+        if fence is not None:
+            val += f" · fenced {_fmt_pred_text(fence)}"
+        L.append(f"| {local} | `{rr.target}` | {val} | {prov} |")
+    if an.params:
+        L.append("")
+        L.append("**Params (node-local literals):** "
+                 + "; ".join(f"`{k}` = {_fmt_q(q)}"
+                             + (f" ({q.prov.detail})" if q.prov.detail else "")
+                             for k, q in sorted(an.params.items())))
+    L.append("")
+
+    # -- the argument itself --
+    L.append("## The argument (core)")
+    L.append("")
+    L.extend(_pack_core(an, root))
+    L.append("")
+
+    # -- verification --
+    L.append("## Verification (reasons to believe, graded by the kernel)")
+    L.append("")
+    basis = {"expr": "**by construction** — the formula above is type-checked "
+                     "(dimensions + levels) and kernel-evaluated",
+             "stub": "**none** — declared nominal; no analysis stands behind these numbers",
+             "python": None}[an.core.lang if an.core.lang in ("expr", "stub") else "python"]
+    if basis:
+        L.append(f"- {basis}")
+    if an.verifies:
+        recorded = {r.get("contract"): r for r in (entry.run.get("verify", []) if entry else [])}
+        from .contracts import _ref_si
+        for i, v in enumerate(an.verifies):
+            if v.kind == "against":
+                theirs, ttxt = _ref_si(res, lock, node_name, i)
+                o = entry.outputs.get(v.output) if entry else None
+                verdict = "⏳ pending"
+                if o is not None and theirs is not None and not isinstance(o.value, list):
+                    try:
+                        mine = parse_unit(o.unit).to_si(float(o.value))
+                        if v.tol_unit:
+                            ok = abs(mine - theirs) <= float(v.tol or 0) * parse_unit(v.tol_unit).factor
+                        else:
+                            ok = abs(mine - theirs) <= float(v.tol or 0) * max(abs(theirs), 1e-30)
+                        verdict = f"✅ agrees with {ttxt}" if ok else f"❌ DISAGREES with {ttxt}"
+                    except UnitError:
+                        pass
+                band = f"{(v.tol or 0) * 100:g} %" if not v.tol_unit else f"{v.tol:g} {v.tol_unit}"
+                L.append(f"- cross-check: `{v.output}` vs `{v.ref}` within {band} — {verdict}")
+            else:
+                key = (f"verify {v.output} monotone with {v.known} {v.direction}"
+                       if v.kind == "monotone" else f'verify case "{v.path}"')
+                r = recorded.get(key)
+                verdict = ("✅ " + r.get("detail", "held") if r and r.get("ok")
+                           else "❌ " + r.get("detail", "failed") if r
+                           else "⏳ not yet probed (runs at build)")
+                L.append(f"- {key} — {verdict}")
+    elif an.core.lang not in ("expr", "stub"):
+        L.append("- **trusted (no contract)** — this core is believed on its author's word; "
+                 "consider `verify` contracts (ADR-0008)")
+    L.append("")
+
+    # -- what comes out --
+    L.append("## Outputs")
+    L.append("")
+    L.append("| output | type | computed | target | measured |")
+    L.append("|---|---|---|---|---|")
+    validation = (entry.run.get("validation", {}) if entry else {}) or {}
+    for oname in sorted(an.outputs):
+        od = an.outputs[oname]
+        o = entry.outputs.get(oname) if entry else None
+        val = _lock_out_text(o) if o else "*not built*"
+        tgt = "—"
+        if od.target_op:
+            bound = od.target_ref or (_fmt_q(od.target_value) if od.target_value else "?")
+            tgt = f"{od.target_op} {bound}"
+        meas = "—"
+        vv = validation.get(oname)
+        if vv:
+            mark = "✅" if vv.get("verdict") in ("consistent", "tightening") else "❌"
+            meas = f"{mark} {vv.get('measured')} {vv.get('unit', '')} ({vv.get('source', '?')})"
+        ty = "artifact" if od.artifact else (od.unit or "dimensionless")
+        L.append(f"| {oname} | {ty} | {val} | {tgt} | {meas} |")
+    L.append("")
+
+    # -- who depends on this --
+    consumers: dict[str, list[str]] = {}
+    for (cname, local), rr in res.known_refs.items():
+        if rr.node == node_name and rr.kind == "output":
+            consumers.setdefault(cname, []).append(rr.target.rsplit(".", 1)[1])
+    L.append("## Blast radius (who consumes this)")
+    L.append("")
+    if consumers:
+        for cname in sorted(consumers):
+            c = doc.nodes.get(cname)
+            j = c.judgment.status if isinstance(c, G.Analysis) else "—"
+            L.append(f"- `{cname}` reads {', '.join(f'`{o}`' for o in sorted(set(consumers[cname])))}"
+                     f" (judgment: {j})")
+    else:
+        L.append("- no graph consumers (leaf claim)")
+    L.append("")
+
+    # -- upstream, one line each --
+    ups = sorted({rr.node for (c, _), rr in res.known_refs.items()
+                  if c == node_name and rr.kind == "output"})
+    if ups:
+        L.append("## Upstream (one line each — pack separately to audit)")
+        L.append("")
+        for u in ups:
+            un = doc.nodes.get(u)
+            if isinstance(un, G.Analysis):
+                model = un.framing.model or un.core.lang
+                L.append(f"- `{u}` ({model}; judgment {un.judgment.status}) — `uel pack {u}`")
+        L.append("")
+
+    # -- the author's own judgment --
+    L.append("## Judgment (the author's, verbatim)")
+    L.append("")
+    j = an.judgment
+    L.append(f"- status: **{j.status}**")
+    if j.text:
+        L.append(f"- “{j.text}”")
+    if j.doubts:
+        L.append(f"- doubts: “{j.doubts}”")
+    L.append("")
+
+    # -- reproduce & cite --
+    L.append("## Reproduce and cite")
+    L.append("")
+    L.append(f"- `uel build --node {node_name}` re-executes; `uel check` re-verdicts targets/seams")
+    if st is not None:
+        L.append(f"- recipe `{st.recipe[7:19]}` = def `{str(st.parts.get('def', ''))[7:19]}` "
+                 f"+ core `{str(st.parts.get('core', ''))[7:19]}` "
+                 f"+ {len(st.parts.get('inputs', {}))} input hashes + tool pins")
+    if entry and entry.run:
+        L.append(f"- last run {entry.run.get('ts', '?')} ({entry.run.get('wall_s', '?')} s, "
+                 f"engine {entry.run.get('engine', 'python')})")
+    L.append("")
+    return "\n".join(L)
+
+
+def _fmt_pred_text(p: G.Predicate) -> str:
+    unit = f" {p.unit}" if p.unit else ""
+    if p.lo is not None and p.hi is not None:
+        return f"[{p.lo:g}, {p.hi:g}{unit}]"
+    if p.hi is not None:
+        return f"<= {p.hi:g}{unit}"
+    return f">= {p.lo:g}{unit}"
+
+
+def _lock_out_text(o) -> str:
+    v = o.value
+    s = f"[{v[0]:g}, {v[1]:g}] {o.unit}" if isinstance(v, list) else f"{v:g} {o.unit}"
+    if isinstance(o.unc, dict) and isinstance(o.unc.get("value"), (int, float)):
+        s += f" ± {o.unc['value']:g}" + (" (rel)" if o.unc.get("kind") == "rel" else "")
+    return s.strip()
+
+
+_SOURCE_CAP = 120  # lines of python source inlined before truncation
+_IFACE_CAP = 60  # lines of an interface manifest inlined before truncation
+
+
+def _pack_core(an: G.Analysis, root: Path) -> list[str]:
+    L: list[str] = []
+    if an.core.lang in ("expr", "stub"):
+        L.append(f"`core {an.core.lang}` — the formula is the argument, in evidence:")
+        L.append("")
+        L.append("```text")
+        L.extend(an.core.text.splitlines())
+        L.append("```")
+        return L
+    L.append(f"`core python \"{an.core.path}\"` — opaque to the kernel; source and wrapper below.")
+    if an.core.tools:
+        L.append("")
+        L.append("Pinned tools (identity — a different solver is a different artifact): "
+                 + ", ".join(f"`{k}` {v}" for k, v in sorted(an.core.tools.items())))
+    if an.core.interface:
+        L.append("")
+        L.append(f"Interface manifest `{an.core.interface.source}`"
+                 + (f" (sha256 {an.core.interface.sha256[:12]}…)" if an.core.interface.sha256 else "")
+                 + " — the definition of the wrapped module:")
+        ip = root / an.core.interface.source
+        try:
+            ilines = ip.read_text(encoding="utf-8", errors="replace").splitlines()
+            L.append("")
+            L.append("```")
+            L.extend(ilines[:_IFACE_CAP])
+            if len(ilines) > _IFACE_CAP:
+                L.append(f"… ({len(ilines) - _IFACE_CAP} more lines — the hash above cites the whole file)")
+            L.append("```")
+        except OSError:
+            L.append("  *(declared but not present on disk — treat as unverified)*")
+    p = root / an.core.path
+    try:
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        L.append("")
+        L.append(f"*source `{an.core.path}` unreadable — the recipe hash still pins its content*")
+        return L
+    L.append("")
+    L.append("```python")
+    L.extend(lines[:_SOURCE_CAP])
+    if len(lines) > _SOURCE_CAP:
+        L.append(f"# … ({len(lines) - _SOURCE_CAP} more lines — content is hashed; "
+                 f"open {an.core.path} to read in full)")
+    L.append("```")
+    return L
 
 
 # ---------------------------------------------------------------------------

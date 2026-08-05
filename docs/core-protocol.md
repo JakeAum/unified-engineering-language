@@ -10,6 +10,10 @@ protocol — they are parsed, type-checked, and evaluated by the kernel itself
 is their content hash. This document governs the opaque kind only.*
 
 A core is an executable script (Python, run with the project root as cwd).
+Verification probes (v0.3, ADR-0008) re-invoke the same script with perturbed
+or golden-case inputs through this same protocol; probes rewrite the `si`
+field (and scalar `value`) of the targeted inputs, so cores should read `si` —
+the protocol's recommendation since v0.1.
 The scheduler sends one JSON object on **stdin** and expects one JSON object on
 **stdout**. Exit code 0 with valid JSON is success; anything else marks the node
 `failed` (UEL0703) with stderr's tail in the diagnostic.

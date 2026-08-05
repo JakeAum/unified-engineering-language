@@ -100,6 +100,13 @@ v0.2 (ADR-0005/0007): `core.lang` ∈ python | expr | stub. For expr/stub cores
 one of `"ref": "<value reference>"` or `"value": {<quantity>}}` — the acceptance
 bound this output is re-verdicted against on every build.
 
+v0.3 (ADR-0008): `core.tools{}` (name → pinned version) and `core.interface`
+({source, sha256} — the wrapped module's own definition, e.g. an FMU
+modelDescription.xml) are identity. `verifies[]` holds verification contracts:
+`{"kind": "against"|"monotone"|"case", "output", "ref", "known", "direction",
+"path", "tol", "tol_unit"}` — sorted canonically; all identity. Probe evidence
+lands in the lock entry's `run.verify` list.
+
 ### requirement
 `text`, `quantities{}`.
 

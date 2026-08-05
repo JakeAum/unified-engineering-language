@@ -1,8 +1,8 @@
-# UEL surface syntax — v0.2 reference
+# UEL surface syntax — v0.3 reference
 
 *The customer is an AI agent (spec §5.1): plain text, line-oriented, diff-friendly,
 locally checkable, explicit over implicit. This document is the normative reference
-for the v0.2 grammar; `uel fmt` is the normative layout.*
+for the v0.3 grammar; `uel fmt` is the normative layout.*
 
 ## Lexical rules
 
@@ -190,6 +190,25 @@ analysis GtStub {
 - `target >= bound` / `target <= bound` on an output (literal or reference) is
   re-verdicted against the lock on every build and check: violated = error,
   band-crosses-the-line = warning, unbuilt = pending.
+- **Verification contracts (v0.3, ADR-0008)** — machine-checkable reasons to
+  believe a core, declared beside it:
+
+  ```
+  core python "analysis/wind_loads.py" {
+    tool "su2" "8.0.1"                          # pinned externals: identity
+    interface "vendor/model.xml" sha256 "9a41…" # the black box's own definition
+  }
+  verify gust_moment against WindLoadsOracle.outputs.gust_moment within 10 %
+  verify gust_moment monotone with wind_op rising
+  verify case "test/hotcase.json" within 1 %
+  ```
+
+  `against` is judged lock-vs-lock at check time; `monotone` and `case`
+  re-execute the core at build time and record their evidence in the lock. A
+  run that breaks its own contract is a failed run. Tolerances are relative
+  (`%`) or absolute in a unit (`within 0.5 dB`). `uel pack <node>` compiles
+  the whole chain — contracts, verdicts, source, wrapper — into one review
+  dossier.
 - Identifiers may contain hyphens (`STR-014`), so **subtraction needs
   spaces**: `a - b`. The checker recognizes `a-b` and says so.
 - Geometry nodes cannot be expr/stub cores — they must assert topology.

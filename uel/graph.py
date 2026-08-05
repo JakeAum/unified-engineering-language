@@ -622,6 +622,9 @@ class Core:
     lang: str = "python"  # identity: python | expr | stub
     path: str = ""  # record-as-locator (content is identity, fetched at hash time)
     text: str = ""  # identity: canonical expr/stub body (empty for python cores)
+    # v0.3 (ADR-0008): what wraps the black box is declarable and hashes.
+    tools: dict[str, str] = field(default_factory=dict)  # identity: tool name -> pinned version
+    interface: Optional[Datasheet] = None  # identity: manifest defining the wrapped module
 
     def to_obj(self) -> Optional[dict]:
         o: dict = {}
@@ -629,6 +632,8 @@ class Core:
             o["lang"] = self.lang
         _put(o, "path", self.path)
         _put(o, "text", self.text)
+        _put(o, "tools", dict(sorted(self.tools.items())))
+        _put(o, "interface", self.interface.to_obj() if self.interface else None)
         return o or None
 
     @classmethod
@@ -639,8 +644,10 @@ class Core:
         lang = r.str_(d, "lang", path, default="python")
         p = r.str_(d, "path", path)
         text = r.str_(d, "text", path)
-        r.unknown_fields(d, ("lang", "path", "text"), path)
-        return cls(lang, p, text)
+        tools = _str_map(d.get("tools"), r, f"{path}.tools")
+        interface = Datasheet.from_obj(d.get("interface"), r, f"{path}.interface")
+        r.unknown_fields(d, ("lang", "path", "text", "tools", "interface"), path)
+        return cls(lang, p, text, tools, interface)
 
 
 @dataclass
@@ -720,6 +727,59 @@ class Judgment:
 
 
 @dataclass
+class Verify:
+    """A verification contract (v0.3, ADR-0008): a machine-checkable reason to
+    believe this analysis, graded by the kernel instead of asserted by the author.
+
+    kind 'against' — cross-check an output vs another node's value (lock-vs-lock,
+    judged at check time). kind 'monotone' — perturb an input at build time and
+    require the output to move the declared direction. kind 'case' — re-run the
+    core on a golden input file and require the expected outputs, within tol.
+    `tol_unit` empty means relative (tol is a fraction); else absolute in that
+    unit (the natural spelling for levels: `within 0.5 dB`)."""
+
+    kind: str = "against"  # identity: against | monotone | case
+    output: str = ""  # identity
+    ref: str = ""  # identity (against)
+    known: str = ""  # identity (monotone)
+    direction: str = ""  # identity (monotone): rising | falling
+    path: str = ""  # identity (case)
+    tol: Optional[float] = None  # identity
+    tol_unit: str = ""  # identity
+
+    def to_obj(self) -> dict:
+        o: dict = {"kind": self.kind}
+        _put(o, "output", self.output)
+        _put(o, "ref", self.ref)
+        _put(o, "known", self.known)
+        _put(o, "direction", self.direction)
+        _put(o, "path", self.path)
+        _put(o, "tol", self.tol)
+        _put(o, "tol_unit", self.tol_unit)
+        return o
+
+    @classmethod
+    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Verify":
+        d = r.obj(v, path)
+        kind = r.enum(d, "kind", path, ("against", "monotone", "case"), "against")
+        output = r.str_(d, "output", path)
+        ref = r.str_(d, "ref", path)
+        known = r.str_(d, "known", path)
+        direction = r.str_(d, "direction", path)
+        if direction and direction not in ("rising", "falling"):
+            r.err(f"{path}.direction", f"expected rising|falling, got {direction!r}")
+            direction = ""
+        p = r.str_(d, "path", path)
+        tol = r.num(d, "tol", path)
+        tol_unit = r.str_(d, "tol_unit", path)
+        r.unknown_fields(d, ("kind", "output", "ref", "known", "direction", "path", "tol", "tol_unit"), path)
+        return cls(kind, output, ref, known, direction, p, tol, tol_unit)
+
+    def sort_key(self) -> tuple:
+        return (self.kind, self.output, self.ref, self.known, self.path)
+
+
+@dataclass
 class Analysis:
     """Engineering's unit of work: an argument that a claim about the system is
     justified (spec §3). akind 'geometry' marks shape-producing nodes (spec §6.2),
@@ -733,6 +793,7 @@ class Analysis:
     params: dict[str, Quantity] = field(default_factory=dict)  # identity: literal inputs
     core: Core = field(default_factory=Core)  # identity via content
     outputs: dict[str, OutputDecl] = field(default_factory=dict)  # identity
+    verifies: list[Verify] = field(default_factory=list)  # identity (v0.3)
     judgment: Judgment = field(default_factory=Judgment)  # record
     doc: str = ""  # record
     src: str = ""  # record
@@ -749,6 +810,7 @@ class Analysis:
         _put(o, "params", _quantities_obj(self.params))
         _put(o, "core", self.core.to_obj())
         _put(o, "outputs", {k: v.to_obj() for k, v in self.outputs.items()})
+        _put(o, "verifies", [v.to_obj() for v in sorted(self.verifies, key=Verify.sort_key)])
         _put(o, "judgment", self.judgment.to_obj())
         _put(o, "doc", self.doc)
         _put(o, "src", self.src)
@@ -766,16 +828,22 @@ class Analysis:
             on: OutputDecl.from_obj(ov, r, f"{path}.outputs.{on}")
             for on, ov in r.obj(d.get("outputs", {}), f"{path}.outputs").items()
         }
+        verifies = sorted(
+            (Verify.from_obj(vv, r, f"{path}.verifies[{i}]")
+             for i, vv in enumerate(d.get("verifies", []) or [])),
+            key=Verify.sort_key,
+        )
         judgment = Judgment.from_obj(d.get("judgment"), r, f"{path}.judgment")
         doc = r.str_(d, "doc", path)
         src = r.str_(d, "src", path)
         r.unknown_fields(
             d,
             ("kind", "akind", "intent", "framing", "knowns", "params", "core",
-             "outputs", "judgment", "doc", "src"),
+             "outputs", "verifies", "judgment", "doc", "src"),
             path,
         )
-        return cls(name, akind, intent, framing, knowns, params, core, outputs, judgment, doc, src)
+        return cls(name, akind, intent, framing, knowns, params, core, outputs,
+                   verifies, judgment, doc, src)
 
 
 # --- Library kinds ----------------------------------------------------------

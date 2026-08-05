@@ -1,0 +1,33 @@
+requirement R-1 {
+  wind = 25 m/s
+}
+
+analysis Oracle {
+  knowns {
+    wind <- req.R-1.wind
+  }
+  core expr {
+    m = (0.6 kg/m) * wind ^ 2
+  }
+  outputs {
+    m : N
+  }
+}
+
+analysis Tool {
+  knowns {
+    wind <- req.R-1.wind
+  }
+  core python "tool.py" {
+    tool "windsolve" "3.2.1"
+    tool "meshgen" "1.0"
+    interface "iface/windsolve.xml" sha256 "deadbeef"
+  }
+  verify m against Oracle.outputs.m within 5 %
+  verify m against Oracle.outputs.m within 2 N
+  verify m monotone with wind rising
+  verify case "golden.json" within 1 %
+  outputs {
+    m : N
+  }
+}
