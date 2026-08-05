@@ -1,0 +1,14 @@
+[project]
+name = "{{NAME}}"
+edition = "2026"
+model = ["model", "analysis"]
+
+# Hash quantization per dimension (spec §4.3): a change smaller than the declared
+# tolerance is not a change, so sub-tolerance noise never invalidates downstream
+# work. Set these to what your instruments and processes can actually resolve —
+# too tight and everything is permanently stale; too loose and real changes slip.
+[tolerances]
+length = "0.0001 m"
+mass = "0.1 g"
+force = "0.1 N"
+temperature = "0.01 K"

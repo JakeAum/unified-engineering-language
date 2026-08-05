@@ -66,7 +66,26 @@ analysis SparStaticLimit {
   history; bands tighten; discrepancies open investigations; consumers flip
   stale through the same hash machinery.
 
-## Quickstart
+## Use it on your own project
+
+```sh
+pip install "uel @ git+https://github.com/JakeAum/unified-engineering-language"
+cd your-repo && uel init .            # or: uel init hardware/
+uel check . && uel build . && uel agenda .
+```
+
+`uel init` scaffolds two layers: the **project** (manifest with hash
+tolerances, a starter model that checks clean and builds, a core on the JSON
+protocol, a measurement-campaign template) and the **agent harness** —
+`AGENTS.md` boot context, the `uel-loop` skill, a SessionStart hook that prints
+the agenda into a waking session, a PostToolUse hook that runs `uel check` on
+every `.uel` edit and hands the diagnostics straight back, a CI merge gate, and
+the standing loop protocol with its cost log. Existing files are never
+clobbered; `.claude/settings.json` is merged, not replaced; every harness file
+is a silent no-op if the kernel isn't installed. `--harness none` writes the
+project alone (ADR-0006).
+
+## Quickstart on this repository
 
 ```sh
 git clone <this repo> && cd unified-engineering-language
@@ -92,6 +111,7 @@ is deliberately zero-dependency (ADR-0002).
 |---|---|
 | `uel/` | The reference implementation (Python, stdlib only) |
 | `uel/stdlib/` | Shipped libraries, written in UEL: domain table, claim taxonomy, materials, DFM rulesets |
+| `uel/templates/` | What `uel init` writes into an adopting repository: starter project + agent harness |
 | `conformance/` | The suite all work is graded against — incl. the R1 de-risk pair set (11/11) and the mechanical fix-loop driver |
 | `tests/` | Implementation unit tests (50-node staleness demo, core-protocol contracts, calibration loop, red-team pins) |
 | `examples/apache-one/` | The vertical slice: cross-coupled, built, calibrated, leverage-measured |
@@ -101,7 +121,7 @@ is deliberately zero-dependency (ADR-0002).
 ## Grading
 
 ```sh
-python3 -m unittest discover -s tests    # 52 tests
+python3 -m unittest discover -s tests    # 69 tests
 python3 -m conformance.runner            # 54 cases: schema/parse/units/fmt/fixloop/check/derisk/agenda
 ```
 

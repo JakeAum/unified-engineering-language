@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "uel"
-version = "0.1.1"
+version = "0.1.2"
 description = "UEL — Unified Engineering Language: a content-addressed, typed graph of engineering claims. Reference implementation (kernel proof)."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -30,4 +30,4 @@ Repository = "https://github.com/JakeAum/unified-engineering-language"
 packages = ["uel"]
 
 [tool.setuptools.package-data]
-uel = ["stdlib/*.uel"]
+uel = ["stdlib/*.uel", "templates/*.tmpl"]

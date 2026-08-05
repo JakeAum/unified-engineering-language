@@ -1,0 +1,57 @@
+# The engineering loop — one iteration, continuously
+
+*Rendered by `uel init` from the UEL loop template. This is the standing
+protocol for autonomous sessions working `{{PROJECT_REL}}`: wake, run one
+iteration against the model, record what it cost, go away. Knowledge survives
+in the graph, the lock, the overlays, and the issue tracker — never in the
+session. Edit it to fit your program; keep the shape.*
+
+| parameter | this instance |
+|---|---|
+| model | `{{PROJECT_REL}}` |
+| work branches | `{{BRANCH_PREFIX}}<UTC date>` |
+| cost log | `docs/org/loop-log.md` |
+| skill | `uel-loop` (`.claude/skills/uel-loop/`) |
+
+## Who runs this
+
+An autonomous agent session, woken by a schedule (daily is a reasonable start)
+or by an event: a push, a landed measurement campaign, a filed issue. Sessions
+share no context with each other — that is the point. The graph is the memory;
+this runbook is the procedure; both outlive every context window that touches
+them.
+
+## The iteration
+
+1. **Sync.** Fetch and check out the default branch.
+2. **Read the agenda.** `uel agenda {{PROJECT_REL}} --json`. Its section order
+   is the work policy:
+   1. compile errors — nothing outranks a red check;
+   2. stale work in attention order (`»` = frontier, buildable now);
+   3. pending judgments — computed but unjudged results are epistemic debt;
+   4. discrepancies, investigation stubs, entailment candidates — reality
+      disagreed with a model; resolving that is itself an analysis;
+   5. the top `info-value` measurement — draft the campaign that captures it;
+   6. tightest budget — find what moved before margin becomes a crisis.
+3. **Do the top item, completely.** One item done beats five touched.
+4. **Gate.** `uel check` clean, `uel build` to freshness, `uel fmt`. Never
+   commit a red graph.
+5. **Record.** Commit to `{{BRANCH_PREFIX}}<UTC date>`, message naming the item
+   taken and the judgment reached. Append one line to `docs/org/loop-log.md`:
+   date, item, outcome, minutes.
+6. **File.** Anything that blocked, surprised, or cost the session becomes a
+   typed issue with provenance — what happened, which command, repro, cost.
+   Kernel defects go upstream as issues, never local patches.
+
+## Why the log matters
+
+The claim under all of this is that each design-build-test cycle makes the next
+one cheaper. That claim is empirical, and it is only measurable if iterations
+happen *and* are counted. The loop-log is the denominator: cost per merged
+claim. Two consecutive iterations with no improvement is not a disappointment —
+it is data, and it should change what the program does next.
+
+## Kill switch
+
+The schedule is the only moving part; disable or delete it and the loop stops
+while the protocol stays. Whoever funds the compute holds that switch.

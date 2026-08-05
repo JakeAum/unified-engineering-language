@@ -25,7 +25,8 @@ Kept deliberately short; prune as aggressively as you grow it.*
 | Loop | `uel/attention.py` | The economics scheduler (ADR-0005): stale-set attention ranking, information value of candidate measurements, the agenda. Advice, not authority — the checker still gates. |
 | Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status. |
 | Surfaces | `uel/diagnostics.py` | Structured diagnostics (JSON + human render). Error-code registry. |
-| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale [--rank] / hash / graph / project / calibrate / query / agenda`. |
+| Surfaces | `uel/cli.py` | `uel init / check / build / fmt / stale [--rank] / hash / graph / project / calibrate / query / agenda`. |
+| Adoption | `uel/scaffold.py`, `uel/templates/` | `uel init`: the starter project plus the agent harness (boot context, loop skill, compile-on-edit and agenda-on-wake hooks, CI gate, loop protocol). Merges, never clobbers; no-ops without the kernel (ADR-0006). |
 
 ## Grading artifacts
 

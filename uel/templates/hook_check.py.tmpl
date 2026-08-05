@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+"""PostToolUse hook: the compile gate, fired on every edit to a .uel source.
+
+UEL's compile time is seconds and needs no solver (spec §4.4), which makes it
+cheap enough to run on a keystroke instead of only at merge. On errors this
+exits 2, which feeds the diagnostics back to the agent that just made the edit —
+so a broken fence, a dropped unit, or an unresolved reference is corrected in
+the same breath it was written. Agents iterate against errors; error quality is
+a feature, not polish.
+
+Contract: hook JSON on stdin, exit 0 to allow, exit 2 to report on stderr.
+Silent no-op if UEL is not installed or the edit is not a model file — a
+scaffolded repo must never be *broken* by its own tooling.
+"""
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_REL = "{{PROJECT_REL}}"
+# Compile-time inputs only. Editing a core changes what `uel build` will run,
+# but cannot break a check — so cores stay out of the keystroke gate.
+WATCHED = (".uel", "uel.toml")
+
+
+def uel_argv() -> list[str] | None:
+    """Prefer the installed entry point; fall back to the module; else None."""
+    for argv in (["uel"], [sys.executable, "-m", "uel"]):
+        try:
+            r = subprocess.run(argv + ["--version"], capture_output=True, timeout=20)
+            if r.returncode == 0:
+                return argv
+        except (OSError, subprocess.SubprocessError):
+            continue
+    return None
+
+
+def main() -> int:
+    try:
+        event = json.load(sys.stdin)
+    except (json.JSONDecodeError, ValueError):
+        return 0
+    edited = str((event.get("tool_input") or {}).get("file_path") or "")
+    if not edited.endswith(WATCHED):
+        return 0
+
+    root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or ".").resolve()
+    project = (root / PROJECT_REL).resolve()
+    if not (project / "uel.toml").is_file():
+        return 0
+    try:
+        Path(edited).resolve().relative_to(project)
+    except ValueError:
+        return 0  # a .uel file outside this project is not ours to grade
+
+    argv = uel_argv()
+    if argv is None:
+        return 0  # UEL not installed here: stay out of the way
+
+    try:
+        r = subprocess.run(argv + ["check", "--json", str(project)],
+                           capture_output=True, text=True, timeout=120)
+        diags = json.loads(r.stdout or "[]")
+    except (OSError, subprocess.SubprocessError, json.JSONDecodeError, ValueError):
+        return 0
+
+    errors = [d for d in diags if d.get("severity") == "error"]
+    if not errors:
+        return 0
+
+    out = [f"uel check: {len(errors)} error(s) after editing {Path(edited).name} — "
+           f"compile time gates runtime, so fix these before building or committing."]
+    for d in errors[:10]:
+        span = d.get("span") or {}
+        where = span.get("file", "")
+        if span.get("line"):
+            where += f":{span['line']}"
+        out.append(f"  [{d.get('code')}] {d.get('message')}" + (f"  ({where})" if where else ""))
+        if d.get("reason"):
+            out.append(f"      why: {d['reason']}")
+        fix = d.get("fix") or {}
+        if fix.get("hint"):
+            out.append(f"      fix: {fix['hint']}")
+    if len(errors) > 10:
+        out.append(f"  ... and {len(errors) - 10} more; run: uel check {PROJECT_REL}")
+    print("\n".join(out), file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

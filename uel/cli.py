@@ -335,6 +335,18 @@ def cmd_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_init(args: argparse.Namespace) -> int:
+    from .scaffold import init, render_result
+
+    target = Path(args.path)
+    if target.exists() and not target.is_dir():
+        print(f"init: '{target}' exists and is not a directory")
+        return 2
+    result = init(target, name=args.name, harness=args.harness, force=args.force)
+    print(render_result(result, args.harness))
+    return 0 if result.ok() else 1
+
+
 def cmd_agenda(args: argparse.Namespace) -> int:
     bag = Bag()
     project, res, rollups = _load_and_resolve(args.path, bag, serial=getattr(args, "serial", "") or "")
@@ -414,6 +426,15 @@ def main(argv: list[str] | None = None) -> int:
     p_query.add_argument("--serial", default="")
     p_query.add_argument("--json", action="store_true")
 
+    p_init = sub.add_parser(
+        "init", help="scaffold a UEL project and its agent harness in this repository")
+    p_init.add_argument("path", nargs="?", default=".",
+                        help="where the model lives (default: here)")
+    p_init.add_argument("--name", default="", help="project name (default: directory name)")
+    p_init.add_argument("--harness", choices=["claude", "none"], default="claude",
+                        help="also write agent boot context, skill, hooks, and CI gate (default: claude)")
+    p_init.add_argument("--force", action="store_true", help="overwrite existing files")
+
     p_agenda = sub.add_parser(
         "agenda",
         help="the standing work queue: errors, ranked stale work, epistemic debt, "
@@ -444,6 +465,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_query(args)
     if args.cmd == "agenda":
         return cmd_agenda(args)
+    if args.cmd == "init":
+        return cmd_init(args)
     ap.print_help()
     return 2
 

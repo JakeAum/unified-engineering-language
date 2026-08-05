@@ -1,0 +1,14 @@
+# Requirements — the anchors intents point at.
+#
+# Every quantity here is load-bearing: analyses consume them BY REFERENCE, so a
+# requirements change ripples mechanically to everything downstream (spec §4.2).
+# Delete this starter and write your own; do not leave descriptive nodes behind
+# (spec §1.4: load-bearing or dead).
+requirement SYS-001 {
+  text "The frame shall carry the rated load with a factor of safety >= 2.0 against yield."
+  # '± cal' means calibration-pending: declared, unmeasured, and treated as wide.
+  # It is also the loudest signal `uel query info-value` can see — this is what
+  # the graph will tell you to go measure first.
+  rated_load = 800 N ± cal from "replace with your load case: memo, model, or test"
+  min_FoS = 2
+}

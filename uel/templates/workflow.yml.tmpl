@@ -1,0 +1,31 @@
+# The merge gate. No claim of completion means anything; only what passes this
+# gate exists. Compile time is seconds and runs no solver, so it can gate every
+# push without slowing anyone down.
+name: uel-gate
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install UEL
+        # Pin this to the UEL revision your model is calibrated against: a
+        # different kernel is a different artifact (spec §4.1).
+        run: pip install "uel @ git+https://github.com/JakeAum/unified-engineering-language@main"
+      - name: Compile time (units, conservation, envelopes, DFM, staleness)
+        run: uel check {{PROJECT_REL}}
+      - name: Formatter is canonical
+        run: uel fmt --check {{PROJECT_REL}}
+      - name: Model runtime (cores re-execute to freshness)
+        run: uel build {{PROJECT_REL}}
+      - name: Lock is committed and current
+        # A dirty lock after a clean build means someone committed results that
+        # do not match the model they claim to come from.
+        run: git diff --exit-code -- {{PROJECT_REL}}/uel.lock

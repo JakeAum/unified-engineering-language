@@ -1,0 +1,64 @@
+# {{NAME}} — agent boot context
+
+*Curated context, loaded by every agent working this repository. Kept short on
+purpose: context windows are a real resource, so this is pruned as aggressively
+as it is grown. If something here stops being load-bearing, delete it.*
+
+## What this repository holds
+
+A **UEL model** at `{{PROJECT_REL}}`: a content-addressed, typed graph of
+engineering claims — components exchanging conserved quantities across ports,
+analyses justifying design decisions, and assumption envelopes calibrated by
+test data. The model is the source of truth. Documents (BOMs, ICDs, travelers,
+status) are **compiled projections**, never authored artifacts.
+
+```
+{{PROJECT_REL}}/
+  uel.toml          project manifest + hash tolerances
+  model/*.uel       requirements, components, bindings, analyses
+  analysis/*.py     opaque cores (JSON in, JSON out — docs/core-protocol.md)
+  test/*.json       measurement campaigns; reality writes back through these
+  calibration/      overlays (as-designed + per-serial as-built), candidate rules
+  uel.lock          recorded recipes, outputs, provenance — commit it
+  out/              compiled projections — never hand-edit, always regenerate
+```
+
+## The five commands
+
+```sh
+uel agenda {{PROJECT_REL}}                  # what matters most right now
+uel check {{PROJECT_REL}}                   # compile time: seconds, no solver
+uel build {{PROJECT_REL}}                   # run the stale set in dependency order
+uel query info-value {{PROJECT_REL}}        # which measurement buys the most
+uel calibrate <campaign.json> {{PROJECT_REL}}   # reality writes back
+```
+
+## How work happens here
+
+The protocol is `docs/org/loop.md`, invocable as the `uel-loop` skill: read the
+agenda, take the top item, gate it, judge it, record the cost. A SessionStart
+hook prints the agenda when you arrive; a PostToolUse hook runs `uel check`
+whenever you edit a `.uel` file and hands you the diagnostics immediately.
+
+## What the graph guarantees, and what it does not
+
+**Guaranteed mechanically:** units and dimensions, port conservation, budget
+rollups with margins, envelope containment (a producer's guarantee must cover
+its consumer's assumption), DFM rules for bound processes, and exact staleness
+— change an input and precisely its downstream cone flips stale.
+
+**Not guaranteed, ever:** that the design is *safe*. The checker enforces
+**declared** assumptions; the dominant cause of loss in complex systems is
+interaction nobody declared. A green check means the declared world is
+consistent. Say that plainly when it matters — the green checkmark is never
+sold as safety.
+
+## Non-negotiables
+
+- Units on every physical quantity. Bare numbers are a bug.
+- References, never copies — copies do not carry staleness.
+- Every assumption declared, with rationale, including unverifiable ones.
+- Every computed result judged: is it physical, converged, sufficient, and does
+  it answer the intent? Record the residual doubts.
+- Never commit a red `uel check`. Never hand-edit `out/`.
+- UEL kernel defects become issues upstream, never local patches.

@@ -1,0 +1,27 @@
+#!/bin/bash
+# SessionStart hook: a waking agent boots with the work queue, not a blank repo.
+#
+# The agenda is the economics scheduler's answer to "where should attention go
+# first" (ADR-0005): compile state, stale work in value order, epistemic debt,
+# the highest-information measurement, tightest margins. stdout lands in the
+# session's context, so the first thing the agent knows is what matters most.
+#
+# Never fatal: a repo whose tooling is missing must still open.
+set -uo pipefail
+
+PROJECT="${CLAUDE_PROJECT_DIR:-.}/{{PROJECT_REL}}"
+[ -f "$PROJECT/uel.toml" ] || exit 0
+
+if command -v uel >/dev/null 2>&1; then
+  UEL=(uel)
+elif python3 -c "import uel" >/dev/null 2>&1; then
+  UEL=(python3 -m uel)
+else
+  echo "UEL project at {{PROJECT_REL}} (kernel not installed here: \`pip install -e <uel-repo>\` to get the agenda)"
+  exit 0
+fi
+
+echo "== UEL agenda ({{PROJECT_REL}}) — the standing work queue, highest value first =="
+"${UEL[@]}" agenda "$PROJECT" --top 5 2>&1 || true
+echo "== protocol: docs/org/loop.md · one item, gated, judged =="
+exit 0

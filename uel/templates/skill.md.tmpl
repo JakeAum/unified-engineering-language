@@ -1,0 +1,75 @@
+---
+name: uel-loop
+description: Run one iteration of the engineering loop against this repository's UEL model — read the agenda, take the highest-value item, gate it, judge it, record the cost. Use when asked to work the model, advance the design, run the loop, do the next engineering task, work the agenda, or respond to a landed test campaign. Also use when picking up autonomously with no specific instruction, since the agenda decides what matters.
+---
+
+# The UEL engineering loop — one iteration
+
+The graph is the source of truth and the memory. Your context window is neither.
+Everything you conclude must land in the graph (values, framings, judgments,
+measurements) or it did not happen.
+
+## 1. Read the agenda
+
+```sh
+uel agenda {{PROJECT_REL}} --json      # or: python3 -m uel agenda {{PROJECT_REL}} --json
+```
+
+Its section order **is** the work policy. Take the first non-empty one:
+
+1. **compile errors** — nothing outranks a red check. Fix, don't route around.
+2. **stale work, value order** — `»` marks the frontier (buildable now: every
+   upstream fresh). `uel stale {{PROJECT_REL}} --rank` shows the scores and why.
+3. **pending judgments** — a computed result nobody judged is debt, not work
+   done. Read the outputs, decide if they are physical, converged, and answer
+   the intent, then write `judgment accepted "..." doubts "..."`.
+4. **discrepancies, investigation stubs, entailment candidates** — reality
+   disagreed with a model. Complete the stub into a real investigation
+   analysis; review candidate rules and, where one is warranted, propose the
+   `lib.claims` amendment through a decision record — never silently.
+5. **measure next** — `uel query info-value {{PROJECT_REL}}` ranks what to go
+   measure. Draft or refine the campaign JSON under `test/` that would capture
+   it, with real instrumentation notes in `source`.
+6. **tightest budget** — if margin erosion is new, find which leaf moved and
+   whether a design change is warranted.
+
+## 2. Do exactly one item, completely
+
+One item done beats five touched. Real work only: re-run stale cores and judge
+them, tighten a framing whose fence is hot, propose a design change as an
+edited model that checks clean. If the item turns out to be blocked, say so
+explicitly and take the next one — never leave a half-edit behind.
+
+## 3. Gate before you claim anything
+
+```sh
+uel check {{PROJECT_REL}}      # must be clean; compile time gates runtime
+uel build {{PROJECT_REL}}      # run the stale set to freshness
+uel fmt {{PROJECT_REL}}        # one zero-config formatter, no style debates
+```
+
+A red graph is never committed. `uel check` passing is not a claim that the
+design is safe — it is a claim that the declared assumptions are consistent.
+The unmodeled is still out there (spec §10.6); say so when it matters.
+
+## 4. Record
+
+- Commit to `{{BRANCH_PREFIX}}<UTC date>` with a message naming the agenda item
+  taken and the judgment reached.
+- Append one line to `docs/org/loop-log.md`: date, item, outcome, minutes. That
+  is the leverage denominator — cost per merged claim — and the whole program's
+  justifying metric divides by it.
+- Anything that blocked, surprised, or cost you goes to the issue tracker as a
+  typed claim with provenance: what happened, which command, repro, cost.
+
+## Rules that do not bend
+
+- **Never hand-edit compiled projections** (`out/`): they are compiled from the
+  graph and stamped with its hash. Edit the graph and recompile.
+- **Never copy a value between nodes.** References carry staleness; copies
+  silently rot. If you typed a number twice, you made a bug.
+- **Declare every assumption**, including the ones the checker cannot verify.
+  Declared-but-unchecked beats undeclared.
+- **Units are mandatory.** No bare numbers with physical meaning, ever.
+- **Kernel defects are issues, not local patches.** Do not edit an installed
+  UEL kernel to make your model pass.

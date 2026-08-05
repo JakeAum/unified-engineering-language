@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.1.2 — adoption is a feature (2026-08-05)
+
+The kernel and the loop existed; neither was reachable from any repository but
+this one. Program §6.3's adoption-refusal kill criterion is untestable until an
+adopter outside this program exists, so adoption became a shipped feature
+(ADR-0006):
+
+- **`uel init [path] [--name] [--harness claude|none] [--force]`** — scaffolds
+  the project (manifest with tolerances, a starter model that checks clean and
+  builds, a core on the JSON protocol, a campaign template, calibration
+  directories) and the agent harness at the repo root. `uel init hardware/`
+  wires that path through the CI, hooks, and boot docs.
+- **The harness**: `AGENTS.md` (vendor-neutral boot context — including what
+  the graph guarantees and what it never will) + `CLAUDE.md`; the `uel-loop`
+  skill; a **SessionStart hook** that prints the agenda into a waking session;
+  a **PostToolUse hook** that runs `uel check` on every `.uel` edit and, on
+  errors, exits 2 so the diagnostics land back with the agent that made the
+  edit — the merge gate as a keystroke gate; a CI workflow (check, fmt, build,
+  lock-is-current); the loop protocol and its cost log.
+- **Safety by construction**: existing files are kept unless `--force`;
+  `.claude/settings.json` is merged (foreign hooks and permissions preserved,
+  idempotent, unparseable JSON left untouched); every harness file is a silent
+  no-op when the kernel isn't installed or the edit isn't a model file.
+- **The loop, parameterized** — `uel/templates/loop.md.tmpl` is now the
+  canonical protocol; `docs/org/user-org-loop.md` is this repo's instance and
+  says so; `docs/org/loop-template.md` names the four parameters.
+- 17 new unit tests (69 total), including that the scaffolded model is
+  formatter-canonical — caught a real defect where a fresh adopter's first CI
+  run would have failed its own `uel fmt --check`.
+
 ## v0.1.1 — the economics scheduler (2026-08-05)
 
 The substrate schedules cores; nothing scheduled cognition or experiments.

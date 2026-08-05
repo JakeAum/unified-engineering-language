@@ -3,9 +3,13 @@
 *Stage 3 of the bootstrap plan (program §9), made operational. This runbook is
 the standing protocol for the **hardware org's** working sessions: an agent
 wakes on a schedule or an event, runs one iteration against the vehicle model,
-and goes away. Knowledge survives in the graph, the lock, the overlays, and
-the issue channel — never in the session. The runbook exists so that every
-session, with no shared context, runs the same loop.*
+and goes away. It is one instance of the parameterized protocol
+([`loop-template.md`](loop-template.md)) — the extra boundary rules below are
+this instance's, because here the user org lives inside the tool's own
+repository; an adopter scaffolded by `uel init` owns their whole repo and gets
+the same loop without the wall. Knowledge survives in the graph, the lock, the
+overlays, and the issue channel — never in the session. The runbook exists so
+that every session, with no shared context, runs the same loop.*
 
 ## Who runs this
 

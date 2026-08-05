@@ -1,0 +1,36 @@
+"""Starter core: bending stress and factor of safety for the frame.
+
+The core protocol (docs/core-protocol.md, spec §3.2): one JSON object in on
+stdin, one JSON object out on stdout. Exit 0 with valid JSON is success;
+anything else marks the node failed. Compile time never opens this file — it
+checks the shell around it — so the physics in here is yours to own.
+
+`si` is every input already converted to SI, which is what you want to compute
+in. Use `p["seed"]` for ALL randomness so runs are reproducible (spec §4.3).
+"""
+
+import json
+import sys
+
+p = json.load(sys.stdin)
+I = {k: v["si"] for k, v in p["inputs"].items()}
+P = {k: v["si"] for k, v in p["params"].items()}
+
+load = I["load"]                    # N
+sigma_y = I["yield_strength"]       # Pa
+Z = P["section_modulus"]            # m^3
+arm = P["lever_arm"]                # m
+
+moment = load * arm                 # N*m
+sigma = moment / Z                  # Pa
+FoS = sigma_y / sigma
+
+json.dump({
+    "outputs": {
+        # Declare uncertainty honestly: a point value claims a precision the
+        # model does not have, and downstream fences are checked against bands.
+        "FoS": {"value": FoS, "unit": "", "unc": {"kind": "rel", "value": 0.10}},
+        "root_stress": {"value": sigma / 1e6, "unit": "MPa",
+                        "unc": {"kind": "rel", "value": 0.10}},
+    },
+}, sys.stdout)

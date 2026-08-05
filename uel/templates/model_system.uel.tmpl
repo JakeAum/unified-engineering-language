@@ -1,0 +1,60 @@
+# The system — one functional component, its physical realization, and the
+# analysis that justifies a claim about it. This is the smallest complete UEL
+# loop: requirement → framing with a declared fence → core → judgment.
+#
+# It checks clean and builds as-is. Replace it with your system, one node at a
+# time, keeping the shape: nothing merely descriptive survives (spec §1.4).
+component Frame : functional {
+  doc "The load-carrying structure between the mount and the payload"
+  port mount : mechanical.translation {
+    force: [0, 1200 N]
+  }
+  budget mass <= 2.5 kg ± 50 g
+  budget unit_cost <= 400 USD @ qty 10
+  envelope {
+    T in [-20, 80 degC]
+  }
+}
+
+# Binding to a process activates its DFM ruleset as compile-time checks; add a
+# geometry node and the shop's rules are graded against the shape you drew.
+binding Frame -> frame_v1 : physical {
+  doc "First machined realization"
+  process cnc_3axis
+  material lib.materials.AL6061_T6
+  mass = 1.9 kg ± 0.1 kg
+  unit_cost = 310 USD from "replace with a real quote"
+  lead_time = 3 week from "replace with a real quote"
+  # The realization's fence must cover the functional component's fence.
+  envelope {
+    T in [-40, 120 degC]
+  }
+}
+
+analysis FrameStatic {
+  intent req.SYS-001 "does the frame carry the rated load with the required margin?"
+  framing {
+    model beam.euler_bernoulli
+    assume static because "the rated load is quasi-static; dynamic amplification is out of scope until a gust/shock case exists"
+    assume linear_elastic because "FoS is measured against yield; post-yield behavior is not modeled"
+    # The fence: outside it, this analysis produces numbers, not results.
+    envelope {
+      load in [0, 1000 N]
+    }
+  }
+  knowns {
+    load <- req.SYS-001.rated_load
+    yield_strength <- lib.materials.AL6061_T6.yield_strength
+  }
+  params {
+    section_modulus = 4200 mm^3
+    lever_arm = 180 mm
+  }
+  core python "analysis/frame_static.py"
+  outputs {
+    FoS : dimensionless ±
+    root_stress : MPa ±
+  }
+  # Fill this in after `uel build`: an unjudged result is debt, not work done.
+  judgment pending
+}
