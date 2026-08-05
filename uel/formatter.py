@@ -16,35 +16,25 @@ from . import expr as E
 from . import uast as A
 from .lexer import Comment
 
-
 def _num(v: float) -> str:
-    if v == int(v) and abs(v) < 1e15:
-        return str(int(v))
+    if v == int(v) and abs(v) < 1e15: return str(int(v))
     return repr(v)
 
-
 def _unc(u: A.UncTail | None) -> str:
-    if u is None:
-        return ""
-    if u.kind == "cal":
-        return " ± cal"
-    if u.kind == "bare":
-        return " ±"
-    if u.kind == "rel":
-        return f" ± {_num((u.value or 0.0) * 100)} %"
+    if u is None: return ""
+    if u.kind == "cal": return " ± cal"
+    if u.kind == "bare": return " ±"
+    if u.kind == "rel": return f" ± {_num((u.value or 0.0) * 100)} %"
     unit = f" {u.unit}" if u.unit else ""
     return f" ± {_num(u.value or 0.0)}{unit}"
 
-
 def _qexpr(e: A.QExpr) -> str:
-    if isinstance(e, A.DottedRef):
-        return e.text
+    if isinstance(e, A.DottedRef): return e.text
     if isinstance(e, A.QNumber):
         unit = f" {e.unit}" if e.unit else ""
         return f"{_num(e.value)}{unit}{_unc(e.unc)}"
     unit_in = f" {e.unit}" if e.unit else ""
     return f"[{_num(e.lo)}, {_num(e.hi)}{unit_in}]{_unc(e.unc)}"
-
 
 class Formatter:
     def __init__(self, ast: A.ASTFile):
@@ -162,8 +152,7 @@ class Formatter:
             unit = f" {p.unit}" if p.unit else ""
             return f"{p.var} in [{_num(p.lo or 0)}, {_num(p.hi or 0)}{unit}]"
         unit = f" {p.unit}" if p.unit else ""
-        if p.hi is not None:
-            return f"{p.var} <= {_num(p.hi)}{unit}"
+        if p.hi is not None: return f"{p.var} <= {_num(p.hi)}{unit}"
         return f"{p.var} >= {_num(p.lo or 0)}{unit}"
 
     def binding(self, b: A.BindingDecl) -> None:
@@ -310,21 +299,16 @@ class Formatter:
                 self.put(2, f'"{_esc(r.message)}"')
         self.put(0, "}")
 
-
 def _verify_text(v: A.VerifyDecl) -> str:
     tol = ""
     if v.tol is not None:
         tol = f" within {_num(v.tol * 100)} %" if not v.tol_unit else f" within {_num(v.tol)} {v.tol_unit}"
-    if v.kind == "case":
-        return f'verify case "{_esc(v.path)}"{tol}'
-    if v.kind == "against":
-        return f"verify {v.output} against {v.ref.text if v.ref else '?'}{tol}"
+    if v.kind == "case": return f'verify case "{_esc(v.path)}"{tol}'
+    if v.kind == "against": return f"verify {v.output} against {v.ref.text if v.ref else '?'}{tol}"
     return f"verify {v.output} monotone with {v.known} {v.direction}"
-
 
 def _esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\t", "\\t")
-
 
 def format_ast(ast: A.ASTFile) -> str:
     return Formatter(ast).format()

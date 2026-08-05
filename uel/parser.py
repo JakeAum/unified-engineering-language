@@ -25,7 +25,6 @@ TOP_KEYWORDS = (
 
 _SEPS = (T.NEWLINE, T.SEMI, T.COMMA)
 
-
 class Parser:
     def __init__(self, text: str, file: str, bag: Bag):
         self.file = file
@@ -55,13 +54,11 @@ class Parser:
         return t
 
     def eat(self, kind: T) -> Optional[Token]:
-        if self.at(kind):
-            return self.bump()
+        if self.at(kind): return self.bump()
         return None
 
     def eat_ident(self, val: str) -> Optional[Token]:
-        if self.at_ident(val):
-            return self.bump()
+        if self.at_ident(val): return self.bump()
         return None
 
     def span(self, t: Token) -> Span:
@@ -73,27 +70,21 @@ class Parser:
         self.bag.error(code, msg, self.span(t), **kw)
 
     def expect(self, kind: T, what: str, **kw) -> Optional[Token]:
-        if self.at(kind):
-            return self.bump()
+        if self.at(kind): return self.bump()
         self.err(f"expected {what}, found {self.describe(self.cur())}", **kw)
         return None
 
     def expect_ident_val(self, val: str, context: str) -> Optional[Token]:
-        if self.at_ident(val):
-            return self.bump()
+        if self.at_ident(val): return self.bump()
         self.err(f"expected '{val}' {context}, found {self.describe(self.cur())}")
         return None
 
     @staticmethod
     def describe(t: Token) -> str:
-        if t.kind == T.EOF:
-            return "end of file"
-        if t.kind == T.NEWLINE:
-            return "end of line"
-        if t.kind in (T.IDENT, T.NUMBER):
-            return f"'{t.text}'"
-        if t.kind == T.STRING:
-            return "string literal"
+        if t.kind == T.EOF: return "end of file"
+        if t.kind == T.NEWLINE: return "end of line"
+        if t.kind in (T.IDENT, T.NUMBER): return f"'{t.text}'"
+        if t.kind == T.STRING: return "string literal"
         return f"'{t.text}'"
 
     def skip_seps(self) -> None:
@@ -123,23 +114,20 @@ class Parser:
                     self.bump()
                     return
                 depth -= 1
-            elif depth == 0 and t.kind == T.IDENT and t.text in TOP_KEYWORDS:
-                return
+            elif depth == 0 and t.kind == T.IDENT and t.text in TOP_KEYWORDS: return
             self.bump()
 
     # -- dotted names ------------------------------------------------------
 
     def dotted(self, what: str) -> Optional[A.DottedRef]:
         first = self.expect(T.IDENT, what)
-        if not first:
-            return None
+        if not first: return None
         parts = [first.text]
         end = first
         while self.at(T.DOT):
             self.bump()
             nxt = self.expect(T.IDENT, f"name after '.' in {what}")
-            if not nxt:
-                break
+            if not nxt: break
             parts.append(nxt.text)
             end = nxt
         sp = Span(self.file, first.line, first.col, end.col + len(end.text))
@@ -153,16 +141,13 @@ class Parser:
             self.bump()
             neg = True
         t = self.expect(T.NUMBER, what)
-        if not t:
-            return None
+        if not t: return None
         v = t.value if t.value is not None else 0.0
         return -v if neg else v
 
     def _at_unit_start(self) -> bool:
-        if self.at(T.LPAREN):
-            return True
-        if not self.at(T.IDENT):
-            return False
+        if self.at(T.LPAREN): return True
+        if not self.at(T.IDENT): return False
         # contextual words that end a value context rather than start a unit
         return self.cur().text not in ("in", "because", "from", "qty", "doubts", "x")
 
@@ -177,8 +162,7 @@ class Parser:
             if self.at(T.LPAREN):
                 parts.append("(")
                 self.bump()
-                if not expr():
-                    return False
+                if not expr(): return False
                 if not self.at(T.RPAREN):
                     self.err("expected ')' in unit expression")
                     return False
@@ -198,19 +182,16 @@ class Parser:
                     self.bump()
                     neg = "-"
                 t = self.expect(T.NUMBER, "integer exponent after '^'")
-                if not t:
-                    return False
+                if not t: return False
                 parts.append(neg + t.text)
                 last = t
             return True
 
         def expr() -> bool:
-            if not factor():
-                return False
+            if not factor(): return False
             while self.at(T.STAR) or self.at(T.SLASH):
                 parts.append(self.bump().text)
-                if not factor():
-                    return False
+                if not factor(): return False
             return True
 
         ok = expr()
@@ -219,13 +200,11 @@ class Parser:
         return text, sp
 
     def maybe_unit(self) -> tuple[str, Span]:
-        if self._at_unit_start():
-            return self.unit_tokens()
+        if self._at_unit_start(): return self.unit_tokens()
         return "", self.span(self.cur())
 
     def unc_tail(self, allow_bare: bool = False) -> Optional[A.UncTail]:
-        if not self.at(T.PM):
-            return None
+        if not self.at(T.PM): return None
         pm = self.bump()
         sp = self.span(pm)
         if self.at_ident("cal"):
@@ -233,47 +212,39 @@ class Parser:
             return A.UncTail("cal", span=sp)
         if self.at(T.NUMBER) or self.at(T.MINUS):
             v = self.signed_number("uncertainty value")
-            if v is None:
-                return A.UncTail("abs", 0.0, span=sp)
+            if v is None: return A.UncTail("abs", 0.0, span=sp)
             if self.at(T.PERCENT):
                 self.bump()
                 return A.UncTail("rel", v / 100.0, span=sp)
             unit, _ = self.maybe_unit()
             return A.UncTail("abs", v, unit, span=sp)
-        if allow_bare:
-            return A.UncTail("bare", span=sp)
+        if allow_bare: return A.UncTail("bare", span=sp)
         self.err("expected uncertainty after '±': a value ('± 10 g'), a percentage ('± 5 %'), or 'cal'",
                  reason="uncertainty is first-class; a bare '±' is only meaningful on output declarations")
         return A.UncTail("cal", span=sp)
 
     def qexpr(self, what: str, allow_ref: bool = True) -> Optional[A.QExpr]:
         t = self.cur()
-        if t.kind == T.LBRACKET:
-            return self.interval()
+        if t.kind == T.LBRACKET: return self.interval()
         if t.kind == T.NUMBER or t.kind == T.MINUS:
             start = self.cur()
             v = self.signed_number(what)
-            if v is None:
-                return None
+            if v is None: return None
             unit, usp = self.maybe_unit()
             unc = self.unc_tail()
             return A.QNumber(v, unit, usp, unc, self.span(start))
-        if t.kind == T.IDENT and allow_ref:
-            return self.dotted(what)
+        if t.kind == T.IDENT and allow_ref: return self.dotted(what)
         self.err(f"expected {what} (a number, interval '[lo, hi]', or reference), found {self.describe(t)}")
         return None
 
     def interval(self) -> Optional[A.QInterval]:
         lb = self.expect(T.LBRACKET, "'['")
-        if not lb:
-            return None
+        if not lb: return None
         lo = self.signed_number("interval lower bound")
-        if lo is None:
-            return None
+        if lo is None: return None
         self.eat(T.COMMA)
         hi = self.signed_number("interval upper bound")
-        if hi is None:
-            return None
+        if hi is None: return None
         unit, usp, inside = "", self.span(self.cur()), True
         if self._at_unit_start():
             unit, usp = self.unit_tokens()
@@ -301,11 +272,9 @@ class Parser:
                 fix=Fix(hint="replace ':' with '='", replace="=", span=self.span(self.cur())),
             )
             self.bump()
-        elif not self.expect(T.EQ, f"'=' after quantity name '{name_tok.text}'"):
-            return None
+        elif not self.expect(T.EQ, f"'=' after quantity name '{name_tok.text}'"): return None
         expr = self.qexpr(f"value for '{name_tok.text}'")
-        if expr is None:
-            return None
+        if expr is None: return None
         prov = ""
         if self.eat_ident("from"):
             prov = self.string("provenance detail string after 'from'")
@@ -320,26 +289,22 @@ class Parser:
         """Pratt parser. A statement's expression ends at newline, but a line
         may continue after a binary operator or inside parentheses."""
         lhs = self.expr_unary()
-        if lhs is None:
-            return None
+        if lhs is None: return None
         while True:
             info = self._BINOPS.get(self.cur().kind)
-            if info is None or info[1] < min_prec:
-                return lhs
+            if info is None or info[1] < min_prec: return lhs
             op, prec = info
             op_tok = self.bump()
             self.skip_newlines()  # trailing-operator continuation
             rhs = self.expression(prec if op == "^" else prec + 1)  # ^ is right-assoc
-            if rhs is None:
-                return None
+            if rhs is None: return None
             lhs = E.EBin(op, lhs, rhs, self.span(op_tok))
 
     def expr_unary(self) -> Optional[E.Expr]:
         if self.at(T.MINUS):
             mt = self.bump()
             x = self.expression(31)  # binds looser than ^, tighter than * /
-            if x is None:
-                return None
+            if x is None: return None
             return E.EUn("-", x, self.span(mt))
         return self.expr_primary()
 
@@ -357,11 +322,9 @@ class Parser:
             self.expect(T.RPAREN, "')' to close the expression group")
             return ex
         if t.kind == T.IDENT:
-            if self.peek().kind == T.LPAREN:
-                return self.expr_call()
+            if self.peek().kind == T.LPAREN: return self.expr_call()
             ref = self.dotted("name in expression")
-            if ref is None:
-                return None
+            if ref is None: return None
             return E.ERef(ref.text, ref.span)
         self.err(f"expected an expression, found {self.describe(t)}",
                  reason="expressions are built from numbers (with units), names, "
@@ -376,8 +339,7 @@ class Parser:
         if not self.at(T.RPAREN):
             while True:
                 a = self.expression(0)
-                if a is None:
-                    return None
+                if a is None: return None
                 args.append(a)
                 self.skip_newlines()
                 if self.at(T.COMMA):
@@ -393,8 +355,7 @@ class Parser:
         an identifier chain is a unit only while each symbol resolves in the
         unit table, so `3 m / span` divides (3 m) by the name `span`."""
         usp = self.span(self.cur())
-        if not (self.at(T.IDENT) and is_unit_symbol(self.cur().text)):
-            return "", usp
+        if not (self.at(T.IDENT) and is_unit_symbol(self.cur().text)): return "", usp
         parts: list[str] = []
 
         def one_symbol() -> None:
@@ -420,8 +381,7 @@ class Parser:
     def expr_block(self, kind: str) -> list[E.ExprStmt]:
         """The body of `core expr { … }` / `core stub { … }`."""
         stmts: list[E.ExprStmt] = []
-        if not self.expect(T.LBRACE, f"'{{' after 'core {kind}'"):
-            return stmts
+        if not self.expect(T.LBRACE, f"'{{' after 'core {kind}'"): return stmts
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             is_let = False
@@ -429,13 +389,10 @@ class Parser:
                 self.bump()
                 is_let = True
             nt = self.expect(T.IDENT, "assignment target (an output name, or 'let name')")
-            if nt is None:
-                break
-            if not self.expect(T.EQ, f"'=' after '{nt.text}'"):
-                break
+            if nt is None: break
+            if not self.expect(T.EQ, f"'=' after '{nt.text}'"): break
             ex = self.expression(0)
-            if ex is None:
-                break
+            if ex is None: break
             stmts.append(E.ExprStmt(nt.text, is_let, ex, self.span(nt)))
             self.skip_seps()
         self.expect(T.RBRACE, f"'}}' to close core {kind}")
@@ -446,8 +403,7 @@ class Parser:
     def envelope_block(self) -> A.EnvelopeBlock:
         kw = self.bump()  # 'envelope'
         blk = A.EnvelopeBlock(span=self.span(kw))
-        if not self.expect(T.LBRACE, "'{' after 'envelope'"):
-            return blk
+        if not self.expect(T.LBRACE, "'{' after 'envelope'"): return blk
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("assume", "require"):
@@ -479,14 +435,12 @@ class Parser:
         if self.at_ident("in"):
             self.bump()
             iv = self.interval()
-            if iv is None:
-                return None
+            if iv is None: return None
             return A.EnvPredicate(var, iv.lo, iv.hi, iv.unit, iv.unit_span, True, span=self.span(var_tok))
         if self.cur().kind in (T.LE, T.GE, T.LT, T.GT):
             op_tok = self.bump()
             v = self.signed_number(f"bound for '{var}'")
-            if v is None:
-                return None
+            if v is None: return None
             unit, usp = self.maybe_unit()
             lo, hi = (None, v) if op_tok.kind in (T.LE, T.LT) else (v, None)
             return A.EnvPredicate(var, lo, hi, unit, usp, False, op_tok.text, self.span(var_tok))
@@ -501,13 +455,11 @@ class Parser:
     def port_decl(self) -> Optional[A.PortDecl]:
         kw = self.bump()  # 'port'
         name = self.ident("port name")
-        if name is None:
-            return None
+        if name is None: return None
         if not self.expect(T.COLON, f"':' after port name '{name}' (ports are typed by domain)"):
             return None
         domain = self.dotted("port domain (e.g. electrical, mechanical.translation)")
-        if domain is None:
-            return None
+        if domain is None: return None
         port = A.PortDecl(name, domain, span=self.span(kw))
         if self.eat(T.LBRACE):
             self.skip_seps()
@@ -531,8 +483,7 @@ class Parser:
                     if not self.expect(T.COLON, f"':' after port attribute '{attr_tok.text}'"):
                         break
                     expr = self.qexpr(f"value for port attribute '{attr_tok.text}'")
-                    if expr is None:
-                        break
+                    if expr is None: break
                     prov = ""
                     if self.eat_ident("from"):
                         prov = self.string("provenance detail string after 'from'")
@@ -549,8 +500,7 @@ class Parser:
     def component_decl(self) -> Optional[A.ComponentDecl]:
         kw = self.bump()
         name = self.ident("component name")
-        if name is None:
-            return None
+        if name is None: return None
         level = "functional"
         if self.eat(T.COLON):
             lt = self.ident("abstraction level: functional, behavioral, or physical")
@@ -568,8 +518,7 @@ class Parser:
                             span=self.span(self.toks[self.i - 1])),
                 )
         comp = A.ComponentDecl(name, level, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open component '{name}'"):
-            return comp
+        if not self.expect(T.LBRACE, f"'{{' to open component '{name}'"): return comp
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("port"):
@@ -606,8 +555,7 @@ class Parser:
     def budget_decl(self) -> Optional[A.BudgetDecl]:
         kw = self.bump()
         name = self.ident("budget name (e.g. mass, unit_cost, lead_time)")
-        if name is None:
-            return None
+        if name is None: return None
         if self.at(T.LE) or self.at(T.GE):
             op = self.bump().text
         else:
@@ -615,8 +563,7 @@ class Parser:
                      reason="budgets are one-sided limits; rollups compute the margin")
             return None
         expr = self.qexpr(f"limit for budget '{name}'", allow_ref=False)
-        if expr is None:
-            return None
+        if expr is None: return None
         at_qty = None
         if self.eat(T.AT):
             self.expect_ident_val("qty", "after '@' in a cost budget")
@@ -628,8 +575,7 @@ class Parser:
     def contains_decl(self) -> Optional[A.ContainsDecl]:
         kw = self.bump()
         ref = self.dotted("contained component name")
-        if ref is None:
-            return None
+        if ref is None: return None
         count = 1
         if self.at_ident("x"):
             self.bump()
@@ -647,13 +593,11 @@ class Parser:
     def binding_decl(self) -> Optional[A.BindingDecl]:
         kw = self.bump()
         source = self.dotted("functional component to bind")
-        if source is None:
-            return None
+        if source is None: return None
         if not self.expect(T.ARROW_R, "'->' between the functional identity and its realization"):
             return None
         target = self.ident("realization name")
-        if target is None:
-            return None
+        if target is None: return None
         if self.eat(T.COLON):
             lv = self.ident("'physical' after ':'")
             if lv != "physical":
@@ -662,8 +606,7 @@ class Parser:
                                fix=Fix(hint="write ': physical'", replace="physical",
                                        span=self.span(self.toks[self.i - 1])))
         b = A.BindingDecl(source, target, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open binding '{target}'"):
-            return b
+        if not self.expect(T.LBRACE, f"'{{' to open binding '{target}'"): return b
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("process"):
@@ -719,18 +662,15 @@ class Parser:
     def analysis_decl(self, akind: str) -> Optional[A.AnalysisDecl]:
         kw = self.bump()
         name = self.ident(f"{akind} name")
-        if name is None:
-            return None
+        if name is None: return None
         an = A.AnalysisDecl(name, akind, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open {akind} '{name}'"):
-            return an
+        if not self.expect(T.LBRACE, f"'{{' to open {akind} '{name}'"): return an
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("intent"):
                 it = self.bump()
                 ref = self.dotted("intent target (the requirement or decision this analysis serves)")
-                if ref is None:
-                    break
+                if ref is None: break
                 text = self.cur().text if self.at(T.STRING) else ""
                 if self.at(T.STRING):
                     self.bump()
@@ -746,8 +686,7 @@ class Parser:
                         if not self.expect(T.ARROW_L, f"'<-' after known '{nt.text}' (knowns are references into the graph, never copies)"):
                             break
                         ref = self.dotted(f"reference for known '{nt.text}'")
-                        if ref is None:
-                            break
+                        if ref is None: break
                         an.knowns.append(A.KnownDecl(nt.text, ref, self.span(nt)))
                         self.skip_seps()
                     self.expect(T.RBRACE, "'}' to close knowns")
@@ -758,8 +697,7 @@ class Parser:
                     while self.at(T.IDENT):
                         nt = self.bump()
                         q = self.quantity_decl(nt)
-                        if q is None:
-                            break
+                        if q is None: break
                         an.params.append(q)
                         self.skip_seps()
                     self.expect(T.RBRACE, "'}' to close params")
@@ -783,8 +721,7 @@ class Parser:
                     self.skip_seps()
                     while self.at(T.IDENT):
                         o = self.output_decl()
-                        if o is None:
-                            break
+                        if o is None: break
                         an.outputs.append(o)
                         self.skip_seps()
                     self.expect(T.RBRACE, "'}' to close outputs")
@@ -846,35 +783,27 @@ class Parser:
         if self.at_ident("case"):
             self.bump()
             path = self.string("golden case file path (JSON with inputs + expect)")
-            if not self.expect_ident_val("within", "after the case file"):
-                return None
+            if not self.expect_ident_val("within", "after the case file"): return None
             tol, unit, usp = self.tol_tail()
-            if tol is None:
-                return None
+            if tol is None: return None
             return A.VerifyDecl("case", path=path, tol=tol, tol_unit=unit,
                                 tol_unit_span=usp, span=self.span(kw))
         out = self.ident("output name to verify (or 'case')")
-        if out is None:
-            return None
+        if out is None: return None
         if self.at_ident("against"):
             self.bump()
             ref = self.dotted("value reference to cross-check against")
-            if ref is None:
-                return None
-            if not self.expect_ident_val("within", "after the cross-check reference"):
-                return None
+            if ref is None: return None
+            if not self.expect_ident_val("within", "after the cross-check reference"): return None
             tol, unit, usp = self.tol_tail()
-            if tol is None:
-                return None
+            if tol is None: return None
             return A.VerifyDecl("against", output=out, ref=ref, tol=tol, tol_unit=unit,
                                 tol_unit_span=usp, span=self.span(kw))
         if self.at_ident("monotone"):
             self.bump()
-            if not self.expect_ident_val("with", "after 'monotone'"):
-                return None
+            if not self.expect_ident_val("with", "after 'monotone'"): return None
             known = self.ident("input name to perturb")
-            if known is None:
-                return None
+            if known is None: return None
             d = self.ident("'rising' or 'falling'")
             if d not in ("rising", "falling"):
                 self.bag.error("UEL0107", f"monotone direction must be rising or falling, got '{d}'",
@@ -889,8 +818,7 @@ class Parser:
         """`within 10 %` (relative, stored as fraction) or `within 0.5 dB` (absolute)."""
         usp = self.span(self.cur())
         v = self.signed_number("tolerance after 'within'")
-        if v is None:
-            return None, "", usp
+        if v is None: return None, "", usp
         if v <= 0:
             self.bag.error("UEL0107", f"verification tolerance must be positive, got {v:g}",
                            self.span(self.toks[self.i - 1]))
@@ -904,8 +832,7 @@ class Parser:
     def framing_block(self) -> A.FramingDecl:
         kw = self.bump()
         fr = A.FramingDecl(span=self.span(kw))
-        if not self.expect(T.LBRACE, "'{' after 'framing'"):
-            return fr
+        if not self.expect(T.LBRACE, "'{' after 'framing'"): return fr
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("model"):
@@ -924,8 +851,7 @@ class Parser:
 
     def output_decl(self) -> Optional[A.OutputDeclA]:
         nt = self.bump()
-        if not self.expect(T.COLON, f"':' after output name '{nt.text}'"):
-            return None
+        if not self.expect(T.COLON, f"':' after output name '{nt.text}'"): return None
         out = A.OutputDeclA(nt.text, span=self.span(nt))
         if self.at_ident("artifact"):
             self.bump()
@@ -951,8 +877,7 @@ class Parser:
                          reason="a target is the one-sided acceptance bound this output must satisfy (v0.2)")
                 return out
             te = self.qexpr(f"target bound for output '{nt.text}'")
-            if te is None:
-                return out
+            if te is None: return out
             if isinstance(te, A.QInterval) or (isinstance(te, A.QNumber) and te.unc is not None):
                 self.bag.error("UEL0107",
                                f"target for '{nt.text}' must be a plain bound (a number with unit, or a reference)",
@@ -967,23 +892,18 @@ class Parser:
     def connect_decl(self) -> Optional[A.ConnectDecl]:
         kw = self.bump()
         a = self.dotted("connection source 'component.port'")
-        if a is None:
-            return None
-        if not self.expect(T.ARROW_R, "'->' between connected ports"):
-            return None
+        if a is None: return None
+        if not self.expect(T.ARROW_R, "'->' between connected ports"): return None
         b = self.dotted("connection target 'component.port'")
-        if b is None:
-            return None
+        if b is None: return None
         return A.ConnectDecl(a, b, self.span(kw))
 
     def requirement_decl(self) -> Optional[A.RequirementDecl]:
         kw = self.bump()
         name = self.ident("requirement name (e.g. STR-014)")
-        if name is None:
-            return None
+        if name is None: return None
         req = A.RequirementDecl(name, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open requirement '{name}'"):
-            return req
+        if not self.expect(T.LBRACE, f"'{{' to open requirement '{name}'"): return req
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("text"):
@@ -995,8 +915,7 @@ class Parser:
             elif self.at(T.IDENT):
                 nt = self.bump()
                 q = self.quantity_decl(nt)
-                if q is None:
-                    break
+                if q is None: break
                 req.quantities.append(q)
             else:
                 self.err("expected 'text \"...\"' or 'name = value' in requirement")
@@ -1008,12 +927,10 @@ class Parser:
     def domain_decl(self) -> Optional[A.DomainDecl]:
         kw = self.bump()
         name_ref = self.dotted("domain name (may be dotted, e.g. mechanical.translation)")
-        if name_ref is None:
-            return None
+        if name_ref is None: return None
         name = name_ref.text
         dom = A.DomainDecl(name, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open domain '{name}'"):
-            return dom
+        if not self.expect(T.LBRACE, f"'{{' to open domain '{name}'"): return dom
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("class"):
@@ -1046,11 +963,9 @@ class Parser:
     def claim_decl(self) -> Optional[A.ClaimDecl]:
         kw = self.bump()
         name = self.ident("claim name")
-        if name is None:
-            return None
+        if name is None: return None
         cl = A.ClaimDecl(name, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open claim '{name}'"):
-            return cl
+        if not self.expect(T.LBRACE, f"'{{' to open claim '{name}'"): return cl
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("entails", "excludes"):
@@ -1083,11 +998,9 @@ class Parser:
     def material_decl(self) -> Optional[A.MaterialDecl]:
         kw = self.bump()
         name = self.ident("material name")
-        if name is None:
-            return None
+        if name is None: return None
         mat = A.MaterialDecl(name, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open material '{name}'"):
-            return mat
+        if not self.expect(T.LBRACE, f"'{{' to open material '{name}'"): return mat
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("doc"):
@@ -1096,8 +1009,7 @@ class Parser:
             elif self.at(T.IDENT):
                 nt = self.bump()
                 q = self.quantity_decl(nt)
-                if q is None:
-                    break
+                if q is None: break
                 mat.quantities.append(q)
             else:
                 self.err("expected 'name = value' property in material")
@@ -1109,11 +1021,9 @@ class Parser:
     def process_decl(self) -> Optional[A.ProcessDecl]:
         kw = self.bump()
         name = self.ident("process name")
-        if name is None:
-            return None
+        if name is None: return None
         proc = A.ProcessDecl(name, span=self.span(kw))
-        if not self.expect(T.LBRACE, f"'{{' to open process '{name}'"):
-            return proc
+        if not self.expect(T.LBRACE, f"'{{' to open process '{name}'"): return proc
         self.skip_seps()
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("rule"):
@@ -1135,26 +1045,22 @@ class Parser:
     def rule_decl(self) -> Optional[A.RuleDecl]:
         kw = self.bump()
         name = self.ident("rule name")
-        if name is None:
-            return None
-        if not self.expect(T.COLON, f"':' after rule name '{name}'"):
-            return None
+        if name is None: return None
+        if not self.expect(T.COLON, f"':' after rule name '{name}'"): return None
         if self.at_ident("forbid", "require"):
             op = self.bump().text
             feature = self.ident(f"feature name after '{op}'") or "?"
             msg = self._rule_message()
             return A.RuleDecl(name, feature, op, None, msg, self.span(kw))
         feature = self.ident("feature name (a geometry-declared feature quantity)")
-        if feature is None:
-            return None
+        if feature is None: return None
         if self.at(T.GE) or self.at(T.LE):
             op = self.bump().text
         else:
             self.err(f"expected '>=', '<=' after feature '{feature}', or 'forbid'/'require' before it")
             return None
         limit = self.qexpr(f"limit for rule '{name}'", allow_ref=False)
-        if limit is None:
-            return None
+        if limit is None: return None
         msg = self._rule_message()
         return A.RuleDecl(name, feature, op, limit, msg, self.span(kw))
 
@@ -1225,7 +1131,6 @@ class Parser:
                 self.recover_to_item()
             self.skip_seps()
         return ast
-
 
 def parse_text(text: str, file: str, bag: Bag) -> A.ASTFile:
     return Parser(text, file, bag).parse_file()

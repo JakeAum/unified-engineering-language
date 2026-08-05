@@ -26,24 +26,16 @@ from dataclasses import dataclass
 from typing import Optional
 
 from . import graph as G
-from .diagnostics import Bag, Span
+from .diagnostics import Bag, Span, span_of
 from .lockfile import Lock
 from .resolver import Resolution
 from .units import UnitError, parse_unit
 
 Interval = tuple[float, float]
 
-
-def _span_of(node: G.Node) -> Span:
-    src = getattr(node, "src", "")
-    f, _, ln = src.partition(":")
-    return Span(f, int(ln) if ln.isdigit() else 0)
-
-
 def q_interval_si(q: G.Quantity) -> Optional[Interval]:
     """Quantity → SI interval widened by declared uncertainty. None if TBD/unitless-error."""
-    if q.value is None:
-        return None
+    if q.value is None: return None
     try:
         u = parse_unit(q.unit)
     except UnitError:
@@ -60,7 +52,6 @@ def q_interval_si(q: G.Quantity) -> Optional[Interval]:
         lo, hi = lo - abs(lo) * d, hi + abs(hi) * d
     return (min(lo, hi), max(lo, hi))
 
-
 def _fmt_si(x: float, unit: str) -> str:
     try:
         u = parse_unit(unit)
@@ -68,17 +59,14 @@ def _fmt_si(x: float, unit: str) -> str:
     except UnitError:
         return f"{x:g}"
 
-
 def _fmt_iv(iv: Interval, unit: str) -> str:
     return f"[{_fmt_si(iv[0], unit)}, {_fmt_si(iv[1], unit)}]"
-
 
 @dataclass
 class Net:
     domain: str
     ports: list[tuple[str, str]]  # (component, port)
     src: Span
-
 
 def _build_nets(res: Resolution, bag: Bag) -> list[Net]:
     doc = res.doc
@@ -101,14 +89,11 @@ def _build_nets(res: Resolution, bag: Bag) -> list[Net]:
     for idx, conn in enumerate(doc.connections):
         pa = tuple(conn.from_ref.split(".", 1))
         pb = tuple(conn.to_ref.split(".", 1))
-        if len(pa) != 2 or len(pb) != 2:
-            continue
+        if len(pa) != 2 or len(pb) != 2: continue
         ca, cb = doc.nodes.get(pa[0]), doc.nodes.get(pb[0])
-        if not (isinstance(ca, G.Component) and isinstance(cb, G.Component)):
-            continue
+        if not (isinstance(ca, G.Component) and isinstance(cb, G.Component)): continue
         porta, portb = ca.ports.get(pa[1]), cb.ports.get(pb[1])
-        if porta is None or portb is None:
-            continue
+        if porta is None or portb is None: continue
         f, _, ln = conn.src.partition(":")
         csp = Span(f, int(ln) if ln.isdigit() else 0)
         # domain compatibility (UEL0401)
@@ -139,19 +124,15 @@ def _build_nets(res: Resolution, bag: Bag) -> list[Net]:
         nets.append(Net(comp.ports[eps[0][1]].domain, sorted(eps), endpoints[eps[0]]))
     return nets
 
-
 def _domain_def(res: Resolution, domain: str) -> Optional[G.DomainDef]:
     for cand in (domain, f"lib.domains.{domain}"):
         d = res.doc.nodes.get(cand)
-        if isinstance(d, G.DomainDef):
-            return d
+        if isinstance(d, G.DomainDef): return d
     return None
-
 
 def _check_net(res: Resolution, net: Net, bag: Bag) -> None:
     dom = _domain_def(res, net.domain)
-    if dom is None or dom.dclass == "data":
-        return
+    if dom is None or dom.dclass == "data": return
     doc = res.doc
 
     def port(cp: tuple[str, str]) -> G.Port:
@@ -170,16 +151,15 @@ def _check_net(res: Resolution, net: Net, bag: Bag) -> None:
         unit = dom.effort.unit
         for (scp, siv) in sources:
             for (kcp, kiv) in sinks:
-                if siv is None or kiv is None:
-                    continue
+                if siv is None or kiv is None: continue
                 if siv[0] < kiv[0] - 1e-12 or siv[1] > kiv[1] + 1e-12:
                     bag.error(
                         "UEL0404",
                         f"{net.domain} net: '{'.'.join(scp)}' supplies {eff} {_fmt_iv(siv, unit)}, "
                         f"but '{'.'.join(kcp)}' accepts only {_fmt_iv(kiv, unit)}",
-                        _span_of(doc.nodes[scp[0]]),
+                        span_of(doc.nodes[scp[0]]),
                         reason="the supplied window must be contained in the accepted window; overlap is not enough — the uncovered region is a real operating point",
-                        related=[(f"accepting port on '{kcp[0]}'", _span_of(doc.nodes[kcp[0]]))],
+                        related=[(f"accepting port on '{kcp[0]}'", span_of(doc.nodes[kcp[0]]))],
                     )
 
     # ---- flow feasibility (UEL0403): worst-case draw within declared supply ----
@@ -191,11 +171,9 @@ def _check_net(res: Resolution, net: Net, bag: Bag) -> None:
         draw_ports = []
         for cp in net.ports:
             p = port(cp)
-            if flo not in p.attrs:
-                continue
+            if flo not in p.attrs: continue
             iv = q_interval_si(p.attrs[flo])
-            if iv is None:
-                continue
+            if iv is None: continue
             if p.dir == "out":
                 supply_hi += iv[1]
                 supply_any = True
@@ -212,25 +190,20 @@ def _check_net(res: Resolution, net: Net, bag: Bag) -> None:
                 reason="conserved quantities balance at every connection (spec §2.2 kernel invariant); declared capabilities are the static face of that balance",
             )
 
-
 def _check_component_power_balance(res: Resolution, comp: G.Component, bag: Bag) -> None:
     """When a component's ports declare `power`, energy must balance feasibly:
     sum(in) must intersect sum(out) + dissipation (storage is v0.2)."""
     ins: list[Interval] = []
     outs: list[Interval] = []
     for p in comp.ports.values():
-        if "power" not in p.attrs:
-            continue
+        if "power" not in p.attrs: continue
         iv = q_interval_si(p.attrs["power"])
-        if iv is None:
-            return
+        if iv is None: return
         (ins if p.dir == "in" else outs).append(iv)
-    if not ins or not outs:
-        return
+    if not ins or not outs: return
     diss = comp.quantities.get("dissipation")
     div = q_interval_si(diss) if diss else (0.0, 0.0)
-    if div is None:
-        return
+    if div is None: return
     in_lo, in_hi = sum(i[0] for i in ins), sum(i[1] for i in ins)
     rhs_lo = sum(o[0] for o in outs) + div[0]
     rhs_hi = sum(o[1] for o in outs) + div[1]
@@ -239,22 +212,17 @@ def _check_component_power_balance(res: Resolution, comp: G.Component, bag: Bag)
             "UEL0403",
             f"'{comp.name}': energy balance infeasible — power in [{in_lo:g}, {in_hi:g}] W cannot equal "
             f"power out + dissipation [{rhs_lo:g}, {rhs_hi:g}] W",
-            _span_of(comp),
+            span_of(comp),
             reason="energy in = energy out + storage + dissipation (spec §2.2); the declared intervals leave no consistent operating point",
         )
 
-
-# ---------------------------------------------------------------------------
 # Budget rollups (spec §7.3)
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class Rollup:
     total: Interval
     parts: list[tuple[str, float, float, int]]  # (leaf, lo, hi, count)
     unknown: list[str]  # leaves with no value
-
 
 def _realizers(res: Resolution) -> dict[str, list[G.Component]]:
     out: dict[str, list[G.Component]] = {}
@@ -263,11 +231,9 @@ def _realizers(res: Resolution) -> dict[str, list[G.Component]]:
             out.setdefault(c.realizes, []).append(c)
     return out
 
-
 def _leaf_quantity(res: Resolution, comp: G.Component, qname: str, lock: Lock) -> Optional[G.Quantity]:
     q = comp.quantities.get(qname)
-    if q is not None:
-        return q
+    if q is not None: return q
     if qname == "mass" and comp.geometry:
         entry = lock.nodes.get(comp.geometry)
         out = entry.outputs.get("mass") if entry else None
@@ -278,7 +244,6 @@ def _leaf_quantity(res: Resolution, comp: G.Component, qname: str, lock: Lock) -
             return G.Quantity(float(out.value), out.unit, unc,
                               G.Provenance(kind="derived", site=comp.geometry))
     return None
-
 
 def _rollup(res: Resolution, comp: G.Component, qname: str, mode: str, lock: Lock,
             realizers: dict[str, list[G.Component]], bag: Bag,
@@ -298,15 +263,14 @@ def _rollup(res: Resolution, comp: G.Component, qname: str, mode: str, lock: Loc
                 "UEL0405",
                 f"'{comp.name}' has {len(reals)} physical realizations ({', '.join(r.name for r in reals)}); "
                 f"rollup of '{qname}' is indeterminate without a configuration (v0.2)",
-                _span_of(comp),
+                span_of(comp),
             )
     q = _leaf_quantity(res, target, qname, lock)
     if not target.contains and q is None and not comp.contains:
         return Rollup((0.0, 0.0), [], [f"{target.name}"])
     if q is not None and not target.contains:
         iv = q_interval_si(q)
-        if iv is None:
-            return Rollup((0.0, 0.0), [], [target.name])
+        if iv is None: return Rollup((0.0, 0.0), [], [target.name])
         return Rollup(iv, [(target.name, iv[0], iv[1], 1)], [])
 
     total: Interval = (0.0, 0.0)
@@ -314,8 +278,7 @@ def _rollup(res: Resolution, comp: G.Component, qname: str, mode: str, lock: Loc
     unknown: list[str] = []
     for c in target.contains or comp.contains:
         child = res.doc.nodes.get(c.ref)
-        if not isinstance(child, G.Component):
-            continue
+        if not isinstance(child, G.Component): continue
         sub = _rollup(res, child, qname, mode, lock, realizers, bag, _seen)
         if mode == "sum":
             total = (total[0] + sub.total[0] * c.count, total[1] + sub.total[1] * c.count)
@@ -325,9 +288,7 @@ def _rollup(res: Resolution, comp: G.Component, qname: str, mode: str, lock: Loc
         unknown.extend(sub.unknown)
     return Rollup(total, parts, unknown)
 
-
 _ROLLUP_MODES = {"mass": "sum", "unit_cost": "sum", "lead_time": "max"}
-
 
 def check_budgets(res: Resolution, lock: Lock, bag: Bag) -> dict[tuple[str, str], dict]:
     """Check every budget with a rollup mode; returns computed rollups for
@@ -337,12 +298,10 @@ def check_budgets(res: Resolution, lock: Lock, bag: Bag) -> dict[tuple[str, str]
     for comp in res.doc.components().values():
         for bname, budget in comp.budgets.items():
             mode = _ROLLUP_MODES.get(bname)
-            if mode is None:
-                continue
+            if mode is None: continue
             roll = _rollup(res, comp, bname, mode, lock, realizers, bag)
             limit_iv = q_interval_si(budget.limit)
-            if limit_iv is None:
-                continue
+            if limit_iv is None: continue
             unit = budget.limit.unit
             results[(comp.name, bname)] = {
                 "total": roll.total, "limit": limit_iv, "unit": unit,
@@ -367,17 +326,16 @@ def check_budgets(res: Resolution, lock: Lock, bag: Bag) -> dict[tuple[str, str]
                            + ("the whole uncertainty band is over budget" if sev == "error"
                               else "the worst case is over budget; the best case still fits"),
                 )
-                (bag.error if sev == "error" else bag.warning)("UEL0405", msg, _span_of(comp), **d_kwargs)
+                (bag.error if sev == "error" else bag.warning)("UEL0405", msg, span_of(comp), **d_kwargs)
                 continue
             if roll.unknown:
                 bag.info(
                     "UEL0405",
                     f"budget '{comp.name}.{bname}': rollup {_fmt_iv(roll.total, unit)} of "
                     f"{_fmt_si(limit_iv[1], unit)} with unvalued leaves: {', '.join(sorted(set(roll.unknown)))}",
-                    _span_of(comp),
+                    span_of(comp),
                 )
     return results
-
 
 def check_dangling(res: Resolution, bag: Bag) -> None:
     connected: set[tuple[str, str]] = set()
@@ -390,15 +348,13 @@ def check_dangling(res: Resolution, bag: Bag) -> None:
         for pname, port in comp.ports.items():
             if port.dir == "in" and (comp.name, pname) not in connected:
                 dom = _domain_def(res, port.domain)
-                if dom is not None and dom.dclass == "data":
-                    continue
+                if dom is not None and dom.dclass == "data": continue
                 bag.warning(
                     "UEL0406",
                     f"'in' port '{comp.name}.{pname}' ({port.domain}) is never connected",
-                    _span_of(comp),
+                    span_of(comp),
                     reason="an unconnected input is either dead (cut it) or a hole in the model (connect it)",
                 )
-
 
 def check(res: Resolution, bag: Bag, lock: Lock | None = None) -> dict:
     lock = lock or Lock()

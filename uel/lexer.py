@@ -17,7 +17,6 @@ from enum import Enum
 
 from .diagnostics import Bag, Span
 
-
 class T(Enum):
     IDENT = "ident"
     NUMBER = "number"
@@ -50,7 +49,6 @@ class T(Enum):
     NEWLINE = "\\n"
     EOF = "eof"
 
-
 @dataclass
 class Token:
     kind: T
@@ -62,14 +60,12 @@ class Token:
     def span(self, file: str) -> Span:
         return Span(file, self.line, self.col, self.col + max(1, len(self.text)))
 
-
 @dataclass
 class Comment:
     line: int
     col: int
     text: str  # without leading '#', stripped
     own_line: bool  # True when nothing but whitespace precedes it on the line
-
 
 _PUNCT2 = {"->": T.ARROW_R, "<-": T.ARROW_L, "<=": T.LE, ">=": T.GE, "+-": T.PM}
 _PUNCT1 = {
@@ -82,14 +78,11 @@ _PUNCT1 = {
 
 _ESCAPES = {"n": "\n", "t": "\t", '"': '"', "\\": "\\"}
 
-
 def _is_ident_start(c: str) -> bool:
     return c.isalpha() or c == "_"
 
-
 def _is_ident_char(c: str) -> bool:
     return c.isalnum() or c == "_"
-
 
 def lex(text: str, file: str, bag: Bag) -> tuple[list[Token], list[Comment]]:
     tokens: list[Token] = []
@@ -136,8 +129,7 @@ def lex(text: str, file: str, bag: Bag) -> tuple[list[Token], list[Comment]]:
             terminated = False
             while j < n:
                 ch = text[j]
-                if ch == "\n":
-                    break
+                if ch == "\n": break
                 if ch == "\\":
                     if j + 1 < n and text[j + 1] in _ESCAPES:
                         out.append(_ESCAPES[text[j + 1]])

@@ -24,7 +24,6 @@ from .resolver import Resolution
 from .staleness import compute
 from .units import UnitError, parse_unit
 
-
 def _hdr(title: str, res: Resolution, lock: Lock) -> list[str]:
     h = graph_hash(res.doc, res.project.tolerances)[7:19]
     rep = compute(res, lock)
@@ -42,10 +41,8 @@ def _hdr(title: str, res: Resolution, lock: Lock) -> list[str]:
     lines.append("")
     return lines
 
-
 def _fmt_q(q: G.Quantity | None, target_unit: str = "") -> str:
-    if q is None or q.value is None:
-        return "—"
+    if q is None or q.value is None: return "—"
     unit = target_unit or q.unit
     try:
         u_from = parse_unit(q.unit)
@@ -68,24 +65,17 @@ def _fmt_q(q: G.Quantity | None, target_unit: str = "") -> str:
         s += " ✓meas"
     return s.strip()
 
-
 def _si_range_str(iv: tuple[float, float] | None, unit: str) -> str:
-    if iv is None:
-        return "—"
+    if iv is None: return "—"
     try:
         u = parse_unit(unit)
         lo, hi = u.from_si(iv[0]), u.from_si(iv[1])
     except UnitError:
         lo, hi = iv
-    if abs(lo - hi) < 1e-12:
-        return f"{lo:g} {unit}".strip()
+    if abs(lo - hi) < 1e-12: return f"{lo:g} {unit}".strip()
     return f"[{lo:g}, {hi:g}] {unit}".strip()
 
-
-# ---------------------------------------------------------------------------
 # BOM
-# ---------------------------------------------------------------------------
-
 
 def bom(res: Resolution, lock: Lock, rollups: dict) -> str:
     doc = res.doc
@@ -105,8 +95,7 @@ def bom(res: Resolution, lock: Lock, rollups: dict) -> str:
 
     def leaf_q(comp: G.Component, qname: str) -> G.Quantity | None:
         q = comp.quantities.get(qname)
-        if q is not None:
-            return q
+        if q is not None: return q
         if qname == "mass" and comp.geometry:
             e = lock.nodes.get(comp.geometry)
             o = e.outputs.get("mass") if e else None
@@ -116,8 +105,7 @@ def bom(res: Resolution, lock: Lock, rollups: dict) -> str:
 
     def emit(name: str, count: int, depth: int) -> None:
         comp = comps.get(name)
-        if comp is None:
-            return
+        if comp is None: return
         target = realizers.get(name, comp) if comp.level != "physical" else comp
         indent = "&nbsp;" * (depth * 3)
         real = target.name if target is not comp else ("·" if comp.level == "physical" else "**unbound**")
@@ -159,11 +147,7 @@ def bom(res: Resolution, lock: Lock, rollups: dict) -> str:
     lines.append("")
     return "\n".join(lines)
 
-
-# ---------------------------------------------------------------------------
 # ICD
-# ---------------------------------------------------------------------------
-
 
 def icd(res: Resolution, lock: Lock) -> str:
     from .conservation import _build_nets  # shared net construction
@@ -206,11 +190,7 @@ def icd(res: Resolution, lock: Lock) -> str:
         lines.append("")
     return "\n".join(lines)
 
-
-# ---------------------------------------------------------------------------
 # Work instructions
-# ---------------------------------------------------------------------------
-
 
 def work_instructions(res: Resolution, lock: Lock) -> str:
     doc = res.doc
@@ -221,8 +201,7 @@ def work_instructions(res: Resolution, lock: Lock) -> str:
     lines.append("")
     any_part = False
     for name, comp in sorted(doc.components().items()):
-        if comp.level != "physical" or not comp.process:
-            continue
+        if comp.level != "physical" or not comp.process: continue
         any_part = True
         proc = doc.nodes.get(comp.process)
         pname = comp.process.removeprefix("lib.process.")
@@ -257,11 +236,7 @@ def work_instructions(res: Resolution, lock: Lock) -> str:
         lines.append("*No bound physical parts with processes in the graph yet.*")
     return "\n".join(lines) + "\n"
 
-
-# ---------------------------------------------------------------------------
 # Status / traceability
-# ---------------------------------------------------------------------------
-
 
 def status(res: Resolution, lock: Lock) -> str:
     doc = res.doc
@@ -311,8 +286,7 @@ def status(res: Resolution, lock: Lock) -> str:
     for aname, an in sorted(analyses.items()):
         for oname in sorted(an.outputs):
             od = an.outputs[oname]
-            if not od.target_op:
-                continue
+            if not od.target_op: continue
             bound_si, bound_txt, source = _bound_si(res, lock, aname, oname, od)
             entry = lock.nodes.get(aname)
             out = entry.outputs.get(oname) if entry else None
@@ -382,11 +356,7 @@ def status(res: Resolution, lock: Lock) -> str:
     lines.append("")
     return "\n".join(lines)
 
-
-# ---------------------------------------------------------------------------
 # DOT export
-# ---------------------------------------------------------------------------
-
 
 def dot(res: Resolution) -> str:
     doc = res.doc
@@ -401,8 +371,7 @@ def dot(res: Resolution) -> str:
         return '"' + name.replace('"', "") + '"'
 
     for name, node in sorted(doc.nodes.items()):
-        if name.startswith("lib."):
-            continue
+        if name.startswith("lib."): continue
         kind = node.KIND
         if kind == "analysis" and getattr(node, "akind", "") == "geometry":
             shape, color = "component", "#fce8e6"
@@ -415,8 +384,7 @@ def dot(res: Resolution) -> str:
             label = f"{name}\\n[{node.level}]"
         out.append(f'  {nid(name)} [shape={shape}, style=filled, fillcolor="{color}", label="{label}"];')
     for (consumer, local), rr in sorted(res.known_refs.items()):
-        if rr.node.startswith("lib."):
-            continue
+        if rr.node.startswith("lib."): continue
         out.append(f'  {nid(rr.node)} -> {nid(consumer)} [label="{local}", fontsize=8, color="#5f6368"];')
     for conn in doc.connections:
         a, b = conn.from_ref.split(".")[0], conn.to_ref.split(".")[0]
@@ -432,11 +400,7 @@ def dot(res: Resolution) -> str:
     out.append("}")
     return "\n".join(out) + "\n"
 
-
-# ---------------------------------------------------------------------------
 # The review dossier (v0.3, ADR-0008): `uel pack <node>`
-# ---------------------------------------------------------------------------
-
 
 def pack(res: Resolution, lock: Lock, node_name: str) -> str:
     """One node's full epistemic chain, sized for a reviewing agent's context.
@@ -450,8 +414,7 @@ def pack(res: Resolution, lock: Lock, node_name: str) -> str:
     upstream nodes appear as one-line summaries — pack them separately."""
     doc = res.doc
     an = doc.nodes.get(node_name)
-    if an is None:
-        return f"pack: no node named '{node_name}'\n"
+    if an is None: return f"pack: no node named '{node_name}'\n"
     if not isinstance(an, G.Analysis):
         return (f"pack: '{node_name}' is a {an.KIND}; the dossier covers analyses — "
                 f"try `uel query provenance` for values\n")
@@ -661,15 +624,11 @@ def pack(res: Resolution, lock: Lock, node_name: str) -> str:
     L.append("")
     return "\n".join(L)
 
-
 def _fmt_pred_text(p: G.Predicate) -> str:
     unit = f" {p.unit}" if p.unit else ""
-    if p.lo is not None and p.hi is not None:
-        return f"[{p.lo:g}, {p.hi:g}{unit}]"
-    if p.hi is not None:
-        return f"<= {p.hi:g}{unit}"
+    if p.lo is not None and p.hi is not None: return f"[{p.lo:g}, {p.hi:g}{unit}]"
+    if p.hi is not None: return f"<= {p.hi:g}{unit}"
     return f">= {p.lo:g}{unit}"
-
 
 def _lock_out_text(o) -> str:
     v = o.value
@@ -678,10 +637,8 @@ def _lock_out_text(o) -> str:
         s += f" ± {o.unc['value']:g}" + (" (rel)" if o.unc.get("kind") == "rel" else "")
     return s.strip()
 
-
 _SOURCE_CAP = 120  # lines of python source inlined before truncation
 _IFACE_CAP = 60  # lines of an interface manifest inlined before truncation
-
 
 def _pack_core(an: G.Analysis, root: Path) -> list[str]:
     L: list[str] = []
@@ -729,11 +686,7 @@ def _pack_core(an: G.Analysis, root: Path) -> list[str]:
     L.append("```")
     return L
 
-
-# ---------------------------------------------------------------------------
 # Instance query (v0.2): `contains X x N` mints addressable slots
-# ---------------------------------------------------------------------------
-
 
 def instances(res: Resolution) -> str:
     """Expand the containment tree into instance designators — the addresses
@@ -748,8 +701,7 @@ def instances(res: Resolution) -> str:
 
     def walk(name: str, prefix: str, depth: int) -> None:
         comp = comps.get(name)
-        if comp is None:
-            return
+        if comp is None: return
         target = comps.get(name)
         realizer = next((c for c in comps.values() if c.realizes == name), None)
         eff = realizer or target
@@ -768,17 +720,12 @@ def instances(res: Resolution) -> str:
     for r in roots:
         lines.append(r)
         walk(r, "", 1)
-    if not lines:
-        return "instances: no containment tree in this graph\n"
+    if not lines: return "instances: no containment tree in this graph\n"
     lines.append("")
     lines.append("as-built state attaches per designator: `uel calibrate <file> --serial <designator>`")
     return "\n".join(lines) + "\n"
 
-
-# ---------------------------------------------------------------------------
 # Provenance query
-# ---------------------------------------------------------------------------
-
 
 def provenance(res: Resolution, target: str, lock: Lock) -> str:
     from .calibration import load_overlay
@@ -812,8 +759,7 @@ def provenance(res: Resolution, target: str, lock: Lock) -> str:
         from .calibration import _find_quantity
 
         q = _find_quantity(res, target)
-        if q is None:
-            return f"provenance: '{target}' does not name a quantity"
+        if q is None: return f"provenance: '{target}' does not name a quantity"
         lines.append(f"{target}")
         val = list(q.value) if isinstance(q.value, tuple) else q.value
         lines.append(f"  value    {val} {q.unit}".rstrip())

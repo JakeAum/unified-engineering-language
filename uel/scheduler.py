@@ -35,7 +35,6 @@ from .units import UnitError, parse_unit
 CORE_TIMEOUT_S = 300
 PINNED_SEED = 0  # spec §4.3 draft rule: solver nondeterminism handled by pinned seeds
 
-
 @dataclass
 class BuildResult:
     ran: list[str] = field(default_factory=list)
@@ -44,7 +43,6 @@ class BuildResult:
 
     def ok(self) -> bool:
         return not self.failed
-
 
 def _payload_quantity(q: G.Quantity) -> dict:
     o: dict = {}
@@ -61,13 +59,11 @@ def _payload_quantity(q: G.Quantity) -> dict:
         o["unc"] = {"kind": q.unc.kind, **({"value": q.unc.value} if q.unc.value is not None else {})}
     return o
 
-
 def _node_span(res: Resolution, name: str) -> Span:
     node = res.doc.nodes.get(name)
     src = getattr(node, "src", "")
     f, _, ln = src.partition(":")
     return Span(f, int(ln) if ln.isdigit() else 0)
-
 
 def build(res: Resolution, bag: Bag, only: list[str] | None = None,
           dry_run: bool = False, verbose: bool = True) -> BuildResult:
@@ -85,8 +81,7 @@ def build(res: Resolution, bag: Bag, only: list[str] | None = None,
 
     rep = compute(res, lock)
     for name in rep.order:
-        if only and name not in only:
-            continue
+        if only and name not in only: continue
         # recompute against the *current* lock: upstream runs may have restored freshness
         current = compute(res, lock).states[name]
         if current.status == "fresh":
@@ -115,7 +110,6 @@ def build(res: Resolution, bag: Bag, only: list[str] | None = None,
     if not dry_run:
         lock.save(res.project.lock_path)
     return result
-
 
 def _assemble_payload(res: Resolution, an: G.Analysis, name: str, lock: Lock,
                       bag: Bag, sp: Span) -> dict | None:
@@ -156,7 +150,6 @@ def _assemble_payload(res: Resolution, an: G.Analysis, name: str, lock: Lock,
                              for k, o in sorted(an.outputs.items())},
     }
 
-
 def _invoke(root, core_path: str, payload: dict) -> tuple[dict | None, str]:
     """Run a python core once; return (stdout object, error text)."""
     cmd = [sys.executable, str(root / core_path)]
@@ -179,7 +172,6 @@ def _invoke(root, core_path: str, payload: dict) -> tuple[dict | None, str]:
     except (ValueError, AssertionError):
         return None, "core did not emit a JSON object on stdout"
 
-
 def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) -> LockEntry:
     sp = _node_span(res, name)
     entry = LockEntry(status="failed")
@@ -187,8 +179,7 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
     root = res.project.root
 
     payload = _assemble_payload(res, an, name, lock, bag, sp)
-    if payload is None:
-        return entry
+    if payload is None: return entry
 
     cmd = [sys.executable, str(root / an.core.path)]
     t0 = time.monotonic()
@@ -316,11 +307,7 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
     }
     return entry
 
-
-# ---------------------------------------------------------------------------
 # expr/stub cores: kernel-evaluated (v0.2, ADR-0005)
-# ---------------------------------------------------------------------------
-
 
 def _si_iv(value, unit_text: str, unc: dict | None) -> X.IV | None:
     """A value + declared band → a canonical-SI (lo, nominal, hi) triple.
@@ -335,8 +322,7 @@ def _si_iv(value, unit_text: str, unc: dict | None) -> X.IV | None:
     if isinstance(value, (list, tuple)) and len(value) == 2:
         lo, hi = u.to_si(float(value[0])), u.to_si(float(value[1]))
         return (min(lo, hi), (lo + hi) / 2.0, max(lo, hi))
-    if not isinstance(value, (int, float)) or isinstance(value, bool):
-        return None
+    if not isinstance(value, (int, float)) or isinstance(value, bool): return None
     si = u.to_si(float(value))
     half = 0.0
     if unc and isinstance(unc.get("value"), (int, float)):
@@ -345,7 +331,6 @@ def _si_iv(value, unit_text: str, unc: dict | None) -> X.IV | None:
         elif unc.get("kind") == "rel":
             half = abs(float(value)) * abs(float(unc["value"])) * u.factor
     return (si - half, si, si + half)
-
 
 def _expr_ivs(res: Resolution, an: G.Analysis, name: str, lock: Lock,
               bag: Bag, sp: Span) -> dict[str, X.IV] | None:
@@ -382,7 +367,6 @@ def _expr_ivs(res: Resolution, an: G.Analysis, name: str, lock: Lock,
         ivs[pname] = iv
     return ivs
 
-
 def _run_expr_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) -> LockEntry:
     sp = _node_span(res, name)
     entry = LockEntry(status="failed")
@@ -394,8 +378,7 @@ def _run_expr_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
         return entry
 
     ivs = _expr_ivs(res, an, name, lock, bag, sp)
-    if ivs is None:
-        return entry
+    if ivs is None: return entry
 
     t0 = time.monotonic()
     try:
@@ -432,22 +415,18 @@ def _run_expr_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
     }
     return entry
 
-
 # ---------------------------------------------------------------------------
 # Verification probes (v0.3, ADR-0008): monotone + golden-case contracts,
 # executed right after a successful run; the evidence lives in the lock.
 # ---------------------------------------------------------------------------
-
 
 def _out_si(value, unit_text: str) -> float | None:
     try:
         u = parse_unit(unit_text)
     except UnitError:
         return None
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return u.to_si(float(value))
+    if isinstance(value, (int, float)) and not isinstance(value, bool): return u.to_si(float(value))
     return None
-
 
 def _rerun_outputs(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag,
                    sp: Span, overrides: dict[str, float]) -> tuple[dict[str, float] | None, str]:
@@ -455,8 +434,7 @@ def _rerun_outputs(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
     if an.core.lang in ("expr", "stub"):
         prog = res.expr_programs.get(name)
         ivs = _expr_ivs(res, an, name, lock, bag, sp)
-        if prog is None or ivs is None:
-            return None, "inputs unavailable for probe"
+        if prog is None or ivs is None: return None, "inputs unavailable for probe"
         for k, si in overrides.items():
             ivs[k] = (si, si, si)
         try:
@@ -465,12 +443,10 @@ def _rerun_outputs(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
             return None, f"probe evaluation failed at '{e.target}': {e}"
         return {o: iv[1] for o, iv in outs.items()}, ""
     payload = _assemble_payload(res, an, name, lock, bag, sp)
-    if payload is None:
-        return None, "inputs unavailable for probe"
+    if payload is None: return None, "inputs unavailable for probe"
     for k, si in overrides.items():
         slot = payload["inputs"].get(k) if k in payload["inputs"] else payload["params"].get(k)
-        if slot is None:
-            return None, f"probe input '{k}' is not an input of this core"
+        if slot is None: return None, f"probe input '{k}' is not an input of this core"
         slot["si"] = si
         try:
             u = parse_unit(str(slot.get("unit", "")))
@@ -479,8 +455,7 @@ def _rerun_outputs(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
         except UnitError:
             pass
     obj, err = _invoke(res.project.root, an.core.path, payload)
-    if obj is None:
-        return None, err
+    if obj is None: return None, err
     outs: dict[str, float] = {}
     for oname, got in (obj.get("outputs", {}) or {}).items():
         if isinstance(got, dict) and isinstance(got.get("value"), (int, float)):
@@ -488,7 +463,6 @@ def _rerun_outputs(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: 
             if si is not None:
                 outs[oname] = si
     return outs, ""
-
 
 def _current_input_si(res: Resolution, an: G.Analysis, name: str, lock: Lock, key: str) -> float | None:
     rr = res.known_refs.get((name, key))
@@ -500,13 +474,11 @@ def _current_input_si(res: Resolution, an: G.Analysis, name: str, lock: Lock, ke
         q = rr.quantity
     else:
         q = an.params.get(key)
-    if q is None or q.value is None:
-        return None
+    if q is None or q.value is None: return None
     v = q.value
     if isinstance(v, tuple):
         v = (v[0] + v[1]) / 2.0
     return _out_si(float(v), q.unit)
-
 
 def run_verify_probes(res: Resolution, an: G.Analysis, name: str, entry: LockEntry,
                       lock: Lock, bag: Bag) -> None:
@@ -530,7 +502,6 @@ def run_verify_probes(res: Resolution, an: G.Analysis, name: str, entry: LockEnt
     if records:
         entry.run["verify"] = records
 
-
 def _probe_monotone(res, an, name, entry, lock, bag, sp, v: G.Verify) -> dict:
     contract = f"verify {v.output} monotone with {v.known} {v.direction}"
     base_out = entry.outputs.get(v.output)
@@ -549,7 +520,6 @@ def _probe_monotone(res, an, name, entry, lock, bag, sp, v: G.Verify) -> dict:
               f"declared {v.direction}")
     return {"contract": contract, "ok": ok, "detail": detail}
 
-
 def _probe_case(res, an, name, lock, bag, sp, v: G.Verify) -> dict:
     contract = f'verify case "{v.path}"'
     p = res.project.root / v.path
@@ -565,8 +535,7 @@ def _probe_case(res, an, name, lock, bag, sp, v: G.Verify) -> dict:
         except (UnitError, KeyError, TypeError, ValueError):
             return {"contract": contract, "ok": False, "detail": f"malformed case input '{k}'"}
     outs, err = _rerun_outputs(res, an, name, lock, bag, sp, overrides)
-    if outs is None:
-        return {"contract": contract, "ok": False, "detail": err}
+    if outs is None: return {"contract": contract, "ok": False, "detail": err}
     misses: list[str] = []
     for oname, spec in (case.get("expect", {}) or {}).items():
         want = _out_si(spec.get("value"), str(spec.get("unit", ""))) if isinstance(spec, dict) else None
@@ -584,7 +553,6 @@ def _probe_case(res, an, name, lock, bag, sp, v: G.Verify) -> dict:
             ok = abs(got - want) <= float(v.tol or 0.0) * max(abs(want), 1e-30)
         if not ok:
             misses.append(f"{oname}: got {got:g}, expected {want:g} (SI)")
-    if misses:
-        return {"contract": contract, "ok": False, "detail": "; ".join(misses)}
+    if misses: return {"contract": contract, "ok": False, "detail": "; ".join(misses)}
     n = len(case.get("expect", {}) or {})
     return {"contract": contract, "ok": True, "detail": f"{n} expected output(s) reproduced"}

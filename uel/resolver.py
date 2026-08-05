@@ -36,7 +36,6 @@ from .units import (
     D_MASS, D_CURRENCY, D_TIME, D_POWER, dim_mul,
 )
 
-
 @dataclass
 class ResolvedRef:
     """A value reference resolved to its producing node + member path."""
@@ -46,7 +45,6 @@ class ResolvedRef:
     unit: str  # declared unit text of the referenced value ("" = dimensionless)
     kind: str  # "quantity" | "port_attr" | "output"
     quantity: G.Quantity | None = None  # for statically-known values
-
 
 @dataclass
 class Resolution:
@@ -62,9 +60,7 @@ class Resolution:
     # v0.3: resolved verify-against references: (node, verify index) -> ResolvedRef
     verify_refs: dict[tuple[str, int], ResolvedRef] = field(default_factory=dict)
 
-
 _BUDGET_DIMS = {"mass": D_MASS, "unit_cost": D_CURRENCY, "lead_time": D_TIME}
-
 
 class Resolver:
     def __init__(self, project: Project, bag: Bag):
@@ -141,8 +137,7 @@ class Resolver:
         return True
 
     def declare_item(self, item: A.Item, ns: str) -> None:
-        if isinstance(item, A.ConnectDecl):
-            return
+        if isinstance(item, A.ConnectDecl): return
         name = self.qualify(item, ns)
         self.declare(name, item.span)
         if isinstance(item, A.BindingDecl) and item.geometry_code:
@@ -153,8 +148,7 @@ class Resolver:
 
     def unit_of(self, text: str, span: Span) -> str:
         """Validate a unit expression; return canonical text ('' if invalid/empty)."""
-        if not text:
-            return ""
+        if not text: return ""
         try:
             return parse_unit(text).text
         except UnitError as e:
@@ -174,8 +168,7 @@ class Resolver:
 
     def quantity(self, expr: A.QExpr, file: str, prov_detail: str = "") -> G.Quantity | None:
         """Literal QExpr → Quantity. Returns None for reference-valued expressions."""
-        if isinstance(expr, A.DottedRef):
-            return None
+        if isinstance(expr, A.DottedRef): return None
         unit = self.unit_of(expr.unit, expr.unit_span)
         unc = G.Uncertainty()
         if expr.unc is not None:
@@ -270,8 +263,7 @@ class Resolver:
         return env
 
     def check_claim_known(self, claim: str, span: Span) -> None:
-        if claim in self.decl_spans or f"lib.claims.{claim}" in self.decl_spans:
-            return
+        if claim in self.decl_spans or f"lib.claims.{claim}" in self.decl_spans: return
         known = sorted(
             n.removeprefix("lib.claims.") for n in self.decl_spans if n.startswith("lib.claims.")
         )
@@ -391,8 +383,7 @@ class Resolver:
                 self.bag.error("UEL0106", f"budget '{b.name}' declared twice", b.span)
                 continue
             q = self.quantity(b.expr, file)
-            if q is None:
-                continue
+            if q is None: continue
             expected = _BUDGET_DIMS.get(b.name)
             if expected is not None and q.unit is not None:
                 try:
@@ -658,15 +649,13 @@ class Resolver:
     def lookup_domain(self, ref: str) -> G.DomainDef | None:
         for cand in (ref, f"lib.domains.{ref}"):
             n = self.doc.nodes.get(cand)
-            if isinstance(n, G.DomainDef):
-                return n
+            if isinstance(n, G.DomainDef): return n
         return None
 
     def lookup_prefixed(self, ref: str, prefix: str, klass) -> G.Node | None:
         for cand in (ref, f"{prefix}.{ref}"):
             n = self.doc.nodes.get(cand)
-            if isinstance(n, klass):
-                return n
+            if isinstance(n, klass): return n
         return None
 
     def resolve_all_refs(self) -> None:
@@ -771,8 +760,7 @@ class Resolver:
         expected["power"] = "W"
         for aname, q in port.attrs.items():
             exp_unit = expected.get(aname)
-            if exp_unit is None or not q.unit:
-                continue
+            if exp_unit is None or not q.unit: continue
             try:
                 got, want = parse_unit(q.unit), parse_unit(exp_unit)
             except UnitError:
@@ -798,22 +786,18 @@ class Resolver:
                 an.knowns[local] = rr.target
                 self.res.known_refs[(name, local)] = rr
         for out_name, od in an.outputs.items():
-            if not od.target_ref:
-                continue
+            if not od.target_ref: continue
             tsp = self.mspan("target", name, out_name, default=sp)
             rr = self.resolve_value_ref(od.target_ref, tsp, f"target of {name}.{out_name}")
-            if rr is None:
-                continue
+            if rr is None: continue
             od.target_ref = rr.target
             self.res.target_refs[(name, out_name)] = rr
             self._check_target_type(name, out_name, od, rr.unit, tsp)
         for i, gv in enumerate(an.verifies):
-            if gv.kind != "against" or not gv.ref:
-                continue
+            if gv.kind != "against" or not gv.ref: continue
             vsp = self.mspan("verify", name, i, default=sp)
             rr = self.resolve_value_ref(gv.ref, vsp, f"verify reference on {name}.{gv.output}")
-            if rr is None:
-                continue
+            if rr is None: continue
             gv.ref = rr.target
             self.res.verify_refs[(name, i)] = rr
             out = an.outputs.get(gv.output)
@@ -940,8 +924,7 @@ class Resolver:
         itself is under the units checker, before anything runs."""
         for name, stmts in sorted(self.res.expr_programs.items()):
             an = self.doc.nodes.get(name)
-            if not isinstance(an, G.Analysis):
-                continue
+            if not isinstance(an, G.Analysis): continue
             env: dict[str, X.VType] = {}
             for local in an.knowns:
                 rr = self.res.known_refs.get((name, local))
@@ -956,8 +939,7 @@ class Resolver:
                     env[pname] = parse_unit(q.unit).vtype
                 except UnitError:
                     continue
-            outputs = {oname: od.unit for oname, od in an.outputs.items()
-                       if not od.artifact}
+            outputs = {oname: od.unit for oname, od in an.outputs.items() if not od.artifact}
             for oname, od in an.outputs.items():
                 if od.artifact:
                     self.bag.error(
@@ -998,7 +980,6 @@ class Resolver:
                 reason="an analysis cannot (transitively) consume its own outputs; staleness could never settle",
             )
 
-
 def _find_cycle(edges: dict[str, list[str]]) -> list[str] | None:
     WHITE, GRAY, BLACK = 0, 1, 2
     color: dict[str, int] = {}
@@ -1014,8 +995,7 @@ def _find_cycle(edges: dict[str, list[str]]) -> list[str] | None:
                 return stack[i:] + [v]
             if st == WHITE:
                 r = dfs(v)
-                if r:
-                    return r
+                if r: return r
         stack.pop()
         color[u] = BLACK
         return None
@@ -1023,10 +1003,8 @@ def _find_cycle(edges: dict[str, list[str]]) -> list[str] | None:
     for u in list(edges):
         if color.get(u, WHITE) == WHITE:
             r = dfs(u)
-            if r:
-                return r
+            if r: return r
     return None
-
 
 def resolve_project(project: Project, bag: Bag) -> Resolution:
     return Resolver(project, bag).run()

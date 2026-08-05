@@ -1,23 +1,26 @@
 """The semantic graph — UEL's data model, defined before and independently of syntax.
 
-Kernel kinds (spec §2): component, port (owned by a component), quantity, and
-analysis (the claim/argument node, spec §3). Library kinds the kernel must be able
-to represent but ships as versioned libraries (spec §5.3): domain, claim (structural-
-assumption taxonomy), material, process (DFM ruleset). Requirements are kernel-adjacent:
-they are the anchors intents point at.
+Kernel kinds (spec §2): component, port, quantity, analysis (the claim node).
+Library kinds: domain, claim taxonomy, material, process. Requirements anchor
+intents. Every node maps to plain JSON (omit-empty, encoded by `uel.canon`).
+Two field classes exist, marked below:
 
-Serialization: every node maps to a plain JSON object via `to_obj`/`from_obj`, with
-omit-empty semantics, encoded by `uel.canon`. Two field classes exist and are marked
-below:
+- identity fields — semantic content; participate in hashing;
+- record fields — provenance-of-authorship (`src`, doc, judgment prose…), kept
+  in the graph but excluded from recipe hashes, so moving a declaration or
+  writing judgment never invalidates physics (hashing lands in `uel.hashing`).
 
-- identity fields — part of a node's semantic content; participate in hashing.
-- record fields — provenance-of-authorship metadata (`src` sites, timestamps, doc,
-  judgment prose). Kept in the graph, excluded from recipe hashes so that moving a
-  declaration to another line, or writing down judgment, never invalidates physics.
-  (Hashing itself lands in `uel.hashing`; the identity/record split is declared here.)
-
-This module is deliberately dependency-free and syntax-free: the parser produces it,
-the checker consumes it, and conformance grades its round-trip stability.
+Serialization is spec-driven: each class declares SPEC rows
+(attr, json_key, kind, emit, *opts) consumed by `_to_obj`/`_read`.
+kind: s str · rs required-str · n num · i int · b bool · e enum(allowed,
+default) · q quantity · oq optional-quantity · qm quantity-map · o sub-obj
+(None reads as default instance) · oo optional sub-obj · om obj-map · ol
+sorted obj-list(key) · sm str-map · sl sorted str-list · raw.
+emit: "p" omit-empty · "a" always · ("d", V) omit when == V.
+Class extras: HEAD constant pairs (e.g. kind); EMPTY_NONE (empty object
+serializes as None); _post(kw, r, path) cross-field validation.
+Quantity, Uncertainty, and OutputDecl keep hand-written codecs — their
+encodings are irregular and they are the hashed hot path.
 """
 
 from __future__ import annotations
@@ -28,11 +31,6 @@ from typing import Any, Optional, Union
 from .canon import canonical_bytes, canonical_str
 from . import EDITION, SCHEMA_VERSION
 
-# ---------------------------------------------------------------------------
-# Errors collected during reading
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class SchemaError:
     path: str
@@ -40,7 +38,6 @@ class SchemaError:
 
     def __str__(self) -> str:  # pragma: no cover - convenience
         return f"{self.path}: {self.message}"
-
 
 class _Reader:
     """Field extraction with error accumulation instead of exceptions."""
@@ -70,8 +67,7 @@ class _Reader:
 
     def num(self, d: dict, key: str, path: str) -> Optional[float]:
         v = d.get(key, None)
-        if v is None:
-            return None
+        if v is None: return None
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             self.err(f"{path}.{key}", f"expected number, got {type(v).__name__}")
             return None
@@ -79,8 +75,7 @@ class _Reader:
 
     def int_(self, d: dict, key: str, path: str) -> Optional[int]:
         v = d.get(key, None)
-        if v is None:
-            return None
+        if v is None: return None
         if isinstance(v, bool) or not isinstance(v, int):
             self.err(f"{path}.{key}", f"expected integer, got {type(v).__name__}")
             return None
@@ -88,8 +83,7 @@ class _Reader:
 
     def bool_(self, d: dict, key: str, path: str, default: bool = False) -> bool:
         v = d.get(key, None)
-        if v is None:
-            return default
+        if v is None: return default
         if not isinstance(v, bool):
             self.err(f"{path}.{key}", f"expected boolean, got {type(v).__name__}")
             return default
@@ -107,22 +101,107 @@ class _Reader:
             if k not in known:
                 self.err(f"{path}.{k}", "unknown field")
 
-
 def _put(d: dict, key: str, value: Any) -> None:
     """Omit-empty insertion: None, "", {}, [] are omitted from canonical form."""
-    if value is None or value == "" or value == {} or value == []:
-        return
+    if value is None or value == "" or value == {} or value == []: return
     d[key] = value
 
+def _str_map(v: Any, r: _Reader, path: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if v is None: return out
+    for k, s in r.obj(v, path).items():
+        if not isinstance(s, str):
+            r.err(f"{path}.{k}", f"expected string rationale, got {type(s).__name__}")
+            continue
+        out[k] = s
+    return out
 
-# ---------------------------------------------------------------------------
+def _str_list(v: Any, r: _Reader, path: str) -> list[str]:
+    out: list[str] = []
+    if v is None: return out
+    if not isinstance(v, list):
+        r.err(path, f"expected list of strings, got {type(v).__name__}")
+        return out
+    for i, s in enumerate(v):
+        if not isinstance(s, str):
+            r.err(f"{path}[{i}]", f"expected string, got {type(s).__name__}")
+        else:
+            out.append(s)
+    return sorted(set(out))
+
+def _render(v, kind, opts):
+    if kind in ("q", "o"): return v.to_obj()
+    if kind in ("oo", "oq"): return v.to_obj() if v is not None else None
+    if kind in ("qm", "om"): return {k: x.to_obj() for k, x in v.items()}
+    if kind == "ol": return [x.to_obj() for x in sorted(v, key=opts[1])]
+    if kind == "sl": return sorted(v)
+    if kind == "sm": return dict(v)
+    return v
+
+def _to_obj(self) -> Any:
+    o: dict = dict(getattr(self, "HEAD", ()))
+    for attr, key, kind, emit, *opts in self.SPEC:
+        rv = _render(getattr(self, attr), kind, opts)
+        if emit == "a":
+            o[key] = rv
+        elif emit == "p":
+            _put(o, key, rv)
+        elif rv != emit[1]:
+            o[key] = rv
+    return (o or None) if getattr(self, "EMPTY_NONE", False) else o
+
+def _read(cls, d: dict, r: _Reader, path: str, name: str | None = None):
+    kw: dict[str, Any] = {} if name is None else {"name": name}
+    keys = []
+    for attr, key, kind, _emit, *opts in cls.SPEC:
+        keys.append(key)
+        sub = f"{path}.{key}"
+        if kind == "s":
+            kw[attr] = r.str_(d, key, path)
+        elif kind == "rs":
+            kw[attr] = r.str_(d, key, path, required=True)
+        elif kind == "n":
+            kw[attr] = r.num(d, key, path)
+        elif kind == "i":
+            kw[attr] = r.int_(d, key, path)
+        elif kind == "b":
+            kw[attr] = r.bool_(d, key, path)
+        elif kind == "e":
+            kw[attr] = r.enum(d, key, path, opts[0], opts[1])
+        elif kind == "q":
+            kw[attr] = Quantity.from_obj(d.get(key, {}), r, sub)
+        elif kind == "oq":
+            kw[attr] = Quantity.from_obj(d[key], r, sub) if key in d else None
+        elif kind == "qm":
+            kw[attr] = {n: Quantity.from_obj(v, r, f"{sub}.{n}")
+                        for n, v in r.obj(d.get(key, {}), sub).items()}
+        elif kind == "o":
+            kw[attr] = opts[0].from_obj(d.get(key), r, sub)
+        elif kind == "oo":
+            kw[attr] = opts[0].from_obj(d.get(key), r, sub) if d.get(key) is not None else None
+        elif kind == "om":
+            kw[attr] = {n: opts[0].from_obj(v, r, f"{sub}.{n}")
+                        for n, v in r.obj(d.get(key, {}), sub).items()}
+        elif kind == "ol":
+            kw[attr] = sorted((opts[0].from_obj(v, r, f"{sub}[{i}]")
+                               for i, v in enumerate(d.get(key, []) or [])), key=opts[1])
+        elif kind == "sm":
+            kw[attr] = _str_map(d.get(key), r, sub)
+        elif kind == "sl":
+            kw[attr] = _str_list(d.get(key), r, sub)
+        else:  # raw
+            kw[attr] = d.get(key, opts[0] if opts else None)
+    r.unknown_fields(d, tuple(keys) + (("kind",) if name is not None else ()), path)
+    post = getattr(cls, "_post", None)
+    if post:
+        post(kw, r, path)
+    return cls(**kw)
+
 # Quantity — (value or interval, unit, uncertainty, provenance, confidence)
-# ---------------------------------------------------------------------------
 
 Scalar = float
 Interval = tuple[float, float]
 Value = Union[None, Scalar, Interval]  # None = declared-but-TBD
-
 
 @dataclass
 class Uncertainty:
@@ -133,59 +212,33 @@ class Uncertainty:
     value: Optional[float] = None  # identity
 
     def to_obj(self) -> Optional[dict]:
-        if self.kind == "none":
-            return None
+        if self.kind == "none": return None
         o: dict = {"kind": self.kind}
         _put(o, "value", self.value)
         return o
 
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Uncertainty":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        kind = r.enum(d, "kind", path, ("none", "abs", "rel", "cal"), "none")
-        value = r.num(d, "value", path)
-        if kind in ("abs", "rel") and value is None:
-            r.err(path, f"uncertainty kind '{kind}' requires a value")
-        r.unknown_fields(d, ("kind", "value"), path)
-        return cls(kind, value)
+    SPEC = (("kind", "kind", "e", "a", ("none", "abs", "rel", "cal"), "none"),
+            ("value", "value", "n", "p"))
 
+    @staticmethod
+    def _post(kw, r, path):
+        if kw["kind"] in ("abs", "rel") and kw["value"] is None:
+            r.err(path, f"uncertainty kind '{kw['kind']}' requires a value")
 
 @dataclass
 class Provenance:
-    """Where a value came from. `kind` is identity (a measured value that replaces a
-    declared one is a semantic change even at equal value is NOT true — the value
-    drives staleness; kind rides along for queries). site/detail/ts are record fields.
-    kind: declared | measured | vendor | derived | estimate
-    """
+    """Where a value came from. kind: declared | measured | vendor | derived |
+    estimate (identity-lite, rides along for queries); site/detail/ts are record."""
 
     kind: str = "declared"
     site: str = ""  # record: file:line or node ref that authored the value
     detail: str = ""  # record: e.g. "datasheet p.3", "test W12 run 3"
     ts: str = ""  # record: ISO timestamp for volatile observations
 
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        if self.kind != "declared":
-            o["kind"] = self.kind
-        _put(o, "site", self.site)
-        _put(o, "detail", self.detail)
-        _put(o, "ts", self.ts)
-        return o or None
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Provenance":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        kind = r.enum(d, "kind", path, ("declared", "measured", "vendor", "derived", "estimate"), "declared")
-        site = r.str_(d, "site", path)
-        detail = r.str_(d, "detail", path)
-        ts = r.str_(d, "ts", path)
-        r.unknown_fields(d, ("kind", "site", "detail", "ts"), path)
-        return cls(kind, site, detail, ts)
-
+    EMPTY_NONE = True
+    SPEC = (("kind", "kind", "e", ("d", "declared"),
+             ("declared", "measured", "vendor", "derived", "estimate"), "declared"),
+            ("site", "site", "s", "p"), ("detail", "detail", "s", "p"), ("ts", "ts", "s", "p"))
 
 @dataclass
 class Quantity:
@@ -194,7 +247,7 @@ class Quantity:
     value: Value = None  # identity: float, (lo, hi), or None (TBD)
     unit: str = ""  # identity: surface unit expression ("" = dimensionless)
     unc: Uncertainty = field(default_factory=Uncertainty)  # identity
-    prov: Provenance = field(default_factory=Provenance)  # kind: identity-lite; rest record
+    prov: Provenance = field(default_factory=Provenance)  # kind identity-lite; rest record
     conf: Optional[float] = None  # record: confidence 0..1
 
     def is_interval(self) -> bool:
@@ -203,10 +256,7 @@ class Quantity:
     def to_obj(self) -> dict:
         o: dict = {}
         if self.value is not None:
-            if isinstance(self.value, tuple):
-                o["value"] = [self.value[0], self.value[1]]
-            else:
-                o["value"] = self.value
+            o["value"] = [self.value[0], self.value[1]] if isinstance(self.value, tuple) else self.value
         _put(o, "unit", self.unit)
         _put(o, "unc", self.unc.to_obj())
         _put(o, "prov", self.prov.to_obj())
@@ -240,25 +290,10 @@ class Quantity:
         r.unknown_fields(d, ("value", "unit", "unc", "prov", "conf"), path)
         return cls(value, unit, unc, prov, conf)
 
-
-def _quantities_from(d: dict, key: str, r: _Reader, path: str) -> dict[str, Quantity]:
-    out: dict[str, Quantity] = {}
-    raw = d.get(key)
-    if raw is None:
-        return out
-    for name, qv in r.obj(raw, f"{path}.{key}").items():
-        out[name] = Quantity.from_obj(qv, r, f"{path}.{key}.{name}")
-    return out
-
-
 def _quantities_obj(qs: dict[str, Quantity]) -> dict:
     return {k: v.to_obj() for k, v in qs.items()}
 
-
-# ---------------------------------------------------------------------------
-# Envelope — the fence of assumptions inside which a thing is valid (spec §2.5)
-# ---------------------------------------------------------------------------
-
+# Envelope (spec §2.5) and the sub-objects nodes are made of
 
 @dataclass
 class Predicate:
@@ -268,127 +303,43 @@ class Predicate:
     hi: Optional[float] = None  # identity
     unit: str = ""  # identity
 
-    def to_obj(self) -> dict:
-        o: dict = {}
-        _put(o, "lo", self.lo)
-        _put(o, "hi", self.hi)
-        _put(o, "unit", self.unit)
-        return o
+    SPEC = (("lo", "lo", "n", "p"), ("hi", "hi", "n", "p"), ("unit", "unit", "s", "p"))
 
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Predicate":
-        d = r.obj(v, path)
-        lo = r.num(d, "lo", path)
-        hi = r.num(d, "hi", path)
-        unit = r.str_(d, "unit", path)
-        if lo is None and hi is None:
+    @staticmethod
+    def _post(kw, r, path):
+        if kw["lo"] is None and kw["hi"] is None:
             r.err(path, "predicate needs at least one bound (lo or hi)")
-        if lo is not None and hi is not None and lo > hi:
-            r.err(path, f"predicate lo {lo} > hi {hi}")
-        r.unknown_fields(d, ("lo", "hi", "unit"), path)
-        return cls(lo, hi, unit)
-
+        if kw["lo"] is not None and kw["hi"] is not None and kw["lo"] > kw["hi"]:
+            r.err(path, f"predicate lo {kw['lo']} > hi {kw['hi']}")
 
 @dataclass
 class Envelope:
-    """predicates: var -> Predicate (SMT-decidable layer, boxes in v0.1).
-    claims: structural claims made (claim -> rationale), e.g. assume rigid.
-    requires: structural claims required of upstream (claim -> rationale)."""
+    """predicates: var -> Predicate (SMT-decidable boxes). claims: structural
+    claims made (claim -> rationale); requires: claims needed of upstream."""
 
     predicates: dict[str, Predicate] = field(default_factory=dict)  # identity
-    claims: dict[str, str] = field(default_factory=dict)  # identity (rationale: record-lite, kept)
+    claims: dict[str, str] = field(default_factory=dict)  # identity
     requires: dict[str, str] = field(default_factory=dict)  # identity
 
     def is_empty(self) -> bool:
         return not (self.predicates or self.claims or self.requires)
 
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        _put(o, "predicates", {k: v.to_obj() for k, v in self.predicates.items()})
-        _put(o, "claims", dict(self.claims))
-        _put(o, "requires", dict(self.requires))
-        return o or None
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Envelope":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        preds = {
-            var: Predicate.from_obj(pv, r, f"{path}.predicates.{var}")
-            for var, pv in r.obj(d.get("predicates", {}), f"{path}.predicates").items()
-        }
-        claims = _str_map(d.get("claims"), r, f"{path}.claims")
-        requires = _str_map(d.get("requires"), r, f"{path}.requires")
-        r.unknown_fields(d, ("predicates", "claims", "requires"), path)
-        return cls(preds, claims, requires)
-
-
-def _str_map(v: Any, r: _Reader, path: str) -> dict[str, str]:
-    out: dict[str, str] = {}
-    if v is None:
-        return out
-    for k, s in r.obj(v, path).items():
-        if not isinstance(s, str):
-            r.err(f"{path}.{k}", f"expected string rationale, got {type(s).__name__}")
-            continue
-        out[k] = s
-    return out
-
-
-def _str_list(v: Any, r: _Reader, path: str) -> list[str]:
-    out: list[str] = []
-    if v is None:
-        return out
-    if not isinstance(v, list):
-        r.err(path, f"expected list of strings, got {type(v).__name__}")
-        return out
-    for i, s in enumerate(v):
-        if not isinstance(s, str):
-            r.err(f"{path}[{i}]", f"expected string, got {type(s).__name__}")
-        else:
-            out.append(s)
-    return sorted(set(out))
-
-
-# ---------------------------------------------------------------------------
-# Ports (spec §2.2)
-# ---------------------------------------------------------------------------
-
+    EMPTY_NONE = True
+    SPEC = (("predicates", "predicates", "om", "p", Predicate), ("claims", "claims", "sm", "p"),
+            ("requires", "requires", "sm", "p"))
 
 @dataclass
 class Port:
     domain: str = ""  # identity: e.g. "electrical", "mechanical.translation"
-    dir: str = "inout"  # identity: in | out | inout (w.r.t. the owning component)
+    dir: str = "inout"  # identity: in | out | inout
     attrs: dict[str, Quantity] = field(default_factory=dict)  # identity
     protocol: str = ""  # identity: data ports only
     doc: str = ""  # record
 
-    def to_obj(self) -> dict:
-        o: dict = {"domain": self.domain}
-        if self.dir != "inout":
-            o["dir"] = self.dir
-        _put(o, "attrs", _quantities_obj(self.attrs))
-        _put(o, "protocol", self.protocol)
-        _put(o, "doc", self.doc)
-        return o
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Port":
-        d = r.obj(v, path)
-        domain = r.str_(d, "domain", path, required=True)
-        dir_ = r.enum(d, "dir", path, ("in", "out", "inout"), "inout")
-        attrs = _quantities_from(d, "attrs", r, path)
-        protocol = r.str_(d, "protocol", path)
-        doc = r.str_(d, "doc", path)
-        r.unknown_fields(d, ("domain", "dir", "attrs", "protocol", "doc"), path)
-        return cls(domain, dir_, attrs, protocol, doc)
-
-
-# ---------------------------------------------------------------------------
-# Nodes
-# ---------------------------------------------------------------------------
-
+    SPEC = (("domain", "domain", "rs", "a"),
+            ("dir", "dir", "e", ("d", "inout"), ("in", "out", "inout"), "inout"),
+            ("attrs", "attrs", "qm", "p"), ("protocol", "protocol", "s", "p"),
+            ("doc", "doc", "s", "p"))
 
 @dataclass
 class Budget:
@@ -396,268 +347,84 @@ class Budget:
     limit: Quantity = field(default_factory=Quantity)  # identity
     at_qty: Optional[int] = None  # identity: cost @ qty N
 
-    def to_obj(self) -> dict:
-        o: dict = {"op": self.op, "limit": self.limit.to_obj()}
-        _put(o, "at_qty", self.at_qty)
-        return o
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Budget":
-        d = r.obj(v, path)
-        op = r.enum(d, "op", path, ("<=", ">="), "<=")
-        limit = Quantity.from_obj(d.get("limit", {}), r, f"{path}.limit")
-        at_qty = r.int_(d, "at_qty", path)
-        r.unknown_fields(d, ("op", "limit", "at_qty"), path)
-        return cls(op, limit, at_qty)
-
+    SPEC = (("op", "op", "e", "a", ("<=", ">="), "<="), ("limit", "limit", "q", "a"),
+            ("at_qty", "at_qty", "i", "p"))
 
 @dataclass
 class Contain:
     ref: str = ""  # identity
     count: int = 1  # identity
 
-    def to_obj(self) -> dict:
-        o: dict = {"ref": self.ref}
-        if self.count != 1:
-            o["count"] = self.count
-        return o
+    SPEC = (("ref", "ref", "rs", "a"), ("count", "count", "i", ("d", 1)))
 
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Contain":
-        d = r.obj(v, path)
-        ref = r.str_(d, "ref", path, required=True)
-        count = r.int_(d, "count", path)
-        if count is not None and count < 1:
-            r.err(f"{path}.count", f"count must be >= 1, got {count}")
-            count = 1
-        r.unknown_fields(d, ("ref", "count"), path)
-        return cls(ref, count if count is not None else 1)
-
+    @staticmethod
+    def _post(kw, r, path):
+        if kw["count"] is not None and kw["count"] < 1:
+            r.err(f"{path}.count", f"count must be >= 1, got {kw['count']}")
+            kw["count"] = 1
+        kw["count"] = 1 if kw["count"] is None else kw["count"]
 
 @dataclass
 class Datasheet:
-    """An imported static reference for a component (spec §7.2): hashed once per
-    revision; extracted values live as vendor-provenance quantities on the node."""
+    """An imported static reference (spec §7.2): hashed once per revision."""
 
-    source: str = ""  # identity: path or URI of the datasheet artifact
+    source: str = ""  # identity: path or URI of the artifact
     sha256: str = ""  # identity: hash of the artifact revision
     title: str = ""  # record
 
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        _put(o, "source", self.source)
-        _put(o, "sha256", self.sha256)
-        _put(o, "title", self.title)
-        return o or None
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> Optional["Datasheet"]:
-        if v is None:
-            return None
-        d = r.obj(v, path)
-        source = r.str_(d, "source", path, required=True)
-        sha256 = r.str_(d, "sha256", path)
-        title = r.str_(d, "title", path)
-        r.unknown_fields(d, ("source", "sha256", "title"), path)
-        return cls(source, sha256, title)
-
-
-@dataclass
-class Component:
-    """A thing that occupies a region of spacetime and exchanges conserved
-    quantities with its neighbors — at a declared abstraction level (spec §2.3)."""
-
-    name: str = ""
-    level: str = "functional"  # identity: functional | behavioral | physical
-    ports: dict[str, Port] = field(default_factory=dict)  # identity
-    quantities: dict[str, Quantity] = field(default_factory=dict)  # identity
-    budgets: dict[str, Budget] = field(default_factory=dict)  # identity
-    envelope: Envelope = field(default_factory=Envelope)  # identity
-    contains: list[Contain] = field(default_factory=list)  # identity
-    realizes: str = ""  # identity: the binding edge (physical -> functional)
-    process: str = ""  # identity: manufacturing process ref (activates DFM ruleset)
-    material: str = ""  # identity: material ref
-    geometry: str = ""  # identity: ref to the geometry analysis node producing this shape
-    datasheet: Optional[Datasheet] = None  # identity
-    doc: str = ""  # record
-    src: str = ""  # record: file:line of declaration
-
-    KIND = "component"
-
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.KIND, "level": self.level}
-        _put(o, "ports", {k: v.to_obj() for k, v in self.ports.items()})
-        _put(o, "quantities", _quantities_obj(self.quantities))
-        _put(o, "budgets", {k: v.to_obj() for k, v in self.budgets.items()})
-        _put(o, "envelope", self.envelope.to_obj())
-        _put(o, "contains", [c.to_obj() for c in sorted(self.contains, key=lambda c: c.ref)])
-        _put(o, "realizes", self.realizes)
-        _put(o, "process", self.process)
-        _put(o, "material", self.material)
-        _put(o, "geometry", self.geometry)
-        _put(o, "datasheet", self.datasheet.to_obj() if self.datasheet else None)
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, name: str, d: dict, r: _Reader, path: str) -> "Component":
-        level = r.enum(d, "level", path, ("functional", "behavioral", "physical"), "functional")
-        ports = {
-            pn: Port.from_obj(pv, r, f"{path}.ports.{pn}")
-            for pn, pv in r.obj(d.get("ports", {}), f"{path}.ports").items()
-        }
-        quantities = _quantities_from(d, "quantities", r, path)
-        budgets = {
-            bn: Budget.from_obj(bv, r, f"{path}.budgets.{bn}")
-            for bn, bv in r.obj(d.get("budgets", {}), f"{path}.budgets").items()
-        }
-        envelope = Envelope.from_obj(d.get("envelope"), r, f"{path}.envelope")
-        contains = sorted(
-            (Contain.from_obj(cv, r, f"{path}.contains[{i}]")
-             for i, cv in enumerate(d.get("contains", []) or [])),
-            key=lambda c: c.ref,
-        )
-        realizes = r.str_(d, "realizes", path)
-        process = r.str_(d, "process", path)
-        material = r.str_(d, "material", path)
-        geometry = r.str_(d, "geometry", path)
-        datasheet = Datasheet.from_obj(d.get("datasheet"), r, f"{path}.datasheet")
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        r.unknown_fields(
-            d,
-            ("kind", "level", "ports", "quantities", "budgets", "envelope", "contains",
-             "realizes", "process", "material", "geometry", "datasheet", "doc", "src"),
-            path,
-        )
-        return cls(name, level, ports, quantities, budgets, envelope, contains,
-                   realizes, process, material, geometry, datasheet, doc, src)
-
-
-@dataclass
-class Requirement:
-    name: str = ""
-    text: str = ""  # identity (the requirement IS its text)
-    quantities: dict[str, Quantity] = field(default_factory=dict)  # identity
-    doc: str = ""  # record
-    src: str = ""  # record
-
-    KIND = "requirement"
-
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.KIND}
-        _put(o, "text", self.text)
-        _put(o, "quantities", _quantities_obj(self.quantities))
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, name: str, d: dict, r: _Reader, path: str) -> "Requirement":
-        text = r.str_(d, "text", path)
-        quantities = _quantities_from(d, "quantities", r, path)
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        r.unknown_fields(d, ("kind", "text", "quantities", "doc", "src"), path)
-        return cls(name, text, quantities, doc, src)
-
+    EMPTY_NONE = True
+    SPEC = (("source", "source", "rs", "p"), ("sha256", "sha256", "s", "p"),
+            ("title", "title", "s", "p"))
 
 @dataclass
 class Intent:
     ref: str = ""  # identity: requirement or decision this analysis serves
     text: str = ""  # record: the question, restated
 
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        _put(o, "ref", self.ref)
-        _put(o, "text", self.text)
-        return o or None
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Intent":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        ref = r.str_(d, "ref", path)
-        text = r.str_(d, "text", path)
-        r.unknown_fields(d, ("ref", "text"), path)
-        return cls(ref, text)
-
+    EMPTY_NONE = True
+    SPEC = (("ref", "ref", "s", "p"), ("text", "text", "s", "p"))
 
 @dataclass
 class Framing:
-    """The creative act (spec §3.1): chosen physics model, drawn boundary,
-    assumptions with rationale. The envelope carries both layers of the fence."""
+    """The creative act (spec §3.1): chosen physics model + the envelope fence."""
 
     model: str = ""  # identity: e.g. "beam.euler_bernoulli"
     envelope: Envelope = field(default_factory=Envelope)  # identity
 
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        _put(o, "model", self.model)
-        _put(o, "envelope", self.envelope.to_obj())
-        return o or None
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Framing":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        model = r.str_(d, "model", path)
-        envelope = Envelope.from_obj(d.get("envelope"), r, f"{path}.envelope")
-        r.unknown_fields(d, ("model", "envelope"), path)
-        return cls(model, envelope)
-
+    EMPTY_NONE = True
+    SPEC = (("model", "model", "s", "p"), ("envelope", "envelope", "o", "p", Envelope))
 
 @dataclass
 class Core:
-    """The executable recipe (spec §3.2). Python cores are opaque: compile time
-    never opens them; the file's *content hash* participates in the recipe hash
-    (the path does not, so moving a file without changing it invalidates
-    nothing). v0.2 expr/stub cores (ADR-0005) are transparent: the canonical
-    formatted body is stored in `text`, type-checked at compile time, and IS the
-    content that hashes."""
+    """The executable recipe (spec §3.2). Python cores are opaque (file content
+    is identity; path is not). v0.2 expr/stub cores are transparent: the
+    canonical body in `text` IS the content. v0.3: pinned `tools` and the
+    wrapped module's `interface` manifest are identity too (ADR-0008)."""
 
     lang: str = "python"  # identity: python | expr | stub
-    path: str = ""  # record-as-locator (content is identity, fetched at hash time)
-    text: str = ""  # identity: canonical expr/stub body (empty for python cores)
-    # v0.3 (ADR-0008): what wraps the black box is declarable and hashes.
-    tools: dict[str, str] = field(default_factory=dict)  # identity: tool name -> pinned version
-    interface: Optional[Datasheet] = None  # identity: manifest defining the wrapped module
+    path: str = ""  # record-as-locator
+    text: str = ""  # identity: canonical expr/stub body
+    tools: dict[str, str] = field(default_factory=dict)  # identity: tool -> version pin
+    interface: Optional[Datasheet] = None  # identity
 
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        if self.lang != "python":
-            o["lang"] = self.lang
-        _put(o, "path", self.path)
-        _put(o, "text", self.text)
-        _put(o, "tools", dict(sorted(self.tools.items())))
-        _put(o, "interface", self.interface.to_obj() if self.interface else None)
-        return o or None
+    EMPTY_NONE = True
+    SPEC = (("lang", "lang", "raw", ("d", "python"), "python"), ("path", "path", "s", "p"),
+            ("text", "text", "s", "p"), ("tools", "tools", "sm", "p"),
+            ("interface", "interface", "oo", "p", Datasheet))
 
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Core":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        lang = r.str_(d, "lang", path, default="python")
-        p = r.str_(d, "path", path)
-        text = r.str_(d, "text", path)
-        tools = _str_map(d.get("tools"), r, f"{path}.tools")
-        interface = Datasheet.from_obj(d.get("interface"), r, f"{path}.interface")
-        r.unknown_fields(d, ("lang", "path", "text", "tools", "interface"), path)
-        return cls(lang, p, text, tools, interface)
-
+    @staticmethod
+    def _post(kw, r, path):
+        if not isinstance(kw["lang"], str):
+            r.err(f"{path}.lang", f"expected string, got {type(kw['lang']).__name__}")
+            kw["lang"] = "python"
 
 @dataclass
 class OutputDecl:
     unit: str = ""  # identity
     unc: bool = False  # identity: output carries uncertainty
-    artifact: bool = False  # identity: file artifact (mesh, field) rather than quantity
-    # v0.2 (ADR-0007): the acceptance bound this output must satisfy, checked
-    # against the lock after every build — requirement satisfaction is computed,
-    # not narrated. Exactly one of target_ref / target_value when target_op set.
+    artifact: bool = False  # identity: file artifact rather than quantity
+    # v0.2 (ADR-0007): the acceptance bound this output must satisfy, re-verdicted
+    # against the lock. Exactly one of target_ref/target_value when target_op set.
     target_op: str = ""  # identity: "" | ">=" | "<="
     target_ref: str = ""  # identity: canonical value reference
     target_value: Optional[Quantity] = None  # identity: literal bound
@@ -696,47 +463,13 @@ class OutputDecl:
         r.unknown_fields(d, ("unit", "unc", "artifact", "target"), path)
         return cls(unit, unc, artifact, target_op, target_ref, target_value)
 
-
-@dataclass
-class Judgment:
-    """The sense-making, recorded explicitly with residual doubts (spec §3.1).
-    Record fields: editing judgment prose never re-runs physics."""
-
-    status: str = "pending"  # pending | accepted | rejected | superseded
-    text: str = ""
-    doubts: str = ""
-
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        if self.status != "pending":
-            o["status"] = self.status
-        _put(o, "text", self.text)
-        _put(o, "doubts", self.doubts)
-        return o or None
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Judgment":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        status = r.enum(d, "status", path, ("pending", "accepted", "rejected", "superseded"), "pending")
-        text = r.str_(d, "text", path)
-        doubts = r.str_(d, "doubts", path)
-        r.unknown_fields(d, ("status", "text", "doubts"), path)
-        return cls(status, text, doubts)
-
-
 @dataclass
 class Verify:
     """A verification contract (v0.3, ADR-0008): a machine-checkable reason to
-    believe this analysis, graded by the kernel instead of asserted by the author.
-
-    kind 'against' — cross-check an output vs another node's value (lock-vs-lock,
-    judged at check time). kind 'monotone' — perturb an input at build time and
-    require the output to move the declared direction. kind 'case' — re-run the
-    core on a golden input file and require the expected outputs, within tol.
-    `tol_unit` empty means relative (tol is a fraction); else absolute in that
-    unit (the natural spelling for levels: `within 0.5 dB`)."""
+    believe this analysis. 'against' = lock-vs-lock cross-check; 'monotone' =
+    build-time perturbation probe; 'case' = golden input file re-proven each
+    build. Empty tol_unit means relative (tol is a fraction); else absolute in
+    that unit (`within 0.5 dB`)."""
 
     kind: str = "against"  # identity: against | monotone | case
     output: str = ""  # identity
@@ -747,50 +480,130 @@ class Verify:
     tol: Optional[float] = None  # identity
     tol_unit: str = ""  # identity
 
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.kind}
-        _put(o, "output", self.output)
-        _put(o, "ref", self.ref)
-        _put(o, "known", self.known)
-        _put(o, "direction", self.direction)
-        _put(o, "path", self.path)
-        _put(o, "tol", self.tol)
-        _put(o, "tol_unit", self.tol_unit)
-        return o
+    SPEC = (("kind", "kind", "e", "a", ("against", "monotone", "case"), "against"),
+            ("output", "output", "s", "p"), ("ref", "ref", "s", "p"),
+            ("known", "known", "s", "p"), ("direction", "direction", "s", "p"),
+            ("path", "path", "s", "p"), ("tol", "tol", "n", "p"),
+            ("tol_unit", "tol_unit", "s", "p"))
 
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Verify":
-        d = r.obj(v, path)
-        kind = r.enum(d, "kind", path, ("against", "monotone", "case"), "against")
-        output = r.str_(d, "output", path)
-        ref = r.str_(d, "ref", path)
-        known = r.str_(d, "known", path)
-        direction = r.str_(d, "direction", path)
-        if direction and direction not in ("rising", "falling"):
-            r.err(f"{path}.direction", f"expected rising|falling, got {direction!r}")
-            direction = ""
-        p = r.str_(d, "path", path)
-        tol = r.num(d, "tol", path)
-        tol_unit = r.str_(d, "tol_unit", path)
-        r.unknown_fields(d, ("kind", "output", "ref", "known", "direction", "path", "tol", "tol_unit"), path)
-        return cls(kind, output, ref, known, direction, p, tol, tol_unit)
+    @staticmethod
+    def _post(kw, r, path):
+        if kw["direction"] and kw["direction"] not in ("rising", "falling"):
+            r.err(f"{path}.direction", f"expected rising|falling, got {kw['direction']!r}")
+            kw["direction"] = ""
 
     def sort_key(self) -> tuple:
         return (self.kind, self.output, self.ref, self.known, self.path)
 
+@dataclass
+class Judgment:
+    """The sense-making, recorded with residual doubts (spec §3.1). Record
+    fields: editing judgment prose never re-runs physics."""
+
+    status: str = "pending"  # pending | accepted | rejected | superseded
+    text: str = ""
+    doubts: str = ""
+
+    EMPTY_NONE = True
+    SPEC = (("status", "status", "e", ("d", "pending"),
+             ("pending", "accepted", "rejected", "superseded"), "pending"),
+            ("text", "text", "s", "p"), ("doubts", "doubts", "s", "p"))
+
+@dataclass
+class EffortFlow:
+    name: str = ""  # identity: attribute name, e.g. "voltage"
+    unit: str = ""  # identity: canonical unit, e.g. "V"
+
+    EMPTY_NONE = True
+    SPEC = (("name", "name", "s", "p"), ("unit", "unit", "s", "p"))
+
+@dataclass
+class DfmRule:
+    """One statically checkable claim of shop knowledge (spec §7.1)."""
+
+    feature: str = ""  # identity
+    op: str = ">="  # identity: >= | <= | forbid | require
+    limit: Optional[Quantity] = None  # identity
+    message: str = ""  # record (the why; shown in diagnostics)
+
+    SPEC = (("feature", "feature", "rs", "a"),
+            ("op", "op", "e", "a", (">=", "<=", "forbid", "require"), ">="),
+            ("limit", "limit", "oq", "p"), ("message", "message", "s", "p"))
+
+    @staticmethod
+    def _post(kw, r, path):
+        if kw["op"] in (">=", "<=") and kw["limit"] is None:
+            r.err(path, f"rule op '{kw['op']}' requires a limit quantity")
+
+@dataclass
+class Connection:
+    """An edge between two ports (`component.port` refs)."""
+
+    from_ref: str = ""  # identity
+    to_ref: str = ""  # identity
+    doc: str = ""  # record
+    src: str = ""  # record
+
+    SPEC = (("from_ref", "from", "rs", "a"), ("to_ref", "to", "rs", "a"),
+            ("doc", "doc", "s", "p"), ("src", "src", "s", "p"))
+
+# Nodes
+
+_RECORD_TAIL = (("doc", "doc", "s", "p"), ("src", "src", "s", "p"))
+
+@dataclass
+class Component:
+    """A thing that occupies a region of spacetime and exchanges conserved
+    quantities with its neighbors — at a declared abstraction level (spec §2.3)."""
+
+    name: str = ""
+    level: str = "functional"  # identity: functional | behavioral | physical
+    ports: dict[str, Port] = field(default_factory=dict)  # identity
+    quantities: dict[str, Quantity] = field(default_factory=dict)  # identity
+    budgets: dict[str, Budget] = field(default_factory=dict)  # identity
+    envelope: Envelope = field(default_factory=Envelope)  # identity
+    contains: list[Contain] = field(default_factory=list)  # identity
+    realizes: str = ""  # identity: the binding edge (physical -> functional)
+    process: str = ""  # identity: manufacturing process ref (activates DFM)
+    material: str = ""  # identity
+    geometry: str = ""  # identity: geometry analysis node producing this shape
+    datasheet: Optional[Datasheet] = None  # identity
+    doc: str = ""  # record
+    src: str = ""  # record: file:line of declaration
+
+    KIND = "component"
+    HEAD = (("kind", "component"),)
+    SPEC = (("level", "level", "e", "a", ("functional", "behavioral", "physical"), "functional"),
+            ("ports", "ports", "om", "p", Port), ("quantities", "quantities", "qm", "p"),
+            ("budgets", "budgets", "om", "p", Budget), ("envelope", "envelope", "o", "p", Envelope),
+            ("contains", "contains", "ol", "p", Contain, lambda c: c.ref),
+            ("realizes", "realizes", "s", "p"), ("process", "process", "s", "p"),
+            ("material", "material", "s", "p"), ("geometry", "geometry", "s", "p"),
+            ("datasheet", "datasheet", "oo", "p", Datasheet)) + _RECORD_TAIL
+
+@dataclass
+class Requirement:
+    name: str = ""
+    text: str = ""  # identity (the requirement IS its text)
+    quantities: dict[str, Quantity] = field(default_factory=dict)  # identity
+    doc: str = ""  # record
+    src: str = ""  # record
+
+    KIND = "requirement"
+    HEAD = (("kind", "requirement"),)
+    SPEC = (("text", "text", "s", "p"), ("quantities", "quantities", "qm", "p")) + _RECORD_TAIL
 
 @dataclass
 class Analysis:
     """Engineering's unit of work: an argument that a claim about the system is
-    justified (spec §3). akind 'geometry' marks shape-producing nodes (spec §6.2),
-    which additionally must assert their topology; the shell is identical."""
+    justified (spec §3). akind 'geometry' additionally must assert topology."""
 
     name: str = ""
     akind: str = "analysis"  # identity: analysis | geometry
-    intent: Intent = field(default_factory=Intent)  # identity (ref); text is record
+    intent: Intent = field(default_factory=Intent)  # identity (ref); text record
     framing: Framing = field(default_factory=Framing)  # identity
-    knowns: dict[str, str] = field(default_factory=dict)  # identity: local name -> graph ref
-    params: dict[str, Quantity] = field(default_factory=dict)  # identity: literal inputs
+    knowns: dict[str, str] = field(default_factory=dict)  # identity: local -> graph ref
+    params: dict[str, Quantity] = field(default_factory=dict)  # identity
     core: Core = field(default_factory=Core)  # identity via content
     outputs: dict[str, OutputDecl] = field(default_factory=dict)  # identity
     verifies: list[Verify] = field(default_factory=list)  # identity (v0.3)
@@ -799,83 +612,18 @@ class Analysis:
     src: str = ""  # record
 
     KIND = "analysis"
-
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.KIND}
-        if self.akind != "analysis":
-            o["akind"] = self.akind
-        _put(o, "intent", self.intent.to_obj())
-        _put(o, "framing", self.framing.to_obj())
-        _put(o, "knowns", dict(self.knowns))
-        _put(o, "params", _quantities_obj(self.params))
-        _put(o, "core", self.core.to_obj())
-        _put(o, "outputs", {k: v.to_obj() for k, v in self.outputs.items()})
-        _put(o, "verifies", [v.to_obj() for v in sorted(self.verifies, key=Verify.sort_key)])
-        _put(o, "judgment", self.judgment.to_obj())
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, name: str, d: dict, r: _Reader, path: str) -> "Analysis":
-        akind = r.enum(d, "akind", path, ("analysis", "geometry"), "analysis")
-        intent = Intent.from_obj(d.get("intent"), r, f"{path}.intent")
-        framing = Framing.from_obj(d.get("framing"), r, f"{path}.framing")
-        knowns = _str_map(d.get("knowns"), r, f"{path}.knowns")
-        params = _quantities_from(d, "params", r, path)
-        core = Core.from_obj(d.get("core"), r, f"{path}.core")
-        outputs = {
-            on: OutputDecl.from_obj(ov, r, f"{path}.outputs.{on}")
-            for on, ov in r.obj(d.get("outputs", {}), f"{path}.outputs").items()
-        }
-        verifies = sorted(
-            (Verify.from_obj(vv, r, f"{path}.verifies[{i}]")
-             for i, vv in enumerate(d.get("verifies", []) or [])),
-            key=Verify.sort_key,
-        )
-        judgment = Judgment.from_obj(d.get("judgment"), r, f"{path}.judgment")
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        r.unknown_fields(
-            d,
-            ("kind", "akind", "intent", "framing", "knowns", "params", "core",
-             "outputs", "verifies", "judgment", "doc", "src"),
-            path,
-        )
-        return cls(name, akind, intent, framing, knowns, params, core, outputs,
-                   verifies, judgment, doc, src)
-
-
-# --- Library kinds ----------------------------------------------------------
-
-
-@dataclass
-class EffortFlow:
-    name: str = ""  # identity: attribute name, e.g. "voltage"
-    unit: str = ""  # identity: canonical unit, e.g. "V"
-
-    def to_obj(self) -> Optional[dict]:
-        o: dict = {}
-        _put(o, "name", self.name)
-        _put(o, "unit", self.unit)
-        return o or None
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "EffortFlow":
-        if v is None:
-            return cls()
-        d = r.obj(v, path)
-        name = r.str_(d, "name", path)
-        unit = r.str_(d, "unit", path)
-        r.unknown_fields(d, ("name", "unit"), path)
-        return cls(name, unit)
-
+    HEAD = (("kind", "analysis"),)
+    SPEC = (("akind", "akind", "e", ("d", "analysis"), ("analysis", "geometry"), "analysis"),
+            ("intent", "intent", "o", "p", Intent), ("framing", "framing", "o", "p", Framing),
+            ("knowns", "knowns", "sm", "p"), ("params", "params", "qm", "p"),
+            ("core", "core", "o", "p", Core), ("outputs", "outputs", "om", "p", OutputDecl),
+            ("verifies", "verifies", "ol", "p", Verify, Verify.sort_key),
+            ("judgment", "judgment", "o", "p", Judgment)) + _RECORD_TAIL
 
 @dataclass
 class DomainDef:
-    """A port domain (spec §2.2 table): an effort/flow pair whose product is power,
-    or a material/data domain. Library, not kernel — the kernel checks against
-    whatever domains are in scope."""
+    """A port domain (spec §2.2): an effort/flow pair whose product is power,
+    or a material/data domain. Library, not kernel."""
 
     name: str = ""
     dclass: str = "power"  # identity: power | material | data
@@ -885,32 +633,20 @@ class DomainDef:
     src: str = ""  # record
 
     KIND = "domain"
+    HEAD = (("kind", "domain"),)
+    SPEC = (("dclass", "dclass", "e", "a", ("power", "material", "data"), "power"),
+            ("effort", "effort", "o", "p", EffortFlow),
+            ("flow", "flow", "o", "p", EffortFlow)) + _RECORD_TAIL
 
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.KIND, "dclass": self.dclass}
-        _put(o, "effort", self.effort.to_obj())
-        _put(o, "flow", self.flow.to_obj())
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, name: str, d: dict, r: _Reader, path: str) -> "DomainDef":
-        dclass = r.enum(d, "dclass", path, ("power", "material", "data"), "power")
-        effort = EffortFlow.from_obj(d.get("effort"), r, f"{path}.effort")
-        flow = EffortFlow.from_obj(d.get("flow"), r, f"{path}.flow")
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        if dclass == "power" and (not effort.name or not flow.name):
+    @staticmethod
+    def _post(kw, r, path):
+        if kw["dclass"] == "power" and (not kw["effort"].name or not kw["flow"].name):
             r.err(path, "power domain requires both effort and flow definitions")
-        r.unknown_fields(d, ("kind", "dclass", "effort", "flow", "doc", "src"), path)
-        return cls(name, dclass, effort, flow, doc, src)
-
 
 @dataclass
 class ClaimDef:
-    """A structural claim in the assumption taxonomy (spec §2.5): a statement about
-    dropped physics, with hand-authored entailment/exclusion rules."""
+    """A structural claim in the assumption taxonomy (spec §2.5), with
+    hand-authored entailment/exclusion rules."""
 
     name: str = ""
     entails: list[str] = field(default_factory=list)  # identity
@@ -919,24 +655,8 @@ class ClaimDef:
     src: str = ""  # record
 
     KIND = "claim"
-
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.KIND}
-        _put(o, "entails", sorted(self.entails))
-        _put(o, "excludes", sorted(self.excludes))
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, name: str, d: dict, r: _Reader, path: str) -> "ClaimDef":
-        entails = _str_list(d.get("entails"), r, f"{path}.entails")
-        excludes = _str_list(d.get("excludes"), r, f"{path}.excludes")
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        r.unknown_fields(d, ("kind", "entails", "excludes", "doc", "src"), path)
-        return cls(name, entails, excludes, doc, src)
-
+    HEAD = (("kind", "claim"),)
+    SPEC = (("entails", "entails", "sl", "p"), ("excludes", "excludes", "sl", "p")) + _RECORD_TAIL
 
 @dataclass
 class MaterialDef:
@@ -946,56 +666,12 @@ class MaterialDef:
     src: str = ""  # record
 
     KIND = "material"
-
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.KIND}
-        _put(o, "quantities", _quantities_obj(self.quantities))
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, name: str, d: dict, r: _Reader, path: str) -> "MaterialDef":
-        quantities = _quantities_from(d, "quantities", r, path)
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        r.unknown_fields(d, ("kind", "quantities", "doc", "src"), path)
-        return cls(name, quantities, doc, src)
-
-
-@dataclass
-class DfmRule:
-    """One statically checkable claim of shop knowledge (spec §7.1).
-    op '>='/'<=': bound `feature` (a geometry-declared feature quantity) by `limit`.
-    op 'forbid'/'require': the feature must be absent/zero or present/nonzero."""
-
-    feature: str = ""  # identity
-    op: str = ">="  # identity
-    limit: Optional[Quantity] = None  # identity
-    message: str = ""  # record (the why; shown in diagnostics)
-
-    def to_obj(self) -> dict:
-        o: dict = {"feature": self.feature, "op": self.op}
-        _put(o, "limit", self.limit.to_obj() if self.limit else None)
-        _put(o, "message", self.message)
-        return o
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "DfmRule":
-        d = r.obj(v, path)
-        feature = r.str_(d, "feature", path, required=True)
-        op = r.enum(d, "op", path, (">=", "<=", "forbid", "require"), ">=")
-        limit = Quantity.from_obj(d["limit"], r, f"{path}.limit") if "limit" in d else None
-        if op in (">=", "<=") and limit is None:
-            r.err(path, f"rule op '{op}' requires a limit quantity")
-        message = r.str_(d, "message", path)
-        r.unknown_fields(d, ("feature", "op", "limit", "message"), path)
-        return cls(feature, op, limit, message)
-
+    HEAD = (("kind", "material"),)
+    SPEC = (("quantities", "quantities", "qm", "p"),) + _RECORD_TAIL
 
 @dataclass
 class ProcessDef:
-    """A manufacturing process: a DFM ruleset activated at binding (spec §2.3, §7.1)."""
+    """A manufacturing process: a DFM ruleset activated at binding (spec §7.1)."""
 
     name: str = ""
     rules: dict[str, DfmRule] = field(default_factory=dict)  # identity
@@ -1003,88 +679,61 @@ class ProcessDef:
     src: str = ""  # record
 
     KIND = "process"
-
-    def to_obj(self) -> dict:
-        o: dict = {"kind": self.KIND}
-        _put(o, "rules", {k: v.to_obj() for k, v in self.rules.items()})
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, name: str, d: dict, r: _Reader, path: str) -> "ProcessDef":
-        rules = {
-            rn: DfmRule.from_obj(rv, r, f"{path}.rules.{rn}")
-            for rn, rv in r.obj(d.get("rules", {}), f"{path}.rules").items()
-        }
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        r.unknown_fields(d, ("kind", "rules", "doc", "src"), path)
-        return cls(name, rules, doc, src)
-
+    HEAD = (("kind", "process"),)
+    SPEC = (("rules", "rules", "om", "p", DfmRule),) + _RECORD_TAIL
 
 Node = Union[Component, Requirement, Analysis, DomainDef, ClaimDef, MaterialDef, ProcessDef]
 
-_KIND_MAP = {
-    "component": Component,
-    "requirement": Requirement,
-    "analysis": Analysis,
-    "domain": DomainDef,
-    "claim": ClaimDef,
-    "material": MaterialDef,
-    "process": ProcessDef,
-}
+_KIND_MAP = {"component": Component, "requirement": Requirement, "analysis": Analysis,
+             "domain": DomainDef, "claim": ClaimDef, "material": MaterialDef,
+             "process": ProcessDef}
 
+_SUB_DEFAULT = (Uncertainty, Provenance, Envelope, Intent, Framing, Core, Judgment, EffortFlow)
+_SUB_PLAIN = (Predicate, Port, Budget, Contain, DfmRule, Verify, Connection)
 
-# ---------------------------------------------------------------------------
-# Connections and the document
-# ---------------------------------------------------------------------------
+def _wire_codecs() -> None:
+    """Attach generated codecs. Node classes read as (name, d, r, path); plain
+    sub-objects as (v, r, path); default-able sub-objects map None -> default;
+    Datasheet maps None -> None. Hand-written to_obj methods are kept."""
+    def node_reader(cls):
+        return staticmethod(lambda name, d, r, path: _read(cls, d, r, path, name=name))
 
+    def plain_reader(cls):
+        return staticmethod(lambda v, r, path: _read(cls, r.obj(v, path), r, path))
 
-@dataclass
-class Connection:
-    """An edge between two ports: `from` and `to` are dotted refs component.port.
-    Direction is data-flow-free; `from`→`to` follows declared port directions."""
+    def default_reader(cls):
+        return staticmethod(lambda v, r, path: cls() if v is None
+                            else _read(cls, r.obj(v, path), r, path))
 
-    from_ref: str = ""  # identity
-    to_ref: str = ""  # identity
-    doc: str = ""  # record
-    src: str = ""  # record
+    for c in _KIND_MAP.values():
+        c.to_obj, c.from_obj = _to_obj, node_reader(c)
+    for c in _SUB_PLAIN:
+        c.to_obj, c.from_obj = _to_obj, plain_reader(c)
+    for c in _SUB_DEFAULT:
+        if "to_obj" not in c.__dict__:
+            c.to_obj = _to_obj
+        c.from_obj = default_reader(c)
+    Datasheet.to_obj = _to_obj
+    Datasheet.from_obj = staticmethod(lambda v, r, path: None if v is None
+                                      else _read(Datasheet, r.obj(v, path), r, path))
 
-    def to_obj(self) -> dict:
-        o: dict = {"from": self.from_ref, "to": self.to_ref}
-        _put(o, "doc", self.doc)
-        _put(o, "src", self.src)
-        return o
-
-    @classmethod
-    def from_obj(cls, v: Any, r: _Reader, path: str) -> "Connection":
-        d = r.obj(v, path)
-        from_ref = r.str_(d, "from", path, required=True)
-        to_ref = r.str_(d, "to", path, required=True)
-        doc = r.str_(d, "doc", path)
-        src = r.str_(d, "src", path)
-        r.unknown_fields(d, ("from", "to", "doc", "src"), path)
-        return cls(from_ref, to_ref, doc, src)
-
+_wire_codecs()
 
 @dataclass
 class GraphDoc:
-    """The one graph. Names are qualified: requirements live under `req.`,
-    libraries under `lib.<libname>.`; project components/analyses are top-level."""
+    """The one graph. Requirements live under `req.`, libraries under
+    `lib.<libname>.`; project components/analyses are top-level."""
 
     edition: str = EDITION
     nodes: dict[str, Node] = field(default_factory=dict)
     connections: list[Connection] = field(default_factory=list)
 
     def to_obj(self) -> dict:
-        return {
-            "uel_schema": SCHEMA_VERSION,
-            "edition": self.edition,
-            "nodes": {name: n.to_obj() for name, n in self.nodes.items()},
-            **({"connections": [c.to_obj() for c in sorted(self.connections, key=lambda c: (c.from_ref, c.to_ref))]}
-               if self.connections else {}),
-        }
+        return {"uel_schema": SCHEMA_VERSION, "edition": self.edition,
+                "nodes": {name: n.to_obj() for name, n in self.nodes.items()},
+                **({"connections": [c.to_obj() for c in
+                                    sorted(self.connections, key=lambda c: (c.from_ref, c.to_ref))]}
+                   if self.connections else {})}
 
     def to_canonical(self) -> bytes:
         return canonical_bytes(self.to_obj())
@@ -1096,8 +745,7 @@ class GraphDoc:
     def from_obj(cls, obj: Any) -> tuple[Optional["GraphDoc"], list[SchemaError]]:
         r = _Reader()
         d = r.obj(obj, "$")
-        if r.errors:
-            return None, r.errors
+        if r.errors: return None, r.errors
         schema = r.str_(d, "uel_schema", "$", required=True)
         if schema and schema != SCHEMA_VERSION:
             r.err("$.uel_schema", f"unsupported schema version {schema!r} (this kernel: {SCHEMA_VERSION!r})")
@@ -1114,13 +762,10 @@ class GraphDoc:
         connections = sorted(
             (Connection.from_obj(cv, r, f"$.connections[{i}]")
              for i, cv in enumerate(d.get("connections", []) or [])),
-            key=lambda c: (c.from_ref, c.to_ref),
-        )
+            key=lambda c: (c.from_ref, c.to_ref))
         r.unknown_fields(d, ("uel_schema", "edition", "nodes", "connections"), "$")
         doc = cls(edition, nodes, connections)
         return (doc if not r.errors else None), r.errors
-
-    # -- graph accessors used throughout the kernel --
 
     def components(self) -> dict[str, Component]:
         return {n: v for n, v in self.nodes.items() if isinstance(v, Component)}

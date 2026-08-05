@@ -32,7 +32,6 @@ from .units import UnitError, parse_unit
 
 STDLIB_DIR = Path(__file__).resolve().parent / "stdlib"
 
-
 @dataclass
 class TolerancePolicy:
     """Quantization grid for hashing (spec §4.3 draft rule).
@@ -86,14 +85,12 @@ class TolerancePolicy:
             pol.labels[k] = v
         return pol
 
-
 @dataclass
 class SourceFile:
     path: Path  # absolute
     rel: str  # project-relative display path
     namespace: str  # "" for model files, "lib.<stem>" for libraries, "stdlib:lib.<stem>"
     text: str
-
 
 @dataclass
 class Project:
@@ -111,7 +108,6 @@ class Project:
     def sources_map(self) -> dict[str, str]:
         return {f.rel: f.text for f in self.files}
 
-
 def _read(p: Path, bag: Bag, rel: str) -> str:
     try:
         return p.read_text(encoding="utf-8")
@@ -119,17 +115,14 @@ def _read(p: Path, bag: Bag, rel: str) -> str:
         bag.error("UEL0002", f"cannot read {rel}: {e.strerror or e}", Span(rel))
         return ""
 
-
 def find_root(start: Path) -> Path:
     """Walk upward from `start` looking for uel.toml; fall back to `start` itself."""
     start = start.resolve()
     if start.is_file():
         start = start.parent
     for cand in [start, *start.parents]:
-        if (cand / "uel.toml").is_file():
-            return cand
+        if (cand / "uel.toml").is_file(): return cand
     return start
-
 
 def load_project(path: str | Path, bag: Bag, include_stdlib: bool = True) -> Project:
     root = find_root(Path(path))
@@ -172,8 +165,7 @@ def load_project(path: str | Path, bag: Bag, include_stdlib: bool = True) -> Pro
     seen: set[Path] = set()
 
     def add_model(p: Path) -> None:
-        if p in seen or not p.is_file():
-            return
+        if p in seen or not p.is_file(): return
         seen.add(p)
         rel = str(p.relative_to(root)) if p.is_relative_to(root) else str(p)
         proj.files.append(SourceFile(p, rel, "", _read(p, bag, rel)))

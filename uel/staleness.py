@@ -1,46 +1,27 @@
 """The staleness oracle (spec §4.2): what does this change invalidate?
-
-Answered by hash comparison alone, in milliseconds, before any physics runs.
-A node is:
-
-- **missing** — never built (no lock entry / no recorded outputs);
-- **stale** — its recipe hash differs from the lock (with the differing part
-  named: definition, core content, a specific input, tool pins), or any node it
-  consumes from is itself stale/missing (dirty-through-dependency), or its last
-  run failed;
-- **fresh** — recipe matches and every upstream is fresh.
-
-Early cutoff is inherent: recipes hash the *quantized values* consumed, so an
-upstream re-run that lands within tolerance leaves downstream recipes unmoved.
-"""
+Answered by hash comparison alone, before any physics runs. A node is missing
+(never built), stale (recipe differs — with the moved part named — or an
+upstream is not fresh, or its last run failed), else fresh. Early cutoff is
+inherent: recipes hash the *quantized values* consumed."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from . import graph as G
-from .diagnostics import Bag, Span
-from .hashing import (
-    core_content_hash,
-    node_identity_obj,
-    quantity_value_hash,
-    sha_obj,
-    tool_pins,
-)
+from .diagnostics import Bag, span_of
+from .hashing import core_content_hash, node_identity_obj, quantity_value_hash, sha_obj, tool_pins
 from .lockfile import Lock, LockEntry
 from .resolver import Resolution
-
 
 @dataclass
 class NodeState:
     name: str
-    status: str  # fresh | stale | missing | failed-last-run
+    status: str  # fresh | stale | missing
     recipe: str
     parts: dict
     reasons: list[str] = field(default_factory=list)
     upstream: list[str] = field(default_factory=list)  # executable producers consumed
-
 
 @dataclass
 class StaleReport:
@@ -53,58 +34,41 @@ class StaleReport:
     def fresh(self) -> list[str]:
         return [n for n in self.order if self.states[n].status == "fresh"]
 
-
 def executable_nodes(doc: G.GraphDoc) -> dict[str, G.Analysis]:
     return {n: a for n, a in doc.analyses().items() if a.core.path or a.core.text}
 
-
 def compute(res: Resolution, lock: Lock) -> StaleReport:
-    doc = res.doc
     pol = res.project.tolerances
     root = res.project.root
-    execs = executable_nodes(doc)
-
-    # producer edges among executables (knowns referencing outputs)
+    execs = executable_nodes(res.doc)
     upstream: dict[str, set[str]] = {n: set() for n in execs}
-    for (consumer, local), rr in res.known_refs.items():
+    for (consumer, _), rr in res.known_refs.items():
         if consumer in execs and rr.kind == "output" and rr.node in execs:
             upstream[consumer].add(rr.node)
-
-    order = _topo(execs.keys(), upstream)
-    report = StaleReport(order=order)
-
-    for name in order:
+    report = StaleReport(order=_topo(execs.keys(), upstream))
+    for name in report.order:
         an = execs[name]
-        parts: dict = {
-            "def": sha_obj(node_identity_obj(an, pol)),
-            "core": core_content_hash(root, an.core),
-            "tools": sha_obj(tool_pins()),
-            "inputs": {},
-        }
-        reasons: list[str] = []
-        entry: LockEntry | None = lock.nodes.get(name)
+        parts: dict = {"def": sha_obj(node_identity_obj(an, pol)),
+                       "core": core_content_hash(root, an.core),
+                       "tools": sha_obj(tool_pins()), "inputs": {}}
         for local in sorted(an.knowns):
             rr = res.known_refs.get((name, local))
             if rr is None:
                 parts["inputs"][local] = "unresolved"
-                continue
-            if rr.kind == "output":
-                producer_entry = lock.nodes.get(rr.node)
-                out_name = rr.target.rsplit(".", 1)[1]
-                out = producer_entry.outputs.get(out_name) if producer_entry else None
+            elif rr.kind == "output":
+                pe = lock.nodes.get(rr.node)
+                out = pe.outputs.get(rr.target.rsplit(".", 1)[1]) if pe else None
                 parts["inputs"][local] = out.hash if out else f"pending:{rr.target}"
             else:
                 assert rr.quantity is not None
                 parts["inputs"][local] = quantity_value_hash(rr.quantity, pol)
         recipe = sha_obj(parts)
-
-        status = "fresh"
+        entry: LockEntry | None = lock.nodes.get(name)
+        status, reasons = "fresh", []
         if entry is None or not entry.outputs and entry.status != "failed":
-            status = "missing"
-            reasons.append("never built")
+            status, reasons = "missing", ["never built"]
         elif entry.status == "failed":
-            status = "stale"
-            reasons.append("last run failed")
+            status, reasons = "stale", ["last run failed"]
         elif entry.recipe != recipe:
             status = "stale"
             old = entry.parts or {}
@@ -118,26 +82,20 @@ def compute(res: Resolution, lock: Lock) -> StaleReport:
                 if old.get("inputs", {}).get(local) != h:
                     rr = res.known_refs.get((name, local))
                     reasons.append(f"input '{local}' changed ({rr.target if rr else '?'})")
-            if not reasons:
-                reasons.append("recipe changed")
-        # dirty-through-dependency
+            reasons = reasons or ["recipe changed"]
         for up in sorted(upstream[name]):
             if report.states[up].status != "fresh":
-                if status == "fresh":
-                    status = "stale"
+                status = "stale" if status == "fresh" else status
                 reasons.append(f"upstream '{up}' is {report.states[up].status}")
         report.states[name] = NodeState(name, status, recipe, parts, reasons, sorted(upstream[name]))
     return report
-
 
 def _topo(nodes, upstream: dict[str, set[str]]) -> list[str]:
     order: list[str] = []
     seen: dict[str, int] = {}
 
     def visit(n: str) -> None:
-        state = seen.get(n, 0)
-        if state:
-            return
+        if seen.get(n, 0): return
         seen[n] = 1
         for u in sorted(upstream.get(n, ())):
             visit(u)
@@ -148,20 +106,13 @@ def _topo(nodes, upstream: dict[str, set[str]]) -> list[str]:
         visit(n)
     return order
 
-
 def report(res: Resolution, bag: Bag) -> StaleReport:
-    """Attach staleness advisories to a check run (UEL0701, info severity)."""
-    lock = Lock.load(res.project.lock_path, bag)
-    rep = compute(res, lock)
+    """Attach staleness advisories (UEL0701, info) to a check run."""
+    rep = compute(res, Lock.load(res.project.lock_path, bag))
     for name in rep.stale():
         st = rep.states[name]
-        node = res.doc.nodes.get(name)
-        src = getattr(node, "src", "")
-        f, _, ln = src.partition(":")
-        bag.info(
-            "UEL0701",
-            f"'{name}' is {st.status}: " + ("; ".join(st.reasons) or "no recorded state"),
-            Span(f, int(ln) if ln.isdigit() else 0),
-            reason="run `uel build` to re-execute the stale set in dependency order",
-        )
+        bag.info("UEL0701",
+                 f"'{name}' is {st.status}: " + ("; ".join(st.reasons) or "no recorded state"),
+                 span_of(res.doc.nodes.get(name)),
+                 reason="run `uel build` to re-execute the stale set in dependency order")
     return rep

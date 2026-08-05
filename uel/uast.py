@@ -14,7 +14,6 @@ from typing import Optional, Union
 from .diagnostics import Span
 from .lexer import Comment
 
-
 @dataclass
 class DottedRef:
     parts: list[str]
@@ -23,7 +22,6 @@ class DottedRef:
     @property
     def text(self) -> str:
         return ".".join(self.parts)
-
 
 @dataclass
 class UncTail:
@@ -34,7 +32,6 @@ class UncTail:
     unit: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class QNumber:
     value: float
@@ -42,7 +39,6 @@ class QNumber:
     unit_span: Span
     unc: Optional[UncTail] = None
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class QInterval:
@@ -54,9 +50,7 @@ class QInterval:
     span: Span = field(default_factory=Span)
     unit_inside: bool = True  # [0, 12 kN] vs [0, 12] kN — formatter canonicalizes to inside
 
-
 QExpr = Union[QNumber, QInterval, DottedRef]
-
 
 @dataclass
 class QuantityDecl:
@@ -65,14 +59,12 @@ class QuantityDecl:
     prov_detail: str = ""  # `from "datasheet p.3"`
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class PortAttr:
     name: str
     expr: QExpr
     prov_detail: str = ""  # `from "datasheet p.2"`
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class PortDecl:
@@ -84,7 +76,6 @@ class PortDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class BudgetDecl:
     name: str
@@ -93,13 +84,11 @@ class BudgetDecl:
     at_qty: Optional[int] = None
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class ContainsDecl:
     ref: DottedRef
     count: int = 1
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class EnvPredicate:
@@ -112,7 +101,6 @@ class EnvPredicate:
     op: str = ""  # one-sided form only: <=, >=, <, >
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class EnvClaim:
     keyword: str  # assume | require
@@ -120,15 +108,12 @@ class EnvClaim:
     rationale: str = ""
     span: Span = field(default_factory=Span)
 
-
 EnvItem = Union[EnvPredicate, EnvClaim]
-
 
 @dataclass
 class EnvelopeBlock:
     items: list[EnvItem] = field(default_factory=list)
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class ComponentDecl:
@@ -142,13 +127,11 @@ class ComponentDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class DatasheetRef:
     source: str
     sha256: str = ""
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class BindingDecl:
@@ -165,13 +148,11 @@ class BindingDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class IntentDecl:
     ref: DottedRef
     text: str = ""
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class FramingDecl:
@@ -180,13 +161,11 @@ class FramingDecl:
     envelope: Optional[EnvelopeBlock] = None
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class KnownDecl:
     name: str
     ref: DottedRef
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class OutputDeclA:
@@ -199,14 +178,12 @@ class OutputDeclA:
     target_expr: Optional[QExpr] = None  # literal or reference the output must satisfy
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class JudgmentDecl:
     status: str = "pending"
     text: str = ""
     doubts: str = ""
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class VerifyDecl:
@@ -228,7 +205,6 @@ class VerifyDecl:
     tol_unit_span: Span = field(default_factory=Span)
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class CoreToolDecl:
     """A pinned external tool a python core invokes: identity, not prose."""
@@ -236,7 +212,6 @@ class CoreToolDecl:
     name: str
     version: str = ""
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class AnalysisDecl:
@@ -258,13 +233,11 @@ class AnalysisDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class ConnectDecl:
     from_ref: DottedRef
     to_ref: DottedRef
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class RequirementDecl:
@@ -273,7 +246,6 @@ class RequirementDecl:
     quantities: list[QuantityDecl] = field(default_factory=list)
     doc: str = ""
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class DomainDecl:
@@ -286,7 +258,6 @@ class DomainDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class ClaimDecl:
     name: str
@@ -295,14 +266,12 @@ class ClaimDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class MaterialDecl:
     name: str
     quantities: list[QuantityDecl] = field(default_factory=list)
     doc: str = ""
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class RuleDecl:
@@ -313,7 +282,6 @@ class RuleDecl:
     message: str = ""
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class ProcessDecl:
     name: str
@@ -321,12 +289,10 @@ class ProcessDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
-
 Item = Union[
     RequirementDecl, ComponentDecl, BindingDecl, AnalysisDecl, ConnectDecl,
     DomainDecl, ClaimDecl, MaterialDecl, ProcessDecl,
 ]
-
 
 @dataclass
 class ASTFile:
@@ -334,30 +300,21 @@ class ASTFile:
     items: list[Item] = field(default_factory=list)
     comments: list[Comment] = field(default_factory=list)
 
-
-# ---------------------------------------------------------------------------
 # Structural fingerprint (span- and comment-free) for formatter conformance
-# ---------------------------------------------------------------------------
-
 
 def _fp(v: object) -> object:
     from dataclasses import fields as dc_fields, is_dataclass
 
-    if isinstance(v, Span):
-        return None
+    if isinstance(v, Span): return None
     if is_dataclass(v) and not isinstance(v, type):
-        if isinstance(v, Comment):
-            return None
+        if isinstance(v, Comment): return None
         out = {"__t": type(v).__name__}
         for f in dc_fields(v):
-            if f.name in ("span", "unit_span", "comments", "unit_inside"):
-                continue
+            if f.name in ("span", "unit_span", "comments", "unit_inside"): continue
             out[f.name] = _fp(getattr(v, f.name))
         return out
-    if isinstance(v, list):
-        return [_fp(x) for x in v]
+    if isinstance(v, list): return [_fp(x) for x in v]
     return v
-
 
 def fingerprint(ast: ASTFile) -> str:
     """Stable structural identity of a file's meaning (not its layout)."""

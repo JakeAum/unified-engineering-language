@@ -1,19 +1,11 @@
 """The compile-time pipeline (spec §4.4): every check that runs on every diff,
-in seconds, with no solver.
-
-Order: resolution (parse, names, units — already done by the caller), then
-conservation (ports, nets, balances, budget rollups), envelope contracts
-(value predicates + structural claims), DFM rulesets against locked geometry
-features, and finally staleness against the lock. Compile time gates runtime:
-the scheduler refuses to run cores while this pipeline reports errors.
-"""
+in seconds, with no solver. Compile time gates runtime."""
 
 from __future__ import annotations
 
 from .diagnostics import Bag
 from .lockfile import Lock
 from .resolver import Resolution
-
 
 def run_checks(res: Resolution, bag: Bag, lock: bool = True):
     from . import conservation, contracts, dfm, envelopes, staleness

@@ -22,7 +22,6 @@ from .project import load_project
 from .resolver import resolve_project
 from .uast import fingerprint
 
-
 def cmd_check(args: argparse.Namespace) -> int:
     bag = Bag()
     project = load_project(args.path, bag)
@@ -47,7 +46,6 @@ def cmd_check(args: argparse.Namespace) -> int:
                   else f"check: ok ({n} nodes)")
     return 0 if bag.ok() else 1
 
-
 def _load_and_resolve(path: str, bag: Bag, serial: str = "", checks: bool = True):
     project = load_project(path, bag)
     res = None
@@ -63,7 +61,6 @@ def _load_and_resolve(path: str, bag: Bag, serial: str = "", checks: bool = True
 
                 rollups = run_checks(res, bag, lock=False) or {}
     return project, res, rollups
-
 
 def cmd_build(args: argparse.Namespace) -> int:
     bag = Bag()
@@ -93,7 +90,6 @@ def cmd_build(args: argparse.Namespace) -> int:
     print(f"build: {verb} {len(result.ran)}, skipped {len(result.skipped)} fresh, "
           f"{len(result.failed)} failed")
     return 0 if result.ok() and bag.ok() else 1
-
 
 def cmd_stale(args: argparse.Namespace) -> int:
     bag = Bag()
@@ -128,7 +124,6 @@ def cmd_stale(args: argparse.Namespace) -> int:
           if stale else f"stale: all {len(rep.order)} executable nodes fresh")
     return 0
 
-
 def cmd_hash(args: argparse.Namespace) -> int:
     bag = Bag()
     project, res, _ = _load_and_resolve(args.path, bag)
@@ -162,7 +157,6 @@ def cmd_hash(args: argparse.Namespace) -> int:
     print(f"  ({len(res.doc.nodes)} nodes, edition {res.doc.edition})")
     return 0
 
-
 def cmd_fmt(args: argparse.Namespace) -> int:
     bag = Bag()
     project = load_project(args.path, bag)
@@ -172,8 +166,7 @@ def cmd_fmt(args: argparse.Namespace) -> int:
     changed: list[str] = []
     failed = False
     for sf in project.files:
-        if sf.namespace.startswith("stdlib:"):
-            continue
+        if sf.namespace.startswith("stdlib:"): continue
         fbag = Bag()
         ast = parse_text(sf.text, sf.rel, fbag)
         if fbag.errors:
@@ -200,7 +193,6 @@ def cmd_fmt(args: argparse.Namespace) -> int:
     for rel in changed:
         print(f"reformatted {rel}")
     return 1 if failed else 0
-
 
 def cmd_project(args: argparse.Namespace) -> int:
     bag = Bag()
@@ -231,7 +223,6 @@ def cmd_project(args: argparse.Namespace) -> int:
         print(f"project: wrote {p}")
     return 0
 
-
 def cmd_pack(args: argparse.Namespace) -> int:
     bag = Bag()
     project, res, _ = _load_and_resolve(args.path, bag, checks=False)
@@ -244,7 +235,6 @@ def cmd_pack(args: argparse.Namespace) -> int:
     sys.stdout.write(pack(res, Lock.load(project.lock_path, bag), args.node))
     return 0
 
-
 def cmd_graph(args: argparse.Namespace) -> int:
     bag = Bag()
     project, res, _ = _load_and_resolve(args.path, bag, checks=False)
@@ -255,7 +245,6 @@ def cmd_graph(args: argparse.Namespace) -> int:
 
     sys.stdout.write(P.dot(res))
     return 0
-
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
     import json as _json
@@ -280,7 +269,6 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
           f"{summary['validated']} validated, {summary['discrepancies']} discrepancies")
     return 0 if bag.ok() else 1
 
-
 def cmd_query(args: argparse.Namespace) -> int:
     bag = Bag()
     path = args.path
@@ -298,7 +286,6 @@ def cmd_query(args: argparse.Namespace) -> int:
         return 0
     print(provenance(res, args.target, Lock.load(project.lock_path)))
     return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="uel", description="UEL — Unified Engineering Language")
@@ -354,29 +341,17 @@ def main(argv: list[str] | None = None) -> int:
     p_query.add_argument("--serial", default="")
 
     args = ap.parse_args(argv)
-    if args.cmd == "check":
-        return cmd_check(args)
-    if args.cmd == "fmt":
-        return cmd_fmt(args)
-    if args.cmd == "build":
-        return cmd_build(args)
-    if args.cmd == "stale":
-        return cmd_stale(args)
-    if args.cmd == "hash":
-        return cmd_hash(args)
-    if args.cmd == "project":
-        return cmd_project(args)
-    if args.cmd == "pack":
-        return cmd_pack(args)
-    if args.cmd == "graph":
-        return cmd_graph(args)
-    if args.cmd == "calibrate":
-        return cmd_calibrate(args)
-    if args.cmd == "query":
-        return cmd_query(args)
+    if args.cmd == "check": return cmd_check(args)
+    if args.cmd == "fmt": return cmd_fmt(args)
+    if args.cmd == "build": return cmd_build(args)
+    if args.cmd == "stale": return cmd_stale(args)
+    if args.cmd == "hash": return cmd_hash(args)
+    if args.cmd == "project": return cmd_project(args)
+    if args.cmd == "pack": return cmd_pack(args)
+    if args.cmd == "graph": return cmd_graph(args)
+    if args.cmd == "calibrate": return cmd_calibrate(args)
+    if args.cmd == "query": return cmd_query(args)
     ap.print_help()
     return 2
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == "__main__": raise SystemExit(main())

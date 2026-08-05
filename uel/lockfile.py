@@ -1,12 +1,7 @@
-"""uel.lock — the recorded state of the executable graph.
-
-Committed to version control: text, sorted, diff-friendly (spec §4.5). The lock is
-the memory that outlives context windows — recorded recipe hashes with per-part
-breakdowns (so staleness can name what moved), output values with their quantized
-hashes (early cutoff), geometry feature claims, assertion results, and run
-provenance. The scheduler rewrites only entries for nodes it actually ran, so
-diffs stay minimal and reviewable.
-"""
+"""uel.lock — recorded state of the executable graph (spec §4.5): committed,
+sorted, diff-friendly. Recipe hashes with per-part breakdowns, outputs with
+quantized hashes (early cutoff), feature claims, assertions, run provenance.
+Only entries the scheduler actually ran move, so diffs stay reviewable."""
 
 from __future__ import annotations
 
@@ -18,7 +13,6 @@ from typing import Any, Optional
 from .diagnostics import Bag, Span
 
 LOCK_VERSION = "0.1"
-
 
 @dataclass
 class LockOutput:
@@ -45,7 +39,6 @@ class LockOutput:
         return cls(d.get("value"), d.get("unit", ""), d.get("unc"), d.get("hash", ""),
                    d.get("artifact", False))
 
-
 @dataclass
 class LockEntry:
     recipe: str = ""
@@ -54,7 +47,7 @@ class LockEntry:
     outputs: dict[str, LockOutput] = field(default_factory=dict)
     features: dict[str, dict] = field(default_factory=dict)  # geometry feature claims
     assertions: list[dict] = field(default_factory=list)
-    run: dict = field(default_factory=dict)  # provenance: ts, wall_s, tools, seed
+    run: dict = field(default_factory=dict)  # ts, wall_s, tools, seed, engine, verify, validation
 
     def to_obj(self) -> dict:
         o: dict = {"recipe": self.recipe, "status": self.status}
@@ -72,16 +65,9 @@ class LockEntry:
 
     @classmethod
     def from_obj(cls, d: dict) -> "LockEntry":
-        return cls(
-            d.get("recipe", ""),
-            d.get("parts", {}),
-            d.get("status", "missing"),
-            {k: LockOutput.from_obj(v) for k, v in d.get("outputs", {}).items()},
-            d.get("features", {}),
-            d.get("assertions", []),
-            d.get("run", {}),
-        )
-
+        return cls(d.get("recipe", ""), d.get("parts", {}), d.get("status", "missing"),
+                   {k: LockOutput.from_obj(v) for k, v in d.get("outputs", {}).items()},
+                   d.get("features", {}), d.get("assertions", []), d.get("run", {}))
 
 @dataclass
 class Lock:
@@ -90,36 +76,26 @@ class Lock:
     nodes: dict[str, LockEntry] = field(default_factory=dict)
 
     def to_obj(self) -> dict:
-        return {
-            "uel_lock": LOCK_VERSION,
-            "edition": self.edition,
-            "tools": self.tools,
-            "nodes": {k: v.to_obj() for k, v in sorted(self.nodes.items())},
-        }
+        return {"uel_lock": LOCK_VERSION, "edition": self.edition, "tools": self.tools,
+                "nodes": {k: v.to_obj() for k, v in sorted(self.nodes.items())}}
 
     def save(self, path: Path) -> None:
-        path.write_text(
-            json.dumps(self.to_obj(), indent=2, sort_keys=True, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
+        path.write_text(json.dumps(self.to_obj(), indent=2, sort_keys=True,
+                                   ensure_ascii=False) + "\n", encoding="utf-8")
 
     @classmethod
     def load(cls, path: Path, bag: Bag | None = None) -> "Lock":
-        if not path.is_file():
-            return cls()
+        if not path.is_file(): return cls()
         try:
             d = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
             if bag is not None:
                 bag.error("UEL0003", f"cannot read {path.name}: {e}", Span(path.name),
-                          fix=None, reason="delete or restore the lock; `uel build` regenerates it")
+                          reason="delete or restore the lock; `uel build` regenerates it")
             return cls()
         if not isinstance(d, dict) or d.get("uel_lock") != LOCK_VERSION:
             if bag is not None:
                 bag.warning("UEL0003", f"{path.name} has unknown version; ignoring it", Span(path.name))
             return cls()
-        return cls(
-            d.get("edition", ""),
-            d.get("tools", {}),
-            {k: LockEntry.from_obj(v) for k, v in d.get("nodes", {}).items()},
-        )
+        return cls(d.get("edition", ""), d.get("tools", {}),
+                   {k: LockEntry.from_obj(v) for k, v in d.get("nodes", {}).items()})

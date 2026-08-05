@@ -42,26 +42,19 @@ from .units import UnitError, parse_unit
 OVERLAY_DIR = "calibration"
 BASE_OVERLAY = "overlay.json"
 
-
-# ---------------------------------------------------------------------------
 # Overlay files
-# ---------------------------------------------------------------------------
-
 
 def overlay_path(root: Path, serial: str = "") -> Path:
     return root / OVERLAY_DIR / (f"{serial}.json" if serial else BASE_OVERLAY)
 
-
 def load_overlay(root: Path, serial: str = "") -> dict[str, list[dict]]:
     p = overlay_path(root, serial)
-    if not p.is_file():
-        return {}
+    if not p.is_file(): return {}
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
         return d.get("targets", {}) if isinstance(d, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
-
 
 def save_overlay(root: Path, targets: dict[str, list[dict]], serial: str = "") -> Path:
     p = overlay_path(root, serial)
@@ -72,7 +65,6 @@ def save_overlay(root: Path, targets: dict[str, list[dict]], serial: str = "") -
         encoding="utf-8",
     )
     return p
-
 
 def apply_overlays(res: Resolution, serial: str = "") -> list[str]:
     """Apply latest overlay entries onto resolved quantities (base, then serial).
@@ -89,8 +81,7 @@ def apply_overlays(res: Resolution, serial: str = "") -> list[str]:
                 merged[target] = latest
     for target, entry in sorted(merged.items()):
         q = _find_quantity(res, target, create=True)
-        if q is None:
-            continue
+        if q is None: continue
         q.value = tuple(entry["value"]) if isinstance(entry["value"], list) else entry["value"]
         q.unit = entry.get("unit", q.unit)
         unc = entry.get("unc")
@@ -106,7 +97,6 @@ def apply_overlays(res: Resolution, serial: str = "") -> list[str]:
         applied.append(target)
     return applied
 
-
 def _find_quantity(res: Resolution, target: str, create: bool = False) -> Optional[G.Quantity]:
     """Locate the mutable Quantity a target ref names (no diagnostics).
 
@@ -118,8 +108,7 @@ def _find_quantity(res: Resolution, target: str, create: bool = False) -> Option
     for cut in range(len(parts), 0, -1):
         name = ".".join(parts[:cut])
         node = doc.nodes.get(name)
-        if node is None:
-            continue
+        if node is None: continue
         rest = parts[cut:]
         if isinstance(node, (G.Requirement, G.MaterialDef)) and len(rest) == 1:
             return node.quantities.get(rest[0])
@@ -135,15 +124,10 @@ def _find_quantity(res: Resolution, target: str, create: bool = False) -> Option
         return None
     return None
 
-
-# ---------------------------------------------------------------------------
 # Ingestion
-# ---------------------------------------------------------------------------
-
 
 def _band_si(q: G.Quantity) -> Optional[tuple[float, float]]:
     return q_interval_si(q)
-
 
 def _measured_si(m: dict) -> Optional[tuple[float, float, float]]:
     """(si_value, band_lo, band_hi) of the measurement itself."""
@@ -152,8 +136,7 @@ def _measured_si(m: dict) -> Optional[tuple[float, float, float]]:
     except UnitError:
         return None
     v = m.get("value")
-    if not isinstance(v, (int, float)) or isinstance(v, bool):
-        return None
+    if not isinstance(v, (int, float)) or isinstance(v, bool): return None
     si = u.to_si(float(v))
     lo = hi = si
     unc = m.get("unc") or {}
@@ -164,7 +147,6 @@ def _measured_si(m: dict) -> Optional[tuple[float, float, float]]:
         d = abs(si) * abs(unc["value"])
         lo, hi = si - d, si + d
     return si, lo, hi
-
 
 def ingest(res: Resolution, bag: Bag, payload: dict, write_stubs: bool = True) -> dict:
     """Process a measurements file; write overlays and validation state.
@@ -308,7 +290,6 @@ def ingest(res: Resolution, bag: Bag, payload: dict, write_stubs: bool = True) -
         lock.save(res.project.lock_path)
     return summary
 
-
 def _fmt_band(band: tuple[float, float], unit: str) -> str:
     try:
         u = parse_unit(unit)
@@ -316,9 +297,7 @@ def _fmt_band(band: tuple[float, float], unit: str) -> str:
     except UnitError:
         return f"[{band[0]:g}, {band[1]:g}]"
 
-
-def _write_investigation_stub(root: Path, target: str, m: dict,
-                              pred, source: str, ts: str) -> None:
+def _write_investigation_stub(root: Path, target: str, m: dict, pred, source: str, ts: str) -> None:
     safe = target.replace(".", "_").replace("/", "_")
     day = ts[:10].replace("-", "")
     p = root / "analysis" / "investigations" / f"{safe}_{day}.uel.suggested"

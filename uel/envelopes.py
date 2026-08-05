@@ -31,22 +31,12 @@ from __future__ import annotations
 from typing import Optional
 
 from . import graph as G
-from .diagnostics import Bag, Span
+from .diagnostics import Bag, Span, span_of
 from .lockfile import Lock
 from .resolver import Resolution
 from .units import D_TEMP, UnitError, parse_unit, type_name
 
-
-def _span_of(node: G.Node) -> Span:
-    src = getattr(node, "src", "")
-    f, _, ln = src.partition(":")
-    return Span(f, int(ln) if ln.isdigit() else 0)
-
-
-# ---------------------------------------------------------------------------
 # Claim taxonomy: entailment closure and conflict detection
-# ---------------------------------------------------------------------------
-
 
 class Taxonomy:
     def __init__(self, res: Resolution):
@@ -60,8 +50,7 @@ class Taxonomy:
         work = list(claims)
         while work:
             c = work.pop()
-            if c in out:
-                continue
+            if c in out: continue
             out.add(c)
             d = self.defs.get(c)
             if d:
@@ -76,15 +65,10 @@ class Taxonomy:
         req_closure = self.closure([required])
         for held in sorted(closure):
             for need in sorted(req_closure):
-                if self.conflict(held, need):
-                    return held
+                if self.conflict(held, need): return held
         return None
 
-
-# ---------------------------------------------------------------------------
 # Value predicates
-# ---------------------------------------------------------------------------
-
 
 def _pred_si(p: G.Predicate) -> Optional[tuple[Optional[float], Optional[float], tuple]]:
     """(lo_si, hi_si, vtype) of a fence — vtype is (dim, level), so a dB fence
@@ -97,15 +81,11 @@ def _pred_si(p: G.Predicate) -> Optional[tuple[Optional[float], Optional[float],
     hi = u.to_si(p.hi) if p.hi is not None else None
     return lo, hi, u.vtype
 
-
 def _fmt_pred(p: G.Predicate) -> str:
     unit = f" {p.unit}" if p.unit else ""
-    if p.lo is not None and p.hi is not None:
-        return f"[{p.lo:g}, {p.hi:g}{unit}]"
-    if p.hi is not None:
-        return f"<= {p.hi:g}{unit}"
+    if p.lo is not None and p.hi is not None: return f"[{p.lo:g}, {p.hi:g}{unit}]"
+    if p.hi is not None: return f"<= {p.hi:g}{unit}"
     return f">= {p.lo:g}{unit}"
-
 
 def _contained(inner: tuple, outer: tuple) -> tuple[bool, str]:
     ilo, ihi, _ = inner
@@ -117,7 +97,6 @@ def _contained(inner: tuple, outer: tuple) -> tuple[bool, str]:
         return False, "above" if ihi is not None else "unbounded above"
     return True, ""
 
-
 def _check_predicate_cover(
     consumer_name: str, consumer_env: G.Envelope, consumer_span: Span,
     provider_name: str, provider_env: G.Envelope, provider_span: Span,
@@ -125,11 +104,9 @@ def _check_predicate_cover(
 ) -> None:
     for var, need in consumer_env.predicates.items():
         have = provider_env.predicates.get(var)
-        if have is None:
-            continue
+        if have is None: continue
         n_si, h_si = _pred_si(need), _pred_si(have)
-        if n_si is None or h_si is None:
-            continue
+        if n_si is None or h_si is None: continue
         if n_si[2] != h_si[2]:
             bag.error(
                 "UEL0505",
@@ -152,11 +129,7 @@ def _check_predicate_cover(
                 related=[(f"guarantee declared here", provider_span)],
             )
 
-
-# ---------------------------------------------------------------------------
 # The check
-# ---------------------------------------------------------------------------
-
 
 def check(res: Resolution, bag: Bag) -> None:
     doc = res.doc
@@ -173,12 +146,12 @@ def check(res: Resolution, bag: Bag) -> None:
     for consumer_name, producers in sorted(edges.items()):
         consumer = analyses[consumer_name]
         c_env = consumer.framing.envelope
-        c_span = _span_of(consumer)
+        c_span = span_of(consumer)
         for producer_name in sorted(producers):
             producer = analyses[producer_name]
             _check_predicate_cover(
                 consumer_name, c_env, c_span,
-                producer_name, producer.framing.envelope, _span_of(producer),
+                producer_name, producer.framing.envelope, span_of(producer),
                 bag, "upstream analysis",
             )
         # structural claims: requires vs each producer's closure
@@ -200,7 +173,7 @@ def check(res: Resolution, bag: Bag) -> None:
                     rel = [(f"'{producer_name}' assumes "
                             + (f"'{held_rationale[0]}'" + (f" because \"{held_rationale[1]}\"" if held_rationale[1] else "")
                                if held_rationale else f"'{conflicting}'"),
-                            _span_of(producer))]
+                            span_of(producer))]
                     bag.error(
                         "UEL0502",
                         f"'{consumer_name}' requires '{req}'"
@@ -226,16 +199,13 @@ def check(res: Resolution, bag: Bag) -> None:
 
     for (cname, lname), rr in sorted(res.known_refs.items()):
         consumer = analyses.get(cname)
-        if consumer is None or rr.quantity is None:
-            continue
+        if consumer is None or rr.quantity is None: continue
         pred = consumer.framing.envelope.predicates.get(lname)
-        if pred is None:
-            continue
-        c_span = _span_of(consumer)
+        if pred is None: continue
+        c_span = span_of(consumer)
         iv = q_interval_si(rr.quantity)
         p_si = _pred_si(pred)
-        if iv is None or p_si is None:
-            continue
+        if iv is None or p_si is None: continue
         try:
             qt = parse_unit(rr.quantity.unit).vtype
         except UnitError:
@@ -264,14 +234,11 @@ def check(res: Resolution, bag: Bag) -> None:
     # silently guard nothing.
     for (cname, lname), rr in sorted(res.known_refs.items()):
         consumer = analyses.get(cname)
-        if consumer is None or rr.kind != "output":
-            continue
+        if consumer is None or rr.kind != "output": continue
         pred = consumer.framing.envelope.predicates.get(lname)
-        if pred is None:
-            continue
+        if pred is None: continue
         p_si = _pred_si(pred)
-        if p_si is None:
-            continue
+        if p_si is None: continue
         try:
             ot = parse_unit(rr.unit).vtype
         except UnitError:
@@ -281,56 +248,46 @@ def check(res: Resolution, bag: Bag) -> None:
                 "UEL0505",
                 f"'{cname}': fence on '{lname}' is {type_name(*p_si[2])}, but the referenced "
                 f"output '{rr.target}' is {type_name(*ot)}",
-                _span_of(consumer),
+                span_of(consumer),
             )
 
     # -- binding covers (spec §2.3/§7.2): realization envelope ⊇ functional envelope --
     for comp in doc.components().values():
-        if not comp.realizes:
-            continue
+        if not comp.realizes: continue
         functional = doc.nodes.get(comp.realizes)
-        if not isinstance(functional, G.Component):
-            continue
+        if not isinstance(functional, G.Component): continue
         if functional.envelope.predicates and comp.envelope.predicates:
             _check_predicate_cover(
-                functional.name, functional.envelope, _span_of(functional),
-                comp.name, comp.envelope, _span_of(comp),
+                functional.name, functional.envelope, span_of(functional),
+                comp.name, comp.envelope, span_of(comp),
                 bag, "bound realization",
             )
 
     # -- material service temperature vs component thermal fence --
     for comp in doc.components().values():
-        if not comp.material:
-            continue
+        if not comp.material: continue
         mat = doc.nodes.get(comp.material)
-        if not isinstance(mat, G.MaterialDef):
-            continue
+        if not isinstance(mat, G.MaterialDef): continue
         service = mat.quantities.get("max_service_temp")
-        if service is None or service.value is None or isinstance(service.value, tuple):
-            continue
+        if service is None or service.value is None or isinstance(service.value, tuple): continue
         try:
             s_si = parse_unit(service.unit).to_si(float(service.value))
         except UnitError:
             continue
         for var, pred in comp.envelope.predicates.items():
             p_si = _pred_si(pred)
-            if p_si is None or p_si[2] != (D_TEMP, False) or p_si[1] is None:
-                continue
+            if p_si is None or p_si[2] != (D_TEMP, False) or p_si[1] is None: continue
             if p_si[1] > s_si + 1e-9:
                 bag.warning(
                     "UEL0501",
                     f"'{comp.name}' is fenced to {var} up to {pred.hi:g} {pred.unit}, above the service "
                     f"temperature of {comp.material.removeprefix('lib.materials.')} "
                     f"({service.value:g} {service.unit})",
-                    _span_of(comp),
+                    span_of(comp),
                     reason="a DFM rule and a materials limit are the same kind of claim: shop and metallurgy knowledge made statically checkable (spec §7.1)",
                 )
 
-
-# ---------------------------------------------------------------------------
 # Fences vs the values actually flowing (v0.2, ADR-0007)
-# ---------------------------------------------------------------------------
-
 
 def check_locked(res: Resolution, bag: Bag, lock: Lock) -> None:
     """Verify every fence on an output-referencing known against the *locked
@@ -342,14 +299,11 @@ def check_locked(res: Resolution, bag: Bag, lock: Lock) -> None:
     analyses = res.doc.analyses()
     for (cname, lname), rr in sorted(res.known_refs.items()):
         consumer = analyses.get(cname)
-        if consumer is None or rr.kind != "output":
-            continue
+        if consumer is None or rr.kind != "output": continue
         pred = consumer.framing.envelope.predicates.get(lname)
-        if pred is None:
-            continue
+        if pred is None: continue
         p_si = _pred_si(pred)
-        if p_si is None:
-            continue
+        if p_si is None: continue
         producer_entry = lock.nodes.get(rr.node)
         out_name = rr.target.rsplit(".", 1)[1]
         out = producer_entry.outputs.get(out_name) if producer_entry else None
@@ -380,10 +334,10 @@ def check_locked(res: Resolution, bag: Bag, lock: Lock) -> None:
                 "UEL0806",
                 f"'{cname}' fences '{lname}' in {_fmt_pred(pred)}, but the value flowing from "
                 f"'{rr.target}' is {shown} {out.unit}{band} — {how} the fence",
-                _span_of(consumer),
+                span_of(consumer),
                 reason="the fence is checked against the locked value crossing the seam, not a "
                        "name-matched variable (v0.2): rebuild after widening the fence or fixing "
                        "the producer, and say which in the judgment",
-                related=[(f"produced by '{rr.node}' here", _span_of(res.doc.nodes[rr.node]))]
+                related=[(f"produced by '{rr.node}' here", span_of(res.doc.nodes[rr.node]))]
                 if rr.node in res.doc.nodes else [],
             )

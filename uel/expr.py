@@ -58,10 +58,7 @@ from .units import (
     _d,
 )
 
-# ---------------------------------------------------------------------------
 # AST
-# ---------------------------------------------------------------------------
-
 
 @dataclass
 class ENum:
@@ -70,19 +67,16 @@ class ENum:
     unit_span: Span = field(default_factory=Span)
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class ERef:
     name: str  # possibly dotted: a known, param, let, output, or const.*
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class EUn:
     op: str  # "-"
     x: "Expr" = None  # type: ignore[assignment]
     span: Span = field(default_factory=Span)
-
 
 @dataclass
 class EBin:
@@ -91,16 +85,13 @@ class EBin:
     r: "Expr" = None  # type: ignore[assignment]
     span: Span = field(default_factory=Span)
 
-
 @dataclass
 class ECall:
     fn: str
     args: list["Expr"] = field(default_factory=list)
     span: Span = field(default_factory=Span)
 
-
 Expr = Union[ENum, ERef, EUn, EBin, ECall]
-
 
 @dataclass
 class ExprStmt:
@@ -109,10 +100,7 @@ class ExprStmt:
     expr: Expr = None  # type: ignore[assignment]
     span: Span = field(default_factory=Span)
 
-
-# ---------------------------------------------------------------------------
 # Physical constants: the `const.` namespace
-# ---------------------------------------------------------------------------
 
 # name -> (SI value, dimension). All linear; db(const.k_B) is how Boltzmann
 # enters a link budget as the -228.6 dB(W/(K*Hz)) term — exactly, not by contract.
@@ -130,20 +118,14 @@ VType = tuple[Dim, bool]  # (dimension, level flag)
 _DIMLESS: VType = (DIMENSIONLESS, False)
 _DB: VType = (DIMENSIONLESS, True)
 
-
-# ---------------------------------------------------------------------------
 # Canonical printing (the formula's content-addressed identity)
-# ---------------------------------------------------------------------------
 
 _PREC = {"+": 10, "-": 10, "*": 20, "/": 20, "^": 40}
 _UNARY_PREC = 30
 
-
 def _num(v: float) -> str:
-    if v == int(v) and abs(v) < 1e15:
-        return str(int(v))
+    if v == int(v) and abs(v) < 1e15: return str(int(v))
     return repr(v)
-
 
 def format_expr(e: Expr, parent: int = 0, right_side: bool = False) -> str:
     if isinstance(e, ENum):
@@ -152,10 +134,8 @@ def format_expr(e: Expr, parent: int = 0, right_side: bool = False) -> str:
         # so under any operator that binds at least as tight as * the literal is
         # parenthesized — "(3 m) / s" divides by a variable, "3 m / s" is a unit.
         return f"({s})" if e.unit and parent >= 20 else s
-    if isinstance(e, ERef):
-        return e.name
-    if isinstance(e, ECall):
-        return f"{e.fn}(" + ", ".join(format_expr(a) for a in e.args) + ")"
+    if isinstance(e, ERef): return e.name
+    if isinstance(e, ECall): return f"{e.fn}(" + ", ".join(format_expr(a) for a in e.args) + ")"
     if isinstance(e, EUn):
         inner = format_expr(e.x, _UNARY_PREC)
         s = f"-{inner}"
@@ -169,21 +149,15 @@ def format_expr(e: Expr, parent: int = 0, right_side: bool = False) -> str:
     s = f"{ls} {e.op} {rs}"
     return f"({s})" if p < parent or (p == parent and right_side and e.op in ("-", "/")) else s
 
-
 def format_stmt(s: ExprStmt) -> str:
     kw = "let " if s.is_let else ""
     return f"{kw}{s.target} = {format_expr(s.expr)}"
-
 
 def canonical_body(stmts: list[ExprStmt]) -> str:
     """The content-addressed identity of an expr/stub core."""
     return "\n".join(format_stmt(s) for s in stmts)
 
-
-# ---------------------------------------------------------------------------
 # Type inference: dimensions + levels, before anything runs
-# ---------------------------------------------------------------------------
-
 
 def _vtype_of_unit(unit_text: str) -> Optional[VType]:
     try:
@@ -191,7 +165,6 @@ def _vtype_of_unit(unit_text: str) -> Optional[VType]:
         return (u.dim, u.level)
     except UnitError:
         return None
-
 
 class _Infer:
     def __init__(self, node: str, env: dict[str, VType], bag: Bag):
@@ -206,18 +179,15 @@ class _Infer:
 
     def expr(self, e: Expr) -> Optional[VType]:
         if isinstance(e, ENum):
-            if not e.unit:
-                return _DIMLESS
+            if not e.unit: return _DIMLESS
             t = _vtype_of_unit(e.unit)
             if t is None:
                 self.err("UEL0301", f"unknown unit '{e.unit}' in expression literal", e.unit_span)
                 return None
             return t
         if isinstance(e, ERef):
-            if e.name in self.env:
-                return self.env[e.name]
-            if e.name in CONSTS:
-                return (CONSTS[e.name][1], False)
+            if e.name in self.env: return self.env[e.name]
+            if e.name in CONSTS: return (CONSTS[e.name][1], False)
             pool = list(self.env) + list(CONSTS)
             close = get_close_matches(e.name, pool, 1, 0.6)
             hint = f" — did you mean '{close[0]}'?" if close else ""
@@ -233,12 +203,10 @@ class _Infer:
             return None
         if isinstance(e, EUn):
             t = self.expr(e.x)
-            if t is None:
-                return None
+            if t is None: return None
             d, lv = t
             return (dim_div(DIMENSIONLESS, d), True) if lv else t
-        if isinstance(e, EBin):
-            return self.binop(e)
+        if isinstance(e, EBin): return self.binop(e)
         assert isinstance(e, ECall)
         return self.call(e)
 
@@ -246,8 +214,7 @@ class _Infer:
         lt, rt = self.expr(e.l), self.expr(e.r)
         if e.op == "^":
             n = self._int_exponent(e.r)
-            if lt is None or n is None:
-                return None
+            if lt is None or n is None: return None
             d, lv = lt
             if lv:
                 self.err("UEL0312", "cannot raise a level to a power: in the linear domain "
@@ -255,8 +222,7 @@ class _Infer:
                          e.span)
                 return None
             return (dim_pow(d, n), False)
-        if lt is None or rt is None:
-            return None
+        if lt is None or rt is None: return None
         (ld, llv), (rd, rlv) = lt, rt
         if e.op in ("+", "-"):
             if llv != rlv:
@@ -282,8 +248,7 @@ class _Infer:
                 return None
             return lt
         if e.op in ("*", "/"):
-            if not llv and not rlv:
-                return ((dim_mul if e.op == "*" else dim_div)(ld, rd), False)
+            if not llv and not rlv: return ((dim_mul if e.op == "*" else dim_div)(ld, rd), False)
             if rlv and e.op == "/":
                 self.err("UEL0312", "cannot divide by a level quantity", e.span,
                          reason="convert with lin() first if a linear ratio is meant")
@@ -330,8 +295,7 @@ class _Infer:
                      f"got {len(e.args)}", e.span)
             return None
         ts = [self.expr(a) for a in e.args]
-        if any(t is None for t in ts):
-            return None
+        if any(t is None for t in ts): return None
         t0 = ts[0]
         assert t0 is not None
         d, lv = t0
@@ -355,8 +319,7 @@ class _Infer:
         if lv:
             self.err("UEL0312", f"{fn}() does not apply to a level quantity; lin() first", e.span)
             return None
-        if fn == "abs":
-            return t0
+        if fn == "abs": return t0
         if fn == "sqrt":
             if any(x % 2 for x in d):
                 self.err("UEL0311", f"sqrt of {type_name(d)} has no exact dimension — "
@@ -372,7 +335,6 @@ class _Infer:
                      e.span, reason=hint)
             return None
         return _DIMLESS
-
 
 def infer_program(
     node: str,
@@ -432,80 +394,58 @@ def infer_program(
         inf.err("UEL0310", f"declared output '{o}' is never assigned", node_span)
     return inf.ok
 
-
-# ---------------------------------------------------------------------------
 # Evaluation: interval arithmetic over (lo, nominal, hi) in canonical SI
-# ---------------------------------------------------------------------------
 
 IV = tuple[float, float, float]
-
 
 class ExprEvalError(Exception):
     def __init__(self, message: str, target: str = ""):
         super().__init__(message)
         self.target = target
 
-
 def _iv(lo: float, nom: float, hi: float) -> IV:
     return (min(lo, hi), nom, max(lo, hi))
-
 
 def _add(a: IV, b: IV) -> IV:
     return (a[0] + b[0], a[1] + b[1], a[2] + b[2])
 
-
 def _sub(a: IV, b: IV) -> IV:
     return (a[0] - b[2], a[1] - b[1], a[2] - b[0])
 
-
 def _neg(a: IV) -> IV:
     return (-a[2], -a[1], -a[0])
-
 
 def _mul(a: IV, b: IV) -> IV:
     ps = (a[0] * b[0], a[0] * b[2], a[2] * b[0], a[2] * b[2])
     return (min(ps), a[1] * b[1], max(ps))
 
-
 def _div(a: IV, b: IV) -> IV:
-    if b[0] <= 0.0 <= b[2]:
-        raise ExprEvalError("division by an interval containing zero")
+    if b[0] <= 0.0 <= b[2]: raise ExprEvalError("division by an interval containing zero")
     return _mul(a, (1.0 / b[2], 1.0 / b[1], 1.0 / b[0]))
 
-
 def _pow(a: IV, n: int) -> IV:
-    if n == 0:
-        return (1.0, 1.0, 1.0)
-    if n < 0:
-        return _div((1.0, 1.0, 1.0), _pow(a, -n))
+    if n == 0: return (1.0, 1.0, 1.0)
+    if n < 0: return _div((1.0, 1.0, 1.0), _pow(a, -n))
     lo, nom, hi = a[0] ** n, a[1] ** n, a[2] ** n
-    if n % 2 == 0 and a[0] < 0.0 < a[2]:
-        return (0.0, nom, max(lo, hi))
+    if n % 2 == 0 and a[0] < 0.0 < a[2]: return (0.0, nom, max(lo, hi))
     return _iv(lo, nom, hi)
-
 
 def _mono(f, a: IV, domain_lo: float | None = None, what: str = "") -> IV:
     if domain_lo is not None and a[0] < domain_lo:
         raise ExprEvalError(f"{what} of a non-positive interval [{a[0]:g}, {a[2]:g}]")
     return (f(a[0]), f(a[1]), f(a[2]))
 
-
 def _sqrt(a: IV) -> IV:
-    if a[0] < -1e-12:
-        raise ExprEvalError(f"sqrt of a negative interval [{a[0]:g}, {a[2]:g}]")
+    if a[0] < -1e-12: raise ExprEvalError(f"sqrt of a negative interval [{a[0]:g}, {a[2]:g}]")
     return (math.sqrt(max(0.0, a[0])), math.sqrt(max(0.0, a[1])), math.sqrt(max(0.0, a[2])))
 
-
 def _abs(a: IV) -> IV:
-    if a[0] <= 0.0 <= a[2]:
-        return (0.0, abs(a[1]), max(-a[0], a[2]))
+    if a[0] <= 0.0 <= a[2]: return (0.0, abs(a[1]), max(-a[0], a[2]))
     return _iv(abs(a[0]), abs(a[1]), abs(a[2]))
-
 
 def _sin(a: IV) -> IV:
     lo, nom, hi = a
-    if hi - lo >= 2.0 * math.pi:
-        return (-1.0, math.sin(nom), 1.0)
+    if hi - lo >= 2.0 * math.pi: return (-1.0, math.sin(nom), 1.0)
     cands = [math.sin(lo), math.sin(hi)]
     k = math.ceil((lo - math.pi / 2.0) / math.pi)
     while math.pi / 2.0 + k * math.pi <= hi:
@@ -513,11 +453,9 @@ def _sin(a: IV) -> IV:
         k += 1
     return (min(cands), math.sin(nom), max(cands))
 
-
 def _cos(a: IV) -> IV:
     h = math.pi / 2.0
     return _sin((a[0] + h, a[1] + h, a[2] + h))
-
 
 _CALLS = {
     "sqrt": _sqrt,
@@ -531,7 +469,6 @@ _CALLS = {
     "lin": lambda a: _mono(lambda v: 10.0 ** (v / 10.0), a),
 }
 
-
 def _eval(e: Expr, values: dict[str, IV]) -> IV:
     if isinstance(e, ENum):
         if e.unit:
@@ -541,24 +478,19 @@ def _eval(e: Expr, values: dict[str, IV]) -> IV:
             v = e.value
         return (v, v, v)
     if isinstance(e, ERef):
-        if e.name in values:
-            return values[e.name]
+        if e.name in values: return values[e.name]
         c = CONSTS[e.name][0]
         return (c, c, c)
-    if isinstance(e, EUn):
-        return _neg(_eval(e.x, values))
+    if isinstance(e, EUn): return _neg(_eval(e.x, values))
     if isinstance(e, EBin):
         if e.op == "^":
             assert isinstance(e.r, (ENum, EUn))
             n = int(round(e.r.value)) if isinstance(e.r, ENum) else -int(round(e.r.x.value))  # type: ignore[union-attr]
             return _pow(_eval(e.l, values), n)
         a, b = _eval(e.l, values), _eval(e.r, values)
-        if e.op == "+":
-            return _add(a, b)
-        if e.op == "-":
-            return _sub(a, b)
-        if e.op == "*":
-            return _mul(a, b)
+        if e.op == "+": return _add(a, b)
+        if e.op == "-": return _sub(a, b)
+        if e.op == "*": return _mul(a, b)
         return _div(a, b)
     assert isinstance(e, ECall)
     args = [_eval(a, values) for a in e.args]
@@ -567,7 +499,6 @@ def _eval(e: Expr, values: dict[str, IV]) -> IV:
     if e.fn == "max":
         return (max(a[0] for a in args), max(a[1] for a in args), max(a[2] for a in args))
     return _CALLS[e.fn](args[0])
-
 
 def evaluate_program(
     stmts: list[ExprStmt], inputs: dict[str, IV], outputs: list[str]

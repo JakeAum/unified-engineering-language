@@ -44,23 +44,18 @@ Dim = tuple[int, int, int, int, int, int, int, int]
 
 DIMENSIONLESS: Dim = (0,) * N_BASE
 
-
 def dim_mul(a: Dim, b: Dim) -> Dim:
     return tuple(x + y for x, y in zip(a, b))  # type: ignore[return-value]
-
 
 def dim_div(a: Dim, b: Dim) -> Dim:
     return tuple(x - y for x, y in zip(a, b))  # type: ignore[return-value]
 
-
 def dim_pow(a: Dim, n: int) -> Dim:
     return tuple(x * n for x in a)  # type: ignore[return-value]
 
-
 def dim_str(d: Dim) -> str:
     """Human name of a dimension vector, e.g. 'kg*m/s^2'."""
-    if d == DIMENSIONLESS:
-        return "dimensionless"
+    if d == DIMENSIONLESS: return "dimensionless"
     num, den = [], []
     for name, e in zip(BASE_NAMES, d):
         if e > 0:
@@ -72,10 +67,8 @@ def dim_str(d: Dim) -> str:
         s += "/" + "/".join(den)
     return s
 
-
 def _d(kg=0, m=0, s=0, A=0, K=0, mol=0, cd=0, USD=0) -> Dim:
     return (kg, m, s, A, K, mol, cd, USD)
-
 
 # Well-known derived dimensions, used in messages and domain checks.
 D_MASS = _d(kg=1)
@@ -111,20 +104,15 @@ _WELL_KNOWN = {
     D_FREQ: "frequency",
 }
 
-
 def dim_name(d: Dim) -> str:
     known = _WELL_KNOWN.get(d)
     return f"{known} ({dim_str(d)})" if known and d != DIMENSIONLESS else dim_str(d)
 
-
 def type_name(d: Dim, level: bool = False) -> str:
     """Human name of a full quantity type: dimension + level flag."""
-    if not level:
-        return dim_name(d)
-    if d == DIMENSIONLESS:
-        return "level (dB, a log ratio)"
+    if not level: return dim_name(d)
+    if d == DIMENSIONLESS: return "level (dB, a log ratio)"
     return f"level (dB re {dim_str(d)})"
-
 
 @dataclass(frozen=True)
 class UnitDef:
@@ -137,7 +125,6 @@ class UnitDef:
     @property
     def affine(self) -> bool:
         return self.offset != 0.0 and not self.level
-
 
 _PI = 3.141592653589793
 
@@ -201,12 +188,10 @@ PREFIXES: dict[str, float] = {
     "k": 1e3, "M": 1e6, "G": 1e9, "T": 1e12,
 }
 
-
 class UnitError(ValueError):
     def __init__(self, message: str, suggestion: Optional[str] = None):
         super().__init__(message)
         self.suggestion = suggestion
-
 
 # Longhand and common misspellings -> canonical symbol. Keys lowercase; the table
 # exists so that did-you-mean fixes are machine-applicable (fix-loop discipline).
@@ -239,22 +224,18 @@ _ALIASES: dict[str, str] = {
     "db": "dB", "dbw": "dBW", "dbm": "dBm", "dbhz": "dBHz", "dbi": "dBi", "dbk": "dBK",
 }
 
-
 def _lookup_symbol(sym: str) -> UnitDef:
     """Exact symbol first, then prefix + prefixable symbol, then aliases."""
-    if sym in UNITS:
-        return UNITS[sym]
+    if sym in UNITS: return UNITS[sym]
     for plen in (1,):  # all prefixes are single-character
         p, rest = sym[:plen], sym[plen:]
         if p in PREFIXES and rest in UNITS and UNITS[rest].prefixable:
             base = UNITS[rest]
-            if base.affine:
-                raise UnitError(f"affine unit '{rest}' cannot take a prefix")
+            if base.affine: raise UnitError(f"affine unit '{rest}' cannot take a prefix")
             return UnitDef(PREFIXES[p] * base.factor, base.dim)
     # suggestion machinery
     alias = _ALIASES.get(sym.lower())
-    if alias:
-        raise UnitError(f"unknown unit '{sym}'", suggestion=alias)
+    if alias: raise UnitError(f"unknown unit '{sym}'", suggestion=alias)
     candidates = sorted(
         set(list(UNITS) + list(_ALIASES)
             + [p + u for p in ("k", "m", "M", "u") for u, d in UNITS.items() if d.prefixable])
@@ -266,7 +247,6 @@ def _lookup_symbol(sym: str) -> UnitDef:
         if suggestion not in UNITS and close[0] in _ALIASES:
             suggestion = _ALIASES[close[0]]
     raise UnitError(f"unknown unit '{sym}'", suggestion=suggestion)
-
 
 @dataclass(frozen=True)
 class Unit:
@@ -298,9 +278,7 @@ class Unit:
     def from_si(self, v: float) -> float:
         return (v - self.offset) / self.factor
 
-
 DIMENSIONLESS_UNIT = Unit("", 1.0, DIMENSIONLESS)
-
 
 class _UnitParser:
     """unit_expr := term (('*'|'/') term)* ; term := factor ('^' int)? ;
@@ -339,11 +317,9 @@ class _UnitParser:
             lin_f = f2 if lv1 else f1
             shift = (off1 if lv1 else off2)
             log_shift = 10.0 * math.log10(lin_f)
-            if op == "*":
-                return 1.0, dim_mul(d1, d2), shift + log_shift, True
+            if op == "*": return 1.0, dim_mul(d1, d2), shift + log_shift, True
             return 1.0, dim_div(d1, d2), shift - log_shift, True
-        if op == "*":
-            return f1 * f2, dim_mul(d1, d2), 0.0, False
+        if op == "*": return f1 * f2, dim_mul(d1, d2), 0.0, False
         return f1 / f2, dim_div(d1, d2), 0.0, False
 
     def parse(self) -> tuple[float, Dim, float, bool, bool]:
@@ -379,8 +355,7 @@ class _UnitParser:
                     f"cannot raise a level unit to a power in '{self.text}': "
                     "exponentiation of a level is multiplication of its value"
                 )
-            if off != 0.0:
-                raise UnitError(f"affine unit composed in '{self.text}'")
+            if off != 0.0: raise UnitError(f"affine unit composed in '{self.text}'")
             f, d = f**n, dim_pow(d, n)
         return f, d, off, lv
 
@@ -414,7 +389,6 @@ class _UnitParser:
         self.error("unclosed '(' ")
         raise AssertionError
 
-
 def parse_unit(text: str) -> Unit:
     """Parse a surface unit expression into a resolved Unit.
 
@@ -422,14 +396,11 @@ def parse_unit(text: str) -> Unit:
     optional did-you-mean suggestion.
     """
     text = text.strip()
-    if text in ("", "dimensionless", "1"):
-        return DIMENSIONLESS_UNIT
+    if text in ("", "dimensionless", "1"): return DIMENSIONLESS_UNIT
     compact = text.replace(" ", "")
     f, d, off, lv, composite = _UnitParser(compact).parse()
-    if off != 0.0 and composite and not lv:
-        raise UnitError(f"affine unit composed in '{text}'")
+    if off != 0.0 and composite and not lv: raise UnitError(f"affine unit composed in '{text}'")
     return Unit(compact, f, d, off, lv)
-
 
 def is_unit_symbol(sym: str) -> bool:
     """True iff `sym` resolves as a unit symbol (exact or prefixed; aliases are
@@ -440,7 +411,6 @@ def is_unit_symbol(sym: str) -> bool:
         return True
     except UnitError:
         return False
-
 
 def check_effort_flow_power(effort_unit: str, flow_unit: str) -> bool:
     """Kernel invariant for power domains: dim(effort) * dim(flow) == power."""

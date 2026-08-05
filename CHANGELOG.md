@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.4.0 — the quality pass (2026-08-05)
+
+Same functionality, fewer lines, graded by the same suite before and after:
+54 unit tests, 63 conformance cases, all three examples check/format clean,
+and — the strictest referee — every committed lock reported **all-fresh**
+against the refactored kernel before the version bump (byte-identical
+canonical encodings and hashes), then re-locked to bit-identical values after.
+
+- `uel/graph.py`: serialization is now spec-driven — each class declares
+  SPEC rows consumed by one generic emitter/reader pair; cross-field checks
+  live in small `_post` hooks. Emission semantics unchanged to the byte.
+- One `span_of` in `diagnostics` (was six per-module copies); the small
+  modules (canon, lockfile, dfm, staleness, hashing, checker, diagnostics)
+  rewritten to their essentials with docstrings tightened to the
+  load-bearing sentences.
+- Vertical density: single blank lines, 281 single-statement guards folded,
+  three-line banners collapsed. 9,698 → 8,567 kernel lines (−11.7%) with
+  diagnostics prose — the product surface agents iterate against —
+  deliberately untouched. A line-join sweep at 100 columns found only 2
+  candidates: the code was already written at width.
+- Where the remaining mass lives, on the record: ~1/3 subsystem logic that
+  is simply distinct (parser, resolver, three core engines, five
+  projections), ~1/4 diagnostic messages/reasons/fixes (cutting these
+  breaks the fix-loop), and data tables (units vocabulary, code registry).
+  Halving again means deleting features or the prose that makes errors
+  actionable — declined, and this entry is the receipt.
+
 ## v0.3.0 — zero-trust, operationalized (2026-08-05)
 
 The review posture the program demands: an agent auditing an analysis should

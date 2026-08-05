@@ -22,87 +22,70 @@ is still standing on placeholders says so on every check.
 from __future__ import annotations
 
 from . import graph as G
-from .diagnostics import Bag, Span
+from .diagnostics import Bag, Span, span_of
 from .lockfile import Lock
 from .resolver import Resolution
 from .units import UnitError, parse_unit
-
-
-def _span_of(node: G.Node) -> Span:
-    src = getattr(node, "src", "")
-    f, _, ln = src.partition(":")
-    return Span(f, int(ln) if ln.isdigit() else 0)
-
 
 def _bound_si(res: Resolution, lock: Lock, node: str, out: str,
               od: G.OutputDecl) -> tuple[float | None, str, str]:
     """(bound in SI-canonical, display text, source description) for a target."""
     if od.target_value is not None:
         q = od.target_value
-        if q.value is None or isinstance(q.value, tuple):
-            return None, "", ""
+        if q.value is None or isinstance(q.value, tuple): return None, "", ""
         try:
             si = parse_unit(q.unit).to_si(float(q.value))
         except UnitError:
             return None, "", ""
         return si, f"{q.value:g} {q.unit}".strip(), "declared bound"
     rr = res.target_refs.get((node, out))
-    if rr is None:
-        return None, "", ""
+    if rr is None: return None, "", ""
     if rr.kind == "output":
         producer = lock.nodes.get(rr.node)
         oname = rr.target.rsplit(".", 1)[1]
         o = producer.outputs.get(oname) if producer else None
-        if o is None or o.value is None or isinstance(o.value, list):
-            return None, "", ""
+        if o is None or o.value is None or isinstance(o.value, list): return None, "", ""
         try:
             si = parse_unit(o.unit).to_si(float(o.value))
         except UnitError:
             return None, "", ""
         return si, f"{o.value:g} {o.unit}".strip(), f"from {rr.target}"
     q = rr.quantity
-    if q is None or q.value is None or isinstance(q.value, tuple):
-        return None, "", ""
+    if q is None or q.value is None or isinstance(q.value, tuple): return None, "", ""
     try:
         si = parse_unit(q.unit).to_si(float(q.value))
     except UnitError:
         return None, "", ""
     return si, f"{q.value:g} {q.unit}".strip(), f"from {rr.target}"
 
-
 def _ref_si(res: Resolution, lock: Lock, node: str, idx: int) -> tuple[float | None, str]:
     """SI value + display text of a verify-against reference."""
     rr = res.verify_refs.get((node, idx))
-    if rr is None:
-        return None, ""
+    if rr is None: return None, ""
     if rr.kind == "output":
         producer = lock.nodes.get(rr.node)
         oname = rr.target.rsplit(".", 1)[1]
         o = producer.outputs.get(oname) if producer else None
-        if o is None or o.value is None or isinstance(o.value, list):
-            return None, ""
+        if o is None or o.value is None or isinstance(o.value, list): return None, ""
         try:
             return parse_unit(o.unit).to_si(float(o.value)), f"{o.value:g} {o.unit}".strip()
         except UnitError:
             return None, ""
     q = rr.quantity
-    if q is None or q.value is None or isinstance(q.value, tuple):
-        return None, ""
+    if q is None or q.value is None or isinstance(q.value, tuple): return None, ""
     try:
         return parse_unit(q.unit).to_si(float(q.value)), f"{q.value:g} {q.unit}".strip()
     except UnitError:
         return None, ""
 
-
 def check(res: Resolution, bag: Bag, lock: Lock) -> None:
     analyses = res.doc.analyses()
     for name in sorted(analyses):
         an = analyses[name]
-        sp = _span_of(an)
+        sp = span_of(an)
         for out_name in sorted(an.outputs):
             od = an.outputs[out_name]
-            if not od.target_op:
-                continue
+            if not od.target_op: continue
             bound_si, bound_txt, source = _bound_si(res, lock, name, out_name, od)
             if bound_si is None:
                 continue  # unresolvable bound already diagnosed at resolution
@@ -154,10 +137,9 @@ def check(res: Resolution, bag: Bag, lock: Lock) -> None:
     # -- verify-against contracts: lock-vs-lock cross-checks (ADR-0008) --
     for name in sorted(analyses):
         an = analyses[name]
-        sp = _span_of(an)
+        sp = span_of(an)
         for i, gv in enumerate(an.verifies):
-            if gv.kind != "against":
-                continue
+            if gv.kind != "against": continue
             entry = lock.nodes.get(name)
             out = entry.outputs.get(gv.output) if entry else None
             mine = None
@@ -202,7 +184,7 @@ def check(res: Resolution, bag: Bag, lock: Lock) -> None:
         bag.info(
             "UEL0807",
             f"'{n}' runs a stub core: its outputs are declared nominals, not analysis",
-            _span_of(analyses[n]),
+            span_of(analyses[n]),
             reason=f"{len(stubs)} of {sum(1 for a in analyses.values() if a.core.path or a.core.text)} "
                    "executable nodes are stubs; the status projection carries the ledger",
         )
