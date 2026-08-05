@@ -98,6 +98,7 @@ class ExprStmt:
     target: str
     is_let: bool
     expr: Expr = None  # type: ignore[assignment]
+    unc: object = None  # stub nominals only: a surface UncTail (kind/value/unit)
     span: Span = field(default_factory=Span)
 
 # Physical constants: the `const.` namespace
@@ -149,9 +150,19 @@ def format_expr(e: Expr, parent: int = 0, right_side: bool = False) -> str:
     s = f"{ls} {e.op} {rs}"
     return f"({s})" if p < parent or (p == parent and right_side and e.op in ("-", "/")) else s
 
+def _fmt_unc(u) -> str:
+    if u is None:
+        return ""
+    if u.kind == "cal":
+        return " ± cal"
+    if u.kind == "rel":
+        return f" ± {_num((u.value or 0.0) * 100)} %"
+    unit = f" {u.unit}" if u.unit else ""
+    return f" ± {_num(u.value or 0.0)}{unit}"
+
 def format_stmt(s: ExprStmt) -> str:
     kw = "let " if s.is_let else ""
-    return f"{kw}{s.target} = {format_expr(s.expr)}"
+    return f"{kw}{s.target} = {format_expr(s.expr)}{_fmt_unc(s.unc)}"
 
 def canonical_body(stmts: list[ExprStmt]) -> str:
     """The content-addressed identity of an expr/stub core."""
@@ -361,6 +372,14 @@ def infer_program(
             inf.err("UEL0310", f"stub bodies are literal nominal values ('{s.target} = 4 dB'), "
                     "not formulas — promote the core to `expr` for arithmetic", s.span)
             continue
+        if s.unc is not None and getattr(s.unc, "kind", "") == "abs" and getattr(s.unc, "unit", ""):
+            lit_unit = s.expr.unit if isinstance(s.expr, ENum) else ""
+            tu, lu = _vtype_of_unit(s.unc.unit), _vtype_of_unit(lit_unit)
+            ok = tu is not None and lu is not None and (
+                tu == lu or (tu[1] and lu[1] and tu[0] == DIMENSIONLESS))
+            if not ok:
+                inf.err("UEL0302", f"stub '{s.target}': uncertainty unit '{s.unc.unit}' does not "
+                        f"match the nominal's unit '{lit_unit or 'dimensionless'}'", s.span)
         t = inf.expr(s.expr)
         if s.is_let:
             if s.target in inf.env or s.target in outputs:
@@ -500,6 +519,23 @@ def _eval(e: Expr, values: dict[str, IV]) -> IV:
         return (max(a[0] for a in args), max(a[1] for a in args), max(a[2] for a in args))
     return _CALLS[e.fn](args[0])
 
+def _widen(v: IV, s: ExprStmt) -> IV:
+    """Apply a stub nominal's declared ± band (abs in its unit, rel, or cal=0)."""
+    kind = getattr(s.unc, "kind", "")
+    nom = v[1]
+    if kind == "rel":
+        half = abs(nom) * abs(getattr(s.unc, "value", 0.0) or 0.0)
+    elif kind == "abs":
+        unit = getattr(s.unc, "unit", "") or (s.expr.unit if isinstance(s.expr, ENum) else "")
+        try:
+            factor = parse_unit(unit).factor
+        except UnitError:
+            factor = 1.0
+        half = abs(getattr(s.unc, "value", 0.0) or 0.0) * factor
+    else:  # cal: declared-but-unknown; nominal-only
+        half = 0.0
+    return (nom - half, nom, nom + half)
+
 def evaluate_program(
     stmts: list[ExprStmt], inputs: dict[str, IV], outputs: list[str]
 ) -> dict[str, IV]:
@@ -515,6 +551,8 @@ def evaluate_program(
             v = _eval(s.expr, values)
         except ExprEvalError as ex:
             raise ExprEvalError(str(ex), s.target) from None
+        if s.unc is not None:
+            v = _widen(v, s)
         if not all(math.isfinite(x) for x in v):
             raise ExprEvalError("expression produced a non-finite value", s.target)
         values[s.target] = v

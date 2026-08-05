@@ -36,19 +36,19 @@
           "freq": "sha256:9b3b516a274e34e85b10a21702a50419e531870b95e06ca9bf9e6a190b9caa14",
           "surface_rms": "sha256:3d7a99de26fb50a2a4f5b837fcc24f4b7d70fd33d0ed34f044cc0017e171da29"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:a7523694a4d22344abb6c9ee4e2b01d4531df417fb718ed0658e50f4ae5c3e6f",
+      "recipe": "sha256:752e9b58f00ffb229afa49e7539de61ba24360728241ec97fe69333f08ffdbae",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 7.5e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.000108
       },
       "status": "fresh"
     },
@@ -72,19 +72,19 @@
           "lna_noise_temp": "sha256:c1e2df4da8736641f3eca3036c2519d4ae1ce8f55a4fc9020f2d3d5944f79182",
           "min_elevation": "sha256:20b5e33319f599a183f6ee22ac34d4e8cffedf2ac57c8f9d63f8c3133ad55d5e"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:12af78b179ea1284c07f4c79853f80861195f36dc2fd68c5db3c71f37551365e",
+      "recipe": "sha256:0931c433fcb5e22782d517eb53b319f82e103fbbaba809cd505cae4499fc5269",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 4.5e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 5.5e-05
       },
       "status": "fresh"
     },
@@ -108,19 +108,19 @@
           "g_array_dbi": "sha256:56e1a2455fc8c0bfee00f8bf3a85178677236832f74d8917b62bd7abd46fc289",
           "t_sys": "sha256:c386f6e42cbb0adb4afd441478945a7426c1639afaae9373864c5263dad95057"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:dfce4482faafe481efada1d97ac4cffde3756851c0451f09b444a5c086c7dce1",
+      "recipe": "sha256:815ae89843be46bd3066d0f0bd2f858848a104026f0b18fa458ef1504d60afee",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 1.5e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 1.6e-05
       },
       "status": "fresh"
     },
@@ -170,19 +170,19 @@
           "rain_alloc_db": "sha256:a5b9007fe5228ca3f319e35e2813c3fdcb27390e1a80a773643744480783e33a",
           "required_ebn0_db": "sha256:fb016c4d2973cf682c6c61d0b188faa6a22d5b633ffa00910d07b69115866220"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:7bd7b71d41d3d4de793955357b611f1d4011a3f3d75ca0c9008b6809f35c9d61",
+      "recipe": "sha256:e85c7ca443448d716d5467384a2e49697346812f87af6c8030a81b6c5447df90",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 4e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 5.8e-05
       },
       "status": "fresh"
     },
@@ -224,18 +224,18 @@
           "max_feed": "sha256:edd1ed736985542b1aef773c5974553b549dedf1655063e94da220ff57d2088d",
           "server_draw": "sha256:21efbcd54769a2bb931360043337a00959aef39ff224076260502b1b2e84b12f"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:7ba04250ad5e7b86e165f4448269ac655a599ccdeda9574651d68292a49c506e",
+      "recipe": "sha256:e629cfa0278958f7396cdc8b0519993c077e5bf694f3c092ff2ce6fd5b96229a",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 0.022
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.025
       },
       "status": "fresh"
     },
@@ -269,19 +269,19 @@
           "track_rate": "sha256:f7354bcb92449796eebcc1affe3d0143a4327e3ec797dd5bc51bb8902acc4be3",
           "wind_full_track": "sha256:21addfff6405785c3ef42415658329d15f2650988fcd95e6a2af36faf25de9f0"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:cf7b3c0211e337bcb9cd65607a0da68e33a6c1ef9d2527b0cae9df610d7dc83f",
+      "recipe": "sha256:5475f83ef10b7dbc183fa8a07973e9295a788a9dc1678fc374e7516b6b6b44f1",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 4.4e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 5.5e-05
       },
       "status": "fresh"
     },
@@ -306,18 +306,18 @@
           "min_ride": "sha256:2f48cbb5f2d6b51caf3cac79fe651eb4d9d4d50032bc4b242858baedc0410253",
           "server_draw": "sha256:21efbcd54769a2bb931360043337a00959aef39ff224076260502b1b2e84b12f"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:c72bc4c1f998065cd7a2a085b57be15c4ab10afa118d67dbe3c32f2278251089",
+      "recipe": "sha256:479a669eb81b036e729b489bd6bc1bc10ba8cecba84ed4ec9183488c0e833b16",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T05:03:26Z",
+        "wall_s": 0.025
       },
       "status": "fresh"
     },
@@ -368,18 +368,18 @@
           "wind_operational": "sha256:7b20462d439998fcdeb8b2898fffd9e22aeefbb34bd976094e963a03710d7e79",
           "wind_survival": "sha256:462d67415106ec3132ae7674c988ce55b68dd7398108f6bd4d3febdb2354e1c6"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:790b740bed321ec2df96df625846f28c6c82484504d35260e8ab0a7ff683b399",
+      "recipe": "sha256:64905f7eccdde4c3bfc5f418b4a43288024f664c06a73a98b141014d968df55a",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:37Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T05:03:26Z",
+        "wall_s": 0.023
       },
       "status": "fresh"
     }
@@ -387,7 +387,7 @@
   "tools": {
     "edition": "2026",
     "python": "3.11.15",
-    "uel": "0.4.0"
+    "uel": "0.5.0"
   },
   "uel_lock": "0.1"
 }

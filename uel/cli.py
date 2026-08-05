@@ -223,6 +223,35 @@ def cmd_project(args: argparse.Namespace) -> int:
         print(f"project: wrote {p}")
     return 0
 
+def cmd_agent(args: argparse.Namespace) -> int:
+    from .agentdoc import briefing
+
+    sys.stdout.write(briefing(commands=getattr(args, "_commands", None)))
+    return 0
+
+def cmd_init(args: argparse.Namespace) -> int:
+    from .agentdoc import init_project
+
+    root = Path(args.path)
+    root.mkdir(parents=True, exist_ok=True)
+    written = init_project(root, args.name or root.resolve().name)
+    for p in written:
+        print(f"init: wrote {p}")
+    print(f"init: skill installed at {root / '.claude' / 'skills' / 'uel-engineer'}")
+    print(f"init: next -> uel check {args.path} && uel build {args.path}; orient with `uel agent`")
+    return 0
+
+def cmd_skill(args: argparse.Namespace) -> int:
+    from .agentdoc import SKILL_DIR, skill_install
+
+    if args.action == "show":
+        sys.stdout.write((SKILL_DIR / "SKILL.md").read_text(encoding="utf-8"))
+        return 0
+    dest = skill_install(Path(args.path))
+    print(f"skill: installed uel-engineer at {dest}")
+    print("skill: harnesses that read .claude/skills/ load it automatically; others can read SKILL.md directly")
+    return 0
+
 def cmd_pack(args: argparse.Namespace) -> int:
     bag = Bag()
     project, res, _ = _load_and_resolve(args.path, bag, checks=False)
@@ -320,6 +349,17 @@ def main(argv: list[str] | None = None) -> int:
     p_proj.add_argument("-o", "--out", default="out", help="output directory (default: out/)")
     p_proj.add_argument("--serial", default="", help="apply an as-built overlay (calibration/<serial>.json)")
 
+    p_agent = sub.add_parser("agent", help="the tool briefs the agent using it (generated from live kernel tables)")
+    _ = p_agent
+
+    p_init = sub.add_parser("init", help="scaffold a green-by-construction UEL project (incl. agent skill)")
+    p_init.add_argument("path", nargs="?", default=".")
+    p_init.add_argument("--name", default="", help="project name (default: directory name)")
+
+    p_skill = sub.add_parser("skill", help="the packaged agent skill: show it, or install into a project")
+    p_skill.add_argument("action", choices=["show", "install"])
+    p_skill.add_argument("path", nargs="?", default=".")
+
     p_pack = sub.add_parser("pack", help="review dossier: one node's full epistemic chain, context-sized (ADR-0008)")
     p_pack.add_argument("node", help="analysis node to pack (e.g. LinkMargin)")
     p_pack.add_argument("path", nargs="?", default=".")
@@ -341,6 +381,13 @@ def main(argv: list[str] | None = None) -> int:
     p_query.add_argument("--serial", default="")
 
     args = ap.parse_args(argv)
+    if args.cmd == "agent":
+        args._commands = sorted(sub.choices)
+        return cmd_agent(args)
+    if args.cmd == "init":
+        return cmd_init(args)
+    if args.cmd == "skill":
+        return cmd_skill(args)
     if args.cmd == "check": return cmd_check(args)
     if args.cmd == "fmt": return cmd_fmt(args)
     if args.cmd == "build": return cmd_build(args)

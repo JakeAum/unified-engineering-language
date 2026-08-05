@@ -393,7 +393,8 @@ class Parser:
             if not self.expect(T.EQ, f"'=' after '{nt.text}'"): break
             ex = self.expression(0)
             if ex is None: break
-            stmts.append(E.ExprStmt(nt.text, is_let, ex, self.span(nt)))
+            unc = self.unc_tail() if kind == "stub" and not is_let else None
+            stmts.append(E.ExprStmt(nt.text, is_let, ex, unc, self.span(nt)))
             self.skip_seps()
         self.expect(T.RBRACE, f"'}}' to close core {kind}")
         return stmts

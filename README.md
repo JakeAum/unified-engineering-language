@@ -9,8 +9,10 @@ consumed primarily by AI engineering agents, and compiled outward into the
 artifacts (geometry, BOMs, travelers, status views) through which a design is born
 into the physical world.
 
-**Status: v0.3 — zero-trust, operationalized.** v0.2 made the compiler see
-inside the physics; v0.3 makes every opaque core answer for itself:
+**Status: v0.5 — agents as first-class citizens.** The tool briefs the agent
+using it (`uel agent`), ships its own operating skill (`uel skill`), and
+scaffolds green-by-construction projects (`uel init`). Beneath that, v0.3
+makes every opaque core answer for itself:
 **verification contracts** (cross-check against a transparent oracle, monotone
 probes, golden cases — a run that breaks its own contract is a failed run),
 **declared wrappers** (pinned tools + hashed interface manifests, the FMU
@@ -83,6 +85,16 @@ analysis LinkMargin {
   stale through the same hash machinery. Uncertainty from expr cores is a
   computed worst-case enclosure, not an asserted number.
 
+## For AI agents (first-class citizens)
+
+The tool briefs you: **`uel agent`**. The operating skill ships in the
+package: **`uel skill install <your-project>`** (lands in
+`.claude/skills/uel-engineer/`; `uel skill show` prints it for any harness) —
+this repo carries its own installed copy, drift-guarded by CI. Start a new
+design with **`uel init <dir>`**: a green-by-construction project with a
+requirement, a ledgered stub, and a computed acceptance target. Repo-resident
+guidance lives in [`AGENTS.md`](AGENTS.md).
+
 ## Quickstart
 
 ```sh
@@ -118,14 +130,14 @@ is deliberately zero-dependency (ADR-0002).
 ## Grading
 
 ```sh
-python3 -m unittest discover -s tests    # 54 tests
+python3 -m unittest discover -s tests    # 61 tests
 python3 -m conformance.runner            # 63 cases: schema/parse/units/fmt/fixloop/check/derisk
 ```
 
 Both run in CI on every push; the checker gates the scheduler; nothing merges on
 trust (program §2.2).
 
-## What v0.3 deliberately does not do
+## What v0.5 deliberately does not do
 
 LSP, FMU *import* (the interface-manifest pattern is here; the shell generator
 waits for the first real FMU — load-bearing or dead), remote execution, SysML

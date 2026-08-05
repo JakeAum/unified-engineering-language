@@ -27,19 +27,19 @@
           "freq": "sha256:9b3b516a274e34e85b10a21702a50419e531870b95e06ca9bf9e6a190b9caa14",
           "surface_rms": "sha256:16f7e9ed03d14d6756679113b2ec1a672a181e815a769e9b0f6b01647f36c9d6"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:0a9482efa07752176d1762d2c44b31b15ab8dcb9d55f34938cbe4f26aa33624a",
+      "recipe": "sha256:dbd1229e0e8b13365d2e8ce40cd5f05f356b8abeb1100b5c29bf3f24757c9867",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 8.5e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 9.4e-05
       },
       "status": "fresh"
     },
@@ -71,17 +71,17 @@
           "t_amb_max": "sha256:893855c9a1b075ab36752d0ca89ba466852e52b530c71816b41e541315ea4f70",
           "t_amb_min": "sha256:058a4a9ce5d6b2a11919c766befd3c41233063ff4bb8c0d297e0046f1c9368b2"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:be921c00e1e4b7cd1978f996f8d2434798301d711262ede0f312f38614214ddd",
+      "recipe": "sha256:7c14d0fe38190aedb3e051e1212231efd72f83c6228dc583f3053d8ec4751641",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
+        "ts": "2026-08-05T05:03:25Z",
         "verify": [
           {
             "contract": "verify case \"test/verify_enclosure_hotcase.json\"",
@@ -89,7 +89,7 @@
             "ok": true
           }
         ],
-        "wall_s": 0.02
+        "wall_s": 0.026
       },
       "status": "fresh"
     },
@@ -113,19 +113,19 @@
           "gain_dbi": "sha256:1ebb65da359696262dfd9918f5032f104960e9fcbcb7d50532fe16a8c6af9e8f",
           "t_sys": "sha256:401315f714bef455d46b2639bc8e4dcb6724b10bb0cd42b701b4c7236bf0520f"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:ce77995fb6fd4b154dd3c0535ab09f95314e981a7554334eced5d4e0e688b902",
+      "recipe": "sha256:5441e16d172dd70c19a1120fc786add6c55bbca27dc30a1a0bc1ecde22cbae06",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 1.7e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.000102
       },
       "status": "fresh"
     },
@@ -175,19 +175,19 @@
           "rain_alloc_db": "sha256:a5b9007fe5228ca3f319e35e2813c3fdcb27390e1a80a773643744480783e33a",
           "required_ebn0_db": "sha256:fb016c4d2973cf682c6c61d0b188faa6a22d5b633ffa00910d07b69115866220"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:31bcaf424a3a49bc7aa7e8426cebf06d0731455b723a4a54f19a52c3a35a7d2b",
+      "recipe": "sha256:6223131b8ee97b046e38eb297500869cbc9a9d8206ec5697c78b453b2bf6463c",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 4.1e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 6.1e-05
       },
       "status": "fresh"
     },
@@ -220,17 +220,17 @@
           "dish_mass": "sha256:079574007799aa58854ea52768ed891ea4999d936782ec3a6c57fc5926922968",
           "stiffness": "sha256:e24ff92597d600a9cf23e5253b3df73c7607d7694da8cafb4346fc967b438025"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:639508808b78e6db9efe1b0bfe0222c3daf9e2ae94f1ceafa702f445962a4cb2",
+      "recipe": "sha256:daae7f835304dc50f0806bcfd316e4e21e49d0b58c0dda3ad54cb71af6e51a85",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
+        "ts": "2026-08-05T05:03:25Z",
         "verify": [
           {
             "contract": "verify first_locked_rotor_mode monotone with stiffness rising",
@@ -238,7 +238,7 @@
             "ok": true
           }
         ],
-        "wall_s": 0.02
+        "wall_s": 0.026
       },
       "status": "fresh"
     },
@@ -271,19 +271,19 @@
           "hpbw": "sha256:c0488890e5d39e980a4c94eca647b53492c58dddd776c73b14175c3b583e8cc0",
           "stiffness": "sha256:e24ff92597d600a9cf23e5253b3df73c7607d7694da8cafb4346fc967b438025"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:48535db122a85cdcc5fcc62492d1e97a3a887c4454185484585daf0136156b99",
+      "recipe": "sha256:d6ca19fc16e6832e6881b593bf0d88b90832b7f9de74b4b4371308ccde7901ba",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 6.5e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 6.4e-05
       },
       "status": "fresh"
     },
@@ -327,18 +327,18 @@
           "rf_chain_dc": "sha256:9771b4ef85517d42feeae465e0a3f953e494ea421183baa04a679c203b2e2cd7",
           "server_draw": "sha256:29c0a0b438dcd2ae19437b3327eeaaa815c213c91bffd5deceee961ecd1390d7"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:6650bc39cbba2bb4d3aa008a9537f05d8dd8337a191c67c6d795f5a092f10cb2",
+      "recipe": "sha256:5369bb876e7ea7f5355f2b9658f926bc8cad398ed43697d51879d90030f2a6e6",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.023
       },
       "status": "fresh"
     },
@@ -368,18 +368,18 @@
         "inputs": {
           "f1": "sha256:3e3bd5b1e1b14e7250af3e68190b7ea71cb6a663369d7b3d93c34937e13c94ca"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:01f03638d6e0d1faffc46390f60a2d208529a6a95a6afcdaa4ecf22b75cdbf3a",
+      "recipe": "sha256:e0d2e5631dd81ce25ea8733a33ee7fffe061385d3c30aec0963379cc83e094dd",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.023
       },
       "status": "fresh"
     },
@@ -412,18 +412,18 @@
           "rotating_inertia": "sha256:af38f3643c7b587d2d7abb3e8747bae84d47cc2dbf03426e3b445cc5a9d8dc20",
           "track_rate": "sha256:f7354bcb92449796eebcc1affe3d0143a4327e3ec797dd5bc51bb8902acc4be3"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:9e6f60e88b0408814a65a659ae21f41ef8c741893b9c156fba34e2ee37beff3e",
+      "recipe": "sha256:3c786b5e58c83cef26c2041f0b3bfed33455cd451f0816220e01ce1de6ddfa87",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.024
       },
       "status": "fresh"
     },
@@ -448,19 +448,19 @@
           "lna_physical_temp": "sha256:0c95baeba8c1149ab960a0bfd04c4bf492c7181d8a3290991c77611eddc9e6ca",
           "min_elevation": "sha256:20b5e33319f599a183f6ee22ac34d4e8cffedf2ac57c8f9d63f8c3133ad55d5e"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:1ef206d35881ab5973e8865e9752c05cdc43a7f59d79a4ef6e93e38fe7f2996a",
+      "recipe": "sha256:9a33f4d1b06cb408379bd0a243ad735ff03d2991199b593b3c188e6ca68ad2da",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 6.4e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 7.8e-05
       },
       "status": "fresh"
     },
@@ -485,18 +485,18 @@
           "min_ride": "sha256:2f48cbb5f2d6b51caf3cac79fe651eb4d9d4d50032bc4b242858baedc0410253",
           "server_draw": "sha256:29c0a0b438dcd2ae19437b3327eeaaa815c213c91bffd5deceee961ecd1390d7"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:7217d7c18fb60218cf99dc791e1a6f052d07cc924683b13cb7c2ba58dab18d85",
+      "recipe": "sha256:20095e66b810fb14dc9759044157b83ceadda60a514bab30f86b299703cb1a5e",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.023
       },
       "status": "fresh"
     },
@@ -547,17 +547,17 @@
           "wind_op": "sha256:7b20462d439998fcdeb8b2898fffd9e22aeefbb34bd976094e963a03710d7e79",
           "wind_survival": "sha256:462d67415106ec3132ae7674c988ce55b68dd7398108f6bd4d3febdb2354e1c6"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:27bb5cd9db1f2a215ca6438edefc2189523182be23b8d1d8934fbd7ef6987e4a",
+      "recipe": "sha256:cbbd33f0cd7297d9a4ae1d1a9cd049f4645d53070cd918f8a70ca9f95420ec34",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
+        "ts": "2026-08-05T05:03:25Z",
         "verify": [
           {
             "contract": "verify gust_moment monotone with wind_op rising",
@@ -565,7 +565,7 @@
             "ok": true
           }
         ],
-        "wall_s": 0.02
+        "wall_s": 0.023
       },
       "status": "fresh"
     },
@@ -584,19 +584,19 @@
           "frontal_area": "sha256:890d8c8217acc9643860fa9d8b10da6b0c73baef08c700e6654bbf5f66668f78",
           "wind_op": "sha256:7b20462d439998fcdeb8b2898fffd9e22aeefbb34bd976094e963a03710d7e79"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:8762a62a01d4558f447084ade76ae5c1337288f04553c4cf81c08a15308709ab",
+      "recipe": "sha256:1d852cbba24f12967878a28ab7e9332b76ddccc19dbdee6c9d8f05ad23385d65",
       "run": {
         "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 2.1e-05
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 2.7e-05
       },
       "status": "fresh"
     },
@@ -666,18 +666,18 @@
         "inputs": {
           "density": "sha256:908d32d9793da7bdccb4860a6f29de13b112f3ddf46f4d5d2b066d53d66c2ba4"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:4e68c8b6d2f2908420073c6e30aa86354e92e79d3f88214741c4f9dfe20e5049",
+      "recipe": "sha256:e24201a4d53680d80733f27bb8e12822c3727cbdbe310c82947bce4e3181c829",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.025
       },
       "status": "fresh"
     },
@@ -732,18 +732,18 @@
           "diameter": "sha256:c8996ed71ec932f613347e164f3bc701485ea3c691063b4f18de907cdbe24e23",
           "focal_ratio": "sha256:fe6965d5ed418afbd7534b5a569663e3e38446a3eb5ac61cb28594a496477e1f"
         },
-        "tools": "sha256:ee2cc41e2e7d6d9db9a82efd70b2144372cdafeda3c548b5815138aa33584698"
+        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
       },
-      "recipe": "sha256:74cb6ecb78894b6ba8e28dabb68485c9442fcd4d845a33202a9d4400f310abf3",
+      "recipe": "sha256:8489bbadef009c8d272312b5180cd5bd8d24f1d71c2071dc2e596006046dcf1b",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.4.0"
+          "uel": "0.5.0"
         },
-        "ts": "2026-08-05T03:59:36Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T05:03:25Z",
+        "wall_s": 0.025
       },
       "status": "fresh"
     }
@@ -751,7 +751,7 @@
   "tools": {
     "edition": "2026",
     "python": "3.11.15",
-    "uel": "0.4.0"
+    "uel": "0.5.0"
   },
   "uel_lock": "0.1"
 }

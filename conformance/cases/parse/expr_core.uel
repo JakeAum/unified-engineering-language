@@ -19,7 +19,7 @@ analysis Budget {
 
 analysis Nominal {
   core stub {
-    t_sys = 120 K
+    t_sys = 120 K ± 10 %
     bias = -1.5 dB
   }
   outputs {

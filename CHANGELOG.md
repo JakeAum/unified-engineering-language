@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.5.0 — agents as first-class citizens (2026-08-05)
+
+Two arrival paths, both native now. An agent that fetches the tool gets a
+tool that briefs it; an agent that lands in a repo cold finds the map at the
+door. One source of truth for both: the package itself.
+
+- **`uel agent`** — the tool describes itself to the model using it: the
+  loop, a six-line syntax card, the hard rules (each one a real debugging
+  session from the builds), and — generated from the LIVE kernel tables so
+  they cannot drift — the expression functions and constants, the level
+  units, the diagnostic-code families, and the CLI surface.
+- **`uel skill`** — the operating skill (`uel/skill/SKILL.md`, shipped as
+  package data) distills three projects of scar tissue: the check→fix→
+  build→judge loop, the gotchas, verification-contract practice, the
+  zero-trust review order, the multi-agent contract-and-stubs pattern, and
+  a Never list. `uel skill install <dir>` drops it into a project's
+  `.claude/skills/uel-engineer/`; `uel skill show` prints it for any other
+  harness. This repository installs its own copy, and a test fails CI if
+  the installed copy drifts from the packaged one.
+- **`uel init <dir>`** — a green-by-construction scaffold: requirement →
+  ledgered stub → expr analysis with a computed acceptance target, plus
+  AGENTS.md and the skill, checking and building clean on first contact.
+- **Stub nominals carry declared bands** — `core stub { eta = 0.8 ± 5 % }`
+  (abs/rel/cal), round-tripped canonically, type-checked against the
+  nominal's unit, and widened into downstream worst-case enclosures. Found
+  because the scaffold's own example needed it: the v0.2 stub grammar had
+  lost what the v0.1 python stubs always had.
+- Root `AGENTS.md` (+ `CLAUDE.md` pointer) for repo-resident agents;
+  `pyproject.toml` version is now read from `uel.__version__` (it had
+  silently pinned 0.1.0); skill ships in package data.
+
 ## v0.4.0 — the quality pass (2026-08-05)
 
 Same functionality, fewer lines, graded by the same suite before and after:
