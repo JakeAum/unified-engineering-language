@@ -41,7 +41,14 @@ them.
    date, item, outcome, minutes.
 6. **File.** Anything that blocked, surprised, or cost the session becomes a
    typed issue with provenance — what happened, which command, repro, cost.
-   Kernel defects go upstream as issues, never local patches.
+   Kernel defects go upstream as issues, never local patches: `uel doctor`
+   writes them up for you (the `uel-doctor` skill), redacted by default because
+   the upstream repository is public.
+
+Run the doctor at least weekly, and always after upgrading the kernel. It is
+the only check that looks at the artifacts *leaving* the graph — a traveler on
+the shop floor that was hand-edited after compilation is invisible to every
+other command.
 
 ## Why the log matters
 

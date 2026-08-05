@@ -4,7 +4,7 @@ The kernel admits exactly four kinds of thing: components, ports, quantities, an
 claims (analyses). Everything else is library. See docs/spec.md.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 # The edition this kernel implements. Editions are the unit of breaking change
 # (spec/program §7.3); the schema is frozen per edition.

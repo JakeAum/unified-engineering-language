@@ -23,9 +23,10 @@ Kept deliberately short; prune as aggressively as you grow it.*
 | Runtime | `uel/scheduler.py` | Topological walk of the stale set; executes cores via the JSON core protocol; early cutoff. |
 | Loop | `uel/calibration.py` | Measurement write-back (overlays, per-serial as-built), tightening, discrepancy events; candidate entailment rules from output discrepancies (ADR-0005). |
 | Loop | `uel/attention.py` | The economics scheduler (ADR-0005): stale-set attention ranking, information value of candidate measurements, the agenda. Advice, not authority — the checker still gates. |
-| Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status. |
+| Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status. Sealed on write with a body digest, so hand-edits are provable (ADR-0007). |
 | Surfaces | `uel/diagnostics.py` | Structured diagnostics (JSON + human render). Error-code registry. |
-| Surfaces | `uel/cli.py` | `uel init / check / build / fmt / stale [--rank] / hash / graph / project / calibrate / query / agenda`. |
+| Surfaces | `uel/cli.py` | `uel init / check / build / fmt / stale [--rank] / hash / graph / project / calibrate / query / agenda / doctor`. |
+| Health | `uel/doctor.py` | The checkup: doctored-vs-stale reports, lock integrity, seeded staleness honesty, formatter/round-trip/diagnostic-quality self-audit. Kernel-class findings become a redacted upstream issue (ADR-0007). |
 | Adoption | `uel/scaffold.py`, `uel/templates/` | `uel init`: the starter project plus the agent harness (boot context, loop skill, compile-on-edit and agenda-on-wake hooks, CI gate, loop protocol). Merges, never clobbers; no-ops without the kernel (ADR-0006). |
 
 ## Grading artifacts

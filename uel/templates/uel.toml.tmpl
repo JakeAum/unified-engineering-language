@@ -12,3 +12,10 @@ length = "0.0001 m"
 mass = "0.1 g"
 force = "0.1 N"
 temperature = "0.01 K"
+
+# Where `uel doctor` files kernel-class findings — cases where UEL broke its own
+# promises on your model. Point it at your own fork if you vendor the kernel.
+# Nothing is ever filed without `--file-issue`, and project data is withheld
+# unless you pass `--full-evidence`.
+[doctor]
+upstream = "JakeAum/unified-engineering-language"

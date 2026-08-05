@@ -3,7 +3,12 @@
 Every projection is stamped with the source graph hash and the staleness state at
 compile time — "is this document current?" is a mechanical query, and a stale
 traveler on the shop floor is as detectable as a stale CFD case. Hand-editing an
-output is the drift failure mode; these files say so in their header.
+output is the drift failure mode; these files say so in their header — and, since
+saying so has never stopped anyone, they also **prove** it: every projection ends
+with a digest of its own body, so `uel doctor` can tell a *doctored* report (edited
+after compilation, still claiming its graph hash) from a merely *stale* one
+(honestly compiled from an older graph). The two failure modes are different
+diseases and get different advice.
 
 v0.1 projections: BOM (containment tree with rollups and margins), ICD (per-net
 interface control), work instructions (per bound physical part, DFM checks as
@@ -13,6 +18,7 @@ analyses → judgment/freshness/validation).
 
 from __future__ import annotations
 
+import hashlib
 import time
 from pathlib import Path
 
@@ -23,6 +29,38 @@ from .lockfile import Lock
 from .resolver import Resolution
 from .staleness import compute
 from .units import UnitError, parse_unit
+
+
+INTEGRITY_PREFIX = "> Integrity: body "
+
+
+def seal(text: str) -> str:
+    """Append the body digest that makes a projection self-authenticating.
+
+    The digest covers everything above it, so recomputation is exact and needs
+    no re-render: a body that no longer hashes to its own footer was edited
+    after compilation. This is integrity, not security — anyone can recompute
+    a digest for edited text. It catches the failure mode that actually
+    happens (someone fixes a number in the traveler instead of the model), not
+    an adversary.
+    """
+    body = text if text.endswith("\n") else text + "\n"
+    digest = hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
+    return f"{body}{INTEGRITY_PREFIX}sha256:{digest}\n"
+
+
+def verify_seal(text: str) -> tuple[bool, str, str]:
+    """(intact, recorded, recomputed) for a projection's integrity footer.
+    `recorded` is "" when the artifact carries no footer at all."""
+    lines = text.splitlines(keepends=True)
+    idx = next((i for i in range(len(lines) - 1, -1, -1)
+                if lines[i].startswith(INTEGRITY_PREFIX)), None)
+    if idx is None:
+        return False, "", ""
+    recorded = lines[idx][len(INTEGRITY_PREFIX):].strip()
+    body = "".join(lines[:idx])
+    recomputed = "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
+    return recorded == recomputed, recorded, recomputed
 
 
 def _hdr(title: str, res: Resolution, lock: Lock) -> list[str]:

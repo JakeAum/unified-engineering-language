@@ -28,3 +28,9 @@ jobs:
       - name: Formatter is canonical
         run: |
           if [ -d examples/apache-one ]; then python -m uel fmt --check examples/apache-one; fi
+      - name: Doctor the slice (the kernel audits itself on real data)
+        # --strict fails on error-severity findings, including a projection that
+        # was hand-edited after compilation. Never files anything: reporting
+        # upstream is an explicit decision, not a side effect of CI (ADR-0007).
+        run: |
+          if [ -d examples/apache-one ]; then python -m uel doctor examples/apache-one --strict; fi

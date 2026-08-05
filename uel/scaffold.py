@@ -19,6 +19,7 @@ that project without shared context:
 |---|---|
 | `AGENTS.md` + `CLAUDE.md` | boot context: what the graph guarantees, and what it never will |
 | `.claude/skills/uel-loop/SKILL.md` | the iteration protocol, invocable by name |
+| `.claude/skills/uel-doctor/SKILL.md` | the checkup, and how to file a kernel defect upstream without leaking the model |
 | `.claude/hooks/uel-check.py` | PostToolUse: compile gate on every `.uel` edit, diagnostics fed back |
 | `.claude/hooks/uel-agenda.sh` | SessionStart: a waking agent boots with the work queue |
 | `.claude/settings.json` | hook registration (merged, never clobbered) |
@@ -55,6 +56,7 @@ HARNESS_FILES: list[tuple[str, str, bool]] = [
     ("AGENTS.md.tmpl", "AGENTS.md", False),
     ("CLAUDE.md.tmpl", "CLAUDE.md", False),
     ("skill.md.tmpl", ".claude/skills/uel-loop/SKILL.md", False),
+    ("skill_doctor.md.tmpl", ".claude/skills/uel-doctor/SKILL.md", False),
     ("hook_check.py.tmpl", ".claude/hooks/uel-check.py", True),
     ("hook_agenda.sh.tmpl", ".claude/hooks/uel-agenda.sh", True),
     ("workflow.yml.tmpl", ".github/workflows/uel-gate.yml", False),

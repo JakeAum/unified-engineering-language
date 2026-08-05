@@ -9,14 +9,17 @@ consumed primarily by AI engineering agents, and compiled outward into the
 artifacts (geometry, BOMs, travelers, status views) through which a design is born
 into the physical world.
 
-**Status: v0.1.1 — the kernel proof (spec §11) plus the economics scheduler
-(ADR-0005).** Parser → units → conservation → envelopes → content hashing →
-staleness → scheduler → DFM → calibration → projections, all behind a
-conformance suite, all demonstrated on a physically coherent vertical slice —
-and on top of the staleness oracle, attention ranking (`stale --rank`),
+**Status: v0.1.3 — the kernel proof (spec §11), the economics scheduler, and a
+kernel that audits itself.** Parser → units → conservation → envelopes →
+content hashing → staleness → scheduler → DFM → calibration → projections, all
+behind a conformance suite, all demonstrated on a physically coherent vertical
+slice. On top of the staleness oracle: attention ranking (`stale --rank`),
 information value of candidate measurements (`query info-value`), and the
-standing work queue (`agenda`) that a continuously running agent org wakes to
-(`docs/org/user-org-loop.md`).
+standing work queue (`agenda`) a continuously running agent org wakes to
+(ADR-0005). Around all of it: `uel init` puts the whole thing in any repository
+with its agent harness (ADR-0006), and `uel doctor` grades both your model's
+drift and the kernel's own honesty, writing the latter up as an upstream issue
+(ADR-0007).
 
 ## The two documents
 
@@ -65,6 +68,11 @@ analysis SparStaticLimit {
 - **Reality writes back**: measurements land as overlays with provenance and
   history; bands tighten; discrepancies open investigations; consumers flip
   stale through the same hash machinery.
+- **Compiled reports prove they weren't touched**: every projection carries a
+  digest of its own body, so `uel doctor` separates a *doctored* traveler
+  (hand-edited after compilation, still claiming its graph hash) from a merely
+  *stale* one — and writes up the kernel's own failures as an upstream issue,
+  redacted for a public tracker.
 
 ## Use it on your own project
 
@@ -98,6 +106,7 @@ python3 -m uel query info-value examples/apache-one  # which measurement buys th
 python3 -m uel project all examples/apache-one   # BOM/ICD/travelers/status, hash-stamped
 python3 -m uel calibrate examples/apache-one/test/W12_static.json examples/apache-one
 python3 -m uel query provenance spar_v8.panel_mass_per_span examples/apache-one
+python3 -m uel doctor examples/apache-one     # drift, debt, and kernel defects
 python3 -m uel graph examples/apache-one --dot | dot -Tsvg > graph.svg
 python3 examples/apache-one/leverage.py      # the R2 instrumentation, measured live
 ```
@@ -121,7 +130,7 @@ is deliberately zero-dependency (ADR-0002).
 ## Grading
 
 ```sh
-python3 -m unittest discover -s tests    # 69 tests
+python3 -m unittest discover -s tests    # 90 tests
 python3 -m conformance.runner            # 54 cases: schema/parse/units/fmt/fixloop/check/derisk/agenda
 ```
 

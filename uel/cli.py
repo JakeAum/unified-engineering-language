@@ -11,6 +11,7 @@ Exit codes: 0 clean, 1 diagnostics with errors, 2 usage/internal.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -239,7 +240,9 @@ def cmd_project(args: argparse.Namespace) -> int:
             text = P.status(res, lock)
         suffix = f"-{args.serial}" if args.serial else ""
         p = outdir / f"{kind}{suffix}.md"
-        p.write_text(text, encoding="utf-8")
+        # sealed on write: the artifact carries a digest of its own body, so a
+        # later hand-edit is provable rather than merely forbidden (§9.1)
+        p.write_text(P.seal(text), encoding="utf-8")
         print(f"project: wrote {p}")
     return 0
 
@@ -335,6 +338,59 @@ def cmd_query(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    from . import doctor as D
+
+    c = D.run(args.path)
+    kernel = c.kernel()
+
+    if args.json:
+        obj = c.to_obj(full=args.full_evidence)
+        if kernel:
+            # the issue body travels in the JSON so a session with GitHub tools of
+            # its own can file it directly — no subprocess, no gh, no credentials
+            obj["upstream"] = D.upstream_for(Path(args.path))
+            obj["issue"] = {
+                "title": D.issue_title(kernel),
+                "body": D.issue_body(c, kernel, full=args.full_evidence),
+                "fingerprints": sorted(f.fingerprint() for f in kernel),
+            }
+        print(json.dumps(obj, indent=2, ensure_ascii=False))
+        return 1 if any(f.severity == "error" for f in c.findings) and args.strict else 0
+
+    if args.issue or args.file_issue:
+        if not kernel:
+            print("doctor: nothing to file — no kernel-class findings on this project")
+            return 0
+        upstream = args.upstream or D.upstream_for(Path(args.path))
+        title = D.issue_title(kernel)
+        body = D.issue_body(c, kernel, full=args.full_evidence)
+        if not args.file_issue:
+            print(f"# would file on {upstream}\n# title: {title}\n")
+            print(body)
+            return 0
+        existing = D.find_existing_issue(upstream, sorted(f.fingerprint() for f in kernel))
+        if existing is not None:
+            print(f"doctor: fingerprint already filed on {upstream} as #{existing} — not duplicating")
+            return 0
+        print(f"doctor: filing {len(kernel)} kernel-class finding(s) on {upstream} "
+              f"(public repository; project data is withheld"
+              f"{' — OVERRIDDEN by --full-evidence' if args.full_evidence else ''})")
+        created, msg = D.file_issue(upstream, title, body)
+        if created:
+            print(f"doctor: filed {msg}")
+            return 0
+        print(f"doctor: could not file automatically ({msg}).")
+        print("        the report is below — file it by hand, or let an agent with GitHub")
+        print("        tools do it from `uel doctor --json`.\n")
+        print(f"# {title}\n")
+        print(body)
+        return 0
+
+    print(D.render(c))
+    return 1 if (args.strict and any(f.severity == "error" for f in c.findings)) else 0
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     from .scaffold import init, render_result
 
@@ -426,6 +482,24 @@ def main(argv: list[str] | None = None) -> int:
     p_query.add_argument("--serial", default="")
     p_query.add_argument("--json", action="store_true")
 
+    p_doc = sub.add_parser(
+        "doctor",
+        help="check the project's health and the kernel's honesty; write up what is ours to fix")
+    p_doc.add_argument("path", nargs="?", default=".")
+    p_doc.add_argument("--json", action="store_true",
+                       help="machine report, including a ready-to-file issue body")
+    p_doc.add_argument("--issue", action="store_true",
+                       help="print the upstream issue for kernel-class findings")
+    p_doc.add_argument("--file-issue", action="store_true",
+                       help="create that issue on the upstream repository (needs `gh`)")
+    p_doc.add_argument("--upstream", default="",
+                       help="owner/repo to file against (default: [doctor] upstream in uel.toml)")
+    p_doc.add_argument("--full-evidence", action="store_true",
+                       help="include node names, files, and tracebacks — the upstream repo is "
+                            "public, so only for models you can disclose")
+    p_doc.add_argument("--strict", action="store_true",
+                       help="exit non-zero on any error-severity finding (for CI)")
+
     p_init = sub.add_parser(
         "init", help="scaffold a UEL project and its agent harness in this repository")
     p_init.add_argument("path", nargs="?", default=".",
@@ -467,6 +541,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_agenda(args)
     if args.cmd == "init":
         return cmd_init(args)
+    if args.cmd == "doctor":
+        return cmd_doctor(args)
     ap.print_help()
     return 2
 

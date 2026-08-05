@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.1.3 — the doctor, and the issue the kernel files against itself (2026-08-05)
+
+Spec §1.4 prohibits hand-editing a compiled report "by construction" — which,
+until now, meant a header politely asking. And program §7.1 makes the issue
+channel the only thing crossing the org boundary, while nothing helped a user
+mid-design actually file one. Both fixed (ADR-0007):
+
+- **Projections are self-authenticating.** Every compiled artifact ends with a
+  digest of its own body, so `uel doctor` tells a **doctored** report
+  (`DOCTOR-102`: edited after compilation, still claiming its graph hash —
+  error) from a merely **stale** one (`DOCTOR-103`: honest, out of date —
+  warning). Two different diseases, two different treatments.
+- **`uel doctor [--json|--issue|--file-issue] [--strict]`** — one checkup, two
+  audiences. `yours`: drift and epistemic debt. `KERNEL`: evidence UEL broke
+  its own promises on your model — the checker raising instead of diagnosing,
+  output hashes that don't recompute, **staleness under-invalidation** measured
+  by seeded in-memory perturbation against an independent reachability cone,
+  formatter non-idempotence, canonical round-trip failure, errors shipped
+  without a reason, claim-taxonomy gaps.
+- **Upstream issues as typed claims** (program §7.1): repro, structural
+  evidence, environment, and a fingerprint over `(code, evidence)` alone — so
+  the same defect from two different users collides into one issue. `gh` files
+  it when present, searching closed issues too (a fingerprint on a closed issue
+  is a regression).
+- **LLM-native filing.** `--json` carries the ready issue; the shipped
+  `uel-doctor` skill has the agent file with its own GitHub tools — it can
+  search, judge duplicates, comment "we hit this too," and spot regressions,
+  none of which a subprocess can do.
+- **The public-repo rule.** Node names, values, file paths, requirement text,
+  and tracebacks are **withheld by default** and listed as such; only codes,
+  counts, structure, and versions travel. `--full-evidence` is a deliberate
+  act, and the skill says to ask the user first — an issue cannot be
+  unpublished.
+- Scaffolded repos get the `uel-doctor` skill, a `[doctor] upstream` setting,
+  and a `--strict` doctor step in CI (which never files — reporting upstream is
+  always an explicit decision, never a side effect of CI).
+- 21 new tests (90 total). Two of them exist because dogfooding caught real
+  defects: the first doctor ignored calibration overlays and called every
+  honest projection stale, and the first lock checks were tautological — they
+  could never fire.
+
 ## v0.1.2 — adoption is a feature (2026-08-05)
 
 The kernel and the loop existed; neither was reachable from any repository but

@@ -1,0 +1,66 @@
+---
+name: uel-doctor
+description: Run the UEL checkup on this repository's model and file kernel defects upstream. Use when asked to run the doctor, check model health, audit the graph, verify reports or travelers are current, investigate whether a compiled report was hand-edited, or report a UEL bug. Also use before a release, before trusting a compiled projection, and after upgrading the UEL kernel.
+---
+
+# The UEL checkup
+
+```sh
+uel doctor {{PROJECT_REL}}          # human report
+uel doctor {{PROJECT_REL}} --json   # structured, plus a ready-to-file issue body
+```
+
+Findings come in two audiences, and the split decides who acts:
+
+- **`yours`** — drift and debt in this project. Fix them here.
+- **`KERNEL`** — evidence UEL itself broke a promise it makes in its own spec:
+  the checker raising instead of diagnosing, the formatter losing idempotence,
+  a graph failing its own round-trip, output hashes that do not recompute,
+  staleness under-invalidating. These are worth filing upstream, because they
+  were observed on real data the maintainers do not have.
+
+## Reports: stale vs doctored
+
+Compiled projections carry a digest of their own body, so the doctor separates
+two different diseases:
+
+- `DOCTOR-103` **stale** — honestly compiled from an older graph. Harmless.
+  Recompile with `uel project all {{PROJECT_REL}}`.
+- `DOCTOR-102` **doctored** — the body no longer matches its digest, so it was
+  hand-edited after compilation while still claiming its graph hash. This is the
+  drift failure mode: a document that disagrees with the model and says nothing.
+  **Never fix this by regenerating and moving on.** Find out what the edit was
+  trying to say. If the report was right and the model was wrong, the model has
+  a bug — fix it at the source and let the projection follow. Then say so in
+  your summary: someone believed the number enough to type it.
+
+## Filing a kernel finding upstream
+
+You are the filing mechanism. Prefer your own GitHub tools over the CLI:
+
+1. `uel doctor {{PROJECT_REL}} --json` — read `issue.title`, `issue.body`, and
+   `issue.fingerprints`.
+2. **Search first.** Query the upstream repo (`upstream` in the JSON) for the
+   fingerprint, including closed issues. If it exists and is open, add a comment
+   saying you hit it too, with your environment — a second reporter is triage
+   signal. If it is closed, say so plainly: this is a regression.
+3. Otherwise create the issue with that exact title and body. Do not rewrite the
+   body into prose; it is a typed claim with a repro and a fingerprint, and the
+   fingerprint is what keeps the tracker from filling with duplicates.
+4. Report back what you filed or found, with the number.
+
+`uel doctor {{PROJECT_REL}} --file-issue` does the same through the `gh` CLI
+when one is installed and authenticated. It is the fallback, not the default —
+you can search, judge, and comment; a subprocess cannot.
+
+## Before you file: what leaves this repository
+
+The upstream repository is **public**. By default the issue carries diagnostic
+codes, counts, structure, and versions — never quantity values, node names,
+file paths, requirement text, or tracebacks. Those are listed as `withheld`.
+
+`--full-evidence` includes them. Only use it if this model is genuinely not
+confidential, and **ask the user first** — a node name can disclose a program's
+existence, and an issue cannot be unpublished. When in doubt, file the redacted
+version: a fingerprint and a repro are usually enough for a maintainer who has
+the same kernel.

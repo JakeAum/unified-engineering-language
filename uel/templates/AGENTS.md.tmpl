@@ -31,6 +31,7 @@ uel check {{PROJECT_REL}}                   # compile time: seconds, no solver
 uel build {{PROJECT_REL}}                   # run the stale set in dependency order
 uel query info-value {{PROJECT_REL}}        # which measurement buys the most
 uel calibrate <campaign.json> {{PROJECT_REL}}   # reality writes back
+uel doctor {{PROJECT_REL}}                  # checkup: drift, debt, and kernel defects
 ```
 
 ## How work happens here
@@ -60,5 +61,9 @@ sold as safety.
 - Every assumption declared, with rationale, including unverifiable ones.
 - Every computed result judged: is it physical, converged, sufficient, and does
   it answer the intent? Record the residual doubts.
-- Never commit a red `uel check`. Never hand-edit `out/`.
-- UEL kernel defects become issues upstream, never local patches.
+- Never commit a red `uel check`. Never hand-edit `out/` — projections carry a
+  digest of their own body, so `uel doctor` can prove an edit happened, and a
+  doctored traveler on the floor is a safety problem, not a formatting one.
+- UEL kernel defects become issues upstream (`uel-doctor` skill), never local
+  patches. The upstream repo is public: file the redacted report unless the
+  user has said this model can be disclosed.
