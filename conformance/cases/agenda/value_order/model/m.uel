@@ -1,0 +1,44 @@
+# ADR-0005 attention semantics, pinned from the spec side.
+#
+# Hot: fence-hot input (950 of a [0, 1000 N] fence, one-sided at zero lo),
+#      serves a requirement, holds up Mid          -> 4*0.95 + 2 + 1 = 6.80
+# Cold: mid-fence input (60 degC in [0, 100] degC, two-sided in SI),
+#      no requirement, no cone                     -> 4*0.60         = 2.40
+# Mid: nothing but stale-through-dependency        ->                  0.00
+#
+# The top measurement is req.LOAD.limit: declared calibration-pending (± cal,
+# ignorance 1.0), inherited by 2 analyses, pressing Hot's fence at 95 %.
+# req.TEMP.max is declared exact: measuring it removes no declared ignorance.
+
+requirement LOAD {
+  limit = 950 N ± cal
+}
+
+requirement TEMP {
+  max = 60 degC
+}
+
+analysis Hot {
+  intent req.LOAD "carry the limit load"
+  framing {
+    envelope { limit in [0, 1000 N] }
+  }
+  knowns { limit <- req.LOAD.limit }
+  core python "cores/a.py"
+  outputs { y : m }
+}
+
+analysis Mid {
+  knowns { a <- Hot.outputs.y }
+  core python "cores/a.py"
+  outputs { y : m }
+}
+
+analysis Cold {
+  framing {
+    envelope { t in [0, 100 degC] }
+  }
+  knowns { t <- req.TEMP.max }
+  core python "cores/a.py"
+  outputs { y : m }
+}

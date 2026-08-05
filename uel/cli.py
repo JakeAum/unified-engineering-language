@@ -93,7 +93,30 @@ def cmd_stale(args: argparse.Namespace) -> int:
     from .lockfile import Lock
     from .staleness import compute
 
-    rep = compute(res, Lock.load(project.lock_path, bag))
+    lock = Lock.load(project.lock_path, bag)
+    rep = compute(res, lock)
+    if args.rank:
+        from .attention import rank
+
+        ranked = rank(res, rep, lock)
+        if args.json:
+            import json as _json
+
+            print(_json.dumps([r.to_obj() for r in ranked], indent=2))
+            return 0
+        if not ranked:
+            print(f"stale: all {len(rep.order)} executable nodes fresh — nothing to rank")
+            return 0
+        width = max(len(r.name) for r in ranked)
+        for r in ranked:
+            mark = "»" if r.frontier else "…"
+            line = f"  {r.score:6.2f}  {mark} {r.name:<{width}}"
+            if r.reasons:
+                line += "  — " + "; ".join(r.reasons)
+            print(line)
+        print(f"stale: {len(ranked)} node{'s' if len(ranked) != 1 else ''} ranked by attention value "
+              f"(» = frontier, buildable now); execution order is still `uel build`'s topological walk")
+        return 0
     if args.json:
         import json as _json
 
@@ -253,20 +276,88 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     if out:
         print(out)
     print(f"calibrate: {summary['applied']} applied, {summary['tightened']} tightened, "
-          f"{summary['validated']} validated, {summary['discrepancies']} discrepancies")
+          f"{summary['validated']} validated, {summary['discrepancies']} discrepancies"
+          + (f", {summary['candidate_rules']} entailment candidates emitted"
+             if summary.get("candidate_rules") else ""))
     return 0 if bag.ok() else 1
 
 
 def cmd_query(args: argparse.Namespace) -> int:
+    # `uel query info-value <project-dir>`: the lone positional is the path,
+    # not a target (targets are dotted refs and never name directories)
+    if args.target and args.path == "." and Path(args.target).is_dir():
+        args.path, args.target = args.target, ""
     bag = Bag()
     project, res, _ = _load_and_resolve(args.path, bag, serial=args.serial, checks=False)
     if res is None:
         print(bag.render(project.sources_map()))
         return 1
     from .lockfile import Lock
+
+    lock = Lock.load(project.lock_path)
+    if args.what == "info-value":
+        from .attention import info_value
+        from .staleness import compute
+
+        ranked = info_value(res, compute(res, lock), lock)
+        if args.target:
+            ranked = [m for m in ranked if m.target == args.target]
+            if not ranked:
+                print(f"info-value: '{args.target}' carries no declared ignorance a measurement "
+                      f"would remove (or is not a measurable quantity)")
+                return 1
+        if args.json:
+            import json as _json
+
+            print(_json.dumps([m.to_obj() for m in ranked], indent=2))
+            return 0
+        if not ranked:
+            print("info-value: no declared ignorance anywhere — every quantity is exact or unconsumed")
+            return 0
+        width = max(len(m.target) for m in ranked)
+        for m in ranked:
+            line = (f"  {m.value:7.2f}  {m.target:<{width}}  "
+                    f"[{m.ignorance:g} ignorance ({m.ignorance_note}) × {1 + m.consumers} consumers"
+                    f" × {1 + m.fence_pressure:g} fence")
+            line += f" @ {m.pressure_consumer}]" if m.pressure_consumer else "]"
+            if m.kind == "validation":
+                line += "  (validates a prediction)"
+            print(line)
+        print(f"info-value: {len(ranked)} candidate measurement{'s' if len(ranked) != 1 else ''}, "
+              f"highest expected envelope-tightening first (ADR-0005)")
+        return 0
+    if not args.target:
+        print("query provenance: a target is required (e.g. spar_v7.mass)")
+        return 2
     from .projections import provenance
 
-    print(provenance(res, args.target, Lock.load(project.lock_path)))
+    print(provenance(res, args.target, lock))
+    return 0
+
+
+def cmd_agenda(args: argparse.Namespace) -> int:
+    bag = Bag()
+    project, res, rollups = _load_and_resolve(args.path, bag, serial=getattr(args, "serial", "") or "")
+    if res is None:
+        print(bag.render(project.sources_map()))
+        return 1
+    from .attention import build_agenda, render_agenda
+    from .lockfile import Lock
+    from .staleness import compute
+
+    lock = Lock.load(project.lock_path, bag)
+    rep = compute(res, lock)
+    errors = sum(1 for d in bag.items if d.severity == "error")
+    warnings = sum(1 for d in bag.items if d.severity == "warning")
+    agenda = build_agenda(res, rep, lock, rollups, errors, warnings)
+    if args.json:
+        import json as _json
+
+        print(_json.dumps(agenda.to_obj(), indent=2))
+        return 0
+    if errors:
+        print(bag.render(project.sources_map()))
+    print(render_agenda(agenda, top=args.top))
     return 0
 
 
@@ -292,6 +383,8 @@ def main(argv: list[str] | None = None) -> int:
     p_stale = sub.add_parser("stale", help="what does the current state invalidate?")
     p_stale.add_argument("path", nargs="?", default=".")
     p_stale.add_argument("--json", action="store_true")
+    p_stale.add_argument("--rank", action="store_true",
+                         help="value-order the stale set: where should attention go first? (ADR-0005)")
 
     p_hash = sub.add_parser("hash", help="show content hashes (graph, or one node with --node)")
     p_hash.add_argument("path", nargs="?", default=".")
@@ -313,10 +406,22 @@ def main(argv: list[str] | None = None) -> int:
     p_cal.add_argument("--no-stubs", action="store_true", help="do not generate investigation stubs")
 
     p_query = sub.add_parser("query", help="ask the graph")
-    p_query.add_argument("what", choices=["provenance"])
-    p_query.add_argument("target", help="e.g. spar_v7.mass or SparStaticLimit.outputs.FoS")
+    p_query.add_argument("what", choices=["provenance", "info-value"])
+    p_query.add_argument("target", nargs="?", default="",
+                         help="e.g. spar_v7.mass or SparStaticLimit.outputs.FoS "
+                              "(info-value: omit to rank every candidate measurement)")
     p_query.add_argument("path", nargs="?", default=".")
     p_query.add_argument("--serial", default="")
+    p_query.add_argument("--json", action="store_true")
+
+    p_agenda = sub.add_parser(
+        "agenda",
+        help="the standing work queue: errors, ranked stale work, epistemic debt, "
+             "next measurement, tightest margins (ADR-0005)")
+    p_agenda.add_argument("path", nargs="?", default=".")
+    p_agenda.add_argument("--json", action="store_true")
+    p_agenda.add_argument("--top", type=int, default=5, help="rows per section (default 5)")
+    p_agenda.add_argument("--serial", default="", help="apply an as-built overlay")
 
     args = ap.parse_args(argv)
     if args.cmd == "check":
@@ -337,6 +442,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_calibrate(args)
     if args.cmd == "query":
         return cmd_query(args)
+    if args.cmd == "agenda":
+        return cmd_agenda(args)
     ap.print_help()
     return 2
 

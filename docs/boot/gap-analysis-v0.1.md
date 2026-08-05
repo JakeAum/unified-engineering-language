@@ -7,6 +7,11 @@ end state — AI engineering agents, running continuously, whose
 design-build-test loop beats a large human organization's. Standing
 strategy document; amend it the way decisions are amended, with evidence.*
 
+*Status (2026-08-05): moves 2, 3, and 5 of §2 shipped as ADR-0005 (`uel stale
+--rank`, `uel query info-value`, `uel agenda`, candidate entailment rules);
+move 1 stood up per `docs/org/user-org-loop.md`; move 4 triggers on the next
+genuine merge conflict (program §8 R7).*
+
 ---
 
 ## 0. The frame: why agentic coding already works, and what that predicts here

@@ -16,7 +16,12 @@ Three verdicts per measurement:
 - **discrepancy** (UEL0801, warning): outside the predicted/declared band — a
   first-class event: recorded on the overlay entry, and an investigation stub is
   generated (`*.uel.suggested`, not auto-loaded) whose intent is the spec's
-  "why was prediction wrong".
+  "why was prediction wrong". When the wrong prediction is an analysis output,
+  a **candidate entailment rule** is additionally emitted
+  (`calibration/candidate-rules/`, ADR-0005): the analysis's declared structural
+  claims are the suspects for the dropped physics, and each reviewed candidate
+  grows the hand-authored entailment web empirically (ADR-0003 residual doubt 2)
+  — through the decision log and the merge gate, never automatically.
 
 Measurements may also target analysis **outputs** (`X.outputs.y`): the measured
 value is compared against the lock's computed prediction and recorded as
@@ -176,7 +181,8 @@ def ingest(res: Resolution, bag: Bag, payload: dict, write_stubs: bool = True) -
     source = str(payload.get("source", "unattributed measurement"))
     ts = str(payload.get("ts") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
     measurements = payload.get("measurements", [])
-    summary = {"applied": 0, "tightened": 0, "discrepancies": 0, "validated": 0}
+    summary = {"applied": 0, "tightened": 0, "discrepancies": 0, "validated": 0,
+               "candidate_rules": 0}
 
     targets = load_overlay(root, serial)
     lock = Lock.load(res.project.lock_path)
@@ -223,6 +229,8 @@ def ingest(res: Resolution, bag: Bag, payload: dict, write_stubs: bool = True) -
                 )
                 if write_stubs:
                     _write_investigation_stub(root, target, m, pred, source, ts)
+                    _write_candidate_rule(root, target, an, m, pred, source, ts)
+                    summary["candidate_rules"] += 1
             else:
                 summary["validated"] += 1
             if entry is not None:
@@ -315,6 +323,58 @@ def _fmt_band(band: tuple[float, float], unit: str) -> str:
         return f"[{u.from_si(band[0]):g}, {u.from_si(band[1]):g}] {unit}".strip()
     except UnitError:
         return f"[{band[0]:g}, {band[1]:g}]"
+
+
+def _fmt_pred_value(pred) -> str:
+    v = pred.value
+    shown = f"[{v[0]:g}, {v[1]:g}]" if isinstance(v, (list, tuple)) else f"{v:g}"
+    unc = ""
+    if isinstance(pred.unc, dict) and pred.unc.get("value") is not None:
+        unc = (f" ± {pred.unc['value']:g}" if pred.unc.get("kind") == "abs"
+               else f" ± {pred.unc['value']:.0%}")
+    return f"{shown}{unc} {pred.unit}".strip()
+
+
+def _write_candidate_rule(root: Path, target: str, an: G.Analysis, m: dict,
+                          pred, source: str, ts: str) -> None:
+    """A model predicted wrong: its declared structural claims are the suspects
+    for the physics that was dropped. Emit a reviewable candidate — never an
+    automatic taxonomy edit (the web grows through the merge gate, ADR-0005)."""
+    safe = target.replace(".", "_").replace("/", "_")
+    day = ts[:10].replace("-", "")
+    p = root / OVERLAY_DIR / "candidate-rules" / f"{safe}_{day}.md"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    claims = sorted(an.framing.envelope.claims.items())
+    requires = sorted(an.framing.envelope.requires.items())
+    lines = [
+        f"# Candidate entailment rule — {target} ({day})",
+        "",
+        f"*Emitted by `uel calibrate`; provenance: {source}, {ts}. Review, and if a*",
+        "*claim below did drop the physics that bit, amend `lib.claims` (entails/*",
+        "*excludes) through the decision log and the merge gate. Delete when resolved.*",
+        "",
+        f"- measured: {m.get('value')} {m.get('unit')}",
+        f"- predicted: {_fmt_pred_value(pred)}",
+        f"- model: {an.framing.model or '(unnamed)'} in analysis `{an.name}`",
+        "",
+        "## Suspects: structural claims this analysis declared",
+        "",
+    ]
+    if claims:
+        for c, rationale in claims:
+            lines.append(f"- `{c}`" + (f' — because "{rationale}"' if rationale else ""))
+            lines.append(f"  - candidate: does `{c}` exclude a phenomenon this measurement exposed?")
+    else:
+        lines.append("- (none declared — the model may be missing a declared assumption entirely;")
+        lines.append("  the candidate is a *new* claim for the taxonomy, not a new entailment)")
+    if requires:
+        lines.append("")
+        lines.append("## Upstream claims this analysis required")
+        lines.append("")
+        for c, rationale in requires:
+            lines.append(f"- `{c}`" + (f' — because "{rationale}"' if rationale else ""))
+    lines.append("")
+    p.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _write_investigation_stub(root: Path, target: str, m: dict,

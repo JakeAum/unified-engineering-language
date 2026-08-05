@@ -4,10 +4,10 @@
 
 | Scenario | Work | Wall | Meaning |
 |---|---|---|---|
-| 1. cold build | 7/7 cores run | 249 ms | baseline every memoryless iteration pays |
-| 2. design change (root moment +7%) | 1/7 invalidated → 1 re-run, 6 reused | 53 ms | ripple computed, not remembered (spec §4.2) |
-| 3. seeded defect (400 N*m vs 260 N*m fence) | caught at compile: UEL0501 | 15 ms, 0 cores run | the dumb half of failures costs nothing |
-| 4. calibration (W12 panel weigh-in) | 2 measured → cone ['SparDynamic', 'WingFlutter'] re-run | 81 ms | reality wrote back; the next agent inherits a tighter world |
+| 1. cold build | 7/7 cores run | 193 ms | baseline every memoryless iteration pays |
+| 2. design change (root moment +7%) | 1/7 invalidated → 1 re-run, 6 reused | 41 ms | ripple computed, not remembered (spec §4.2) |
+| 3. seeded defect (400 N*m vs 260 N*m fence) | caught at compile: UEL0501 | 13 ms, 0 cores run | the dumb half of failures costs nothing |
+| 4. calibration (W12 panel weigh-in) | 2 measured → cone ['SparDynamic', 'WingFlutter'] re-run | 64 ms | reality wrote back; the next agent inherits a tighter world |
 
 Executable nodes in the slice: 7. Incremental iteration cost vs cold: 21% (scenario 2), defect capture at compile time with zero solver spend (scenario 3).
 

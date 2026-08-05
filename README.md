@@ -9,10 +9,14 @@ consumed primarily by AI engineering agents, and compiled outward into the
 artifacts (geometry, BOMs, travelers, status views) through which a design is born
 into the physical world.
 
-**Status: v0.1 — the kernel proof (spec §11), complete.** Parser → units →
-conservation → envelopes → content hashing → staleness → scheduler → DFM →
-calibration → projections, all behind a conformance suite, all demonstrated on a
-physically coherent vertical slice.
+**Status: v0.1.1 — the kernel proof (spec §11) plus the economics scheduler
+(ADR-0005).** Parser → units → conservation → envelopes → content hashing →
+staleness → scheduler → DFM → calibration → projections, all behind a
+conformance suite, all demonstrated on a physically coherent vertical slice —
+and on top of the staleness oracle, attention ranking (`stale --rank`),
+information value of candidate measurements (`query info-value`), and the
+standing work queue (`agenda`) that a continuously running agent org wakes to
+(`docs/org/user-org-loop.md`).
 
 ## The two documents
 
@@ -69,6 +73,9 @@ git clone <this repo> && cd unified-engineering-language
 python3 -m uel check examples/apache-one     # compile-time pipeline (no deps, stdlib only)
 python3 -m uel build examples/apache-one     # run stale analysis cores
 python3 -m uel stale examples/apache-one     # what does the current state invalidate?
+python3 -m uel stale examples/apache-one --rank  # ...and where should attention go first?
+python3 -m uel agenda examples/apache-one    # the standing work queue (ADR-0005)
+python3 -m uel query info-value examples/apache-one  # which measurement buys the most?
 python3 -m uel project all examples/apache-one   # BOM/ICD/travelers/status, hash-stamped
 python3 -m uel calibrate examples/apache-one/test/W12_static.json examples/apache-one
 python3 -m uel query provenance spar_v8.panel_mass_per_span examples/apache-one
@@ -94,8 +101,8 @@ is deliberately zero-dependency (ADR-0002).
 ## Grading
 
 ```sh
-python3 -m unittest discover -s tests    # 41 tests
-python3 -m conformance.runner            # 52 cases: schema/parse/units/fmt/fixloop/check/derisk
+python3 -m unittest discover -s tests    # 52 tests
+python3 -m conformance.runner            # 54 cases: schema/parse/units/fmt/fixloop/check/derisk/agenda
 ```
 
 Both run in CI on every push; the checker gates the scheduler; nothing merges on

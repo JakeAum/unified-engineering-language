@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.1.1 — the economics scheduler (2026-08-05)
+
+The substrate schedules cores; nothing scheduled cognition or experiments.
+Per the gap analysis (`docs/boot/gap-analysis-v0.1.md`) and ADR-0005:
+
+- **Attention ranking** — `uel stale --rank`: value-orders the stale set
+  (failed runs first, then fence pressure, blocked downstream cone,
+  requirement linkage; frontier nodes marked buildable-now). Advice, not
+  authority: `uel build` still walks in dependency order.
+- **Information value** — `uel query info-value [target]`: ranks candidate
+  measurements by declared ignorance × consumer cone × fence pressure, so
+  contact with the slow oracle goes where it tightens the most. `± cal` and
+  declared-TBD rank top; declared-exact ranks nowhere.
+- **The agenda** — `uel agenda [--json]`: one surface for a waking agent —
+  compile state, ranked stale work, epistemic debt (pending judgments, open
+  discrepancies, unreviewed stubs), the next measurement, tightest budgets.
+- **Empirical entailment growth** — an output measurement outside its
+  predicted band now also emits a reviewable candidate entailment rule
+  (`calibration/candidate-rules/`), listing the analysis's declared claims as
+  suspects for the dropped physics. Accepted candidates amend `lib.claims`
+  through the merge gate, never automatically (ADR-0003 residual doubt 2).
+- **Fence-pressure semantics** — exact-zero lower bounds in SI act one-sided
+  (a nonnegative quantity cannot exit below zero); affine units keep both
+  edges. Pinned in `tests/test_attention.py`.
+- **The standing loop** — `docs/org/user-org-loop.md`: the user-org iteration
+  protocol (program §7 boundary made operational), run by a scheduled agent
+  session; north-star denominators added to program §5.2.
+- New conformance kind `agenda/` (2 cases), 11 new unit tests
+  (52 tests / 54 cases total).
+
 ## v0.1.0 — the kernel proof (2026-08-04)
 
 The spec §11 v0.1 scope, complete and load-bearing, per the program plan's phases:

@@ -1,0 +1,44 @@
+# ADR-0005: the linear pressure/cone tradeoff, pinned from both sides, plus
+# deterministic tie-breaking.
+#
+# HotLeaf: 85 of a [0, 100 m] fence (one-sided at zero lo) -> 4*0.85 = 3.40
+# BigCone: no fence, no requirement, holds up three        -> 3*1.00 = 3.00
+# D1..D3: stale-through-dependency only                    ->           0.00
+#         (equal scores break toward upstream: topological order, then name)
+
+requirement R {
+  x = 85 m
+}
+
+analysis HotLeaf {
+  framing {
+    envelope { x in [0, 100 m] }
+  }
+  knowns { x <- req.R.x }
+  core python "cores/a.py"
+  outputs { y : m }
+}
+
+analysis BigCone {
+  knowns { x <- req.R.x }
+  core python "cores/a.py"
+  outputs { y : m }
+}
+
+analysis D1 {
+  knowns { a <- BigCone.outputs.y }
+  core python "cores/a.py"
+  outputs { y : m }
+}
+
+analysis D2 {
+  knowns { a <- BigCone.outputs.y }
+  core python "cores/a.py"
+  outputs { y : m }
+}
+
+analysis D3 {
+  knowns { a <- BigCone.outputs.y }
+  core python "cores/a.py"
+  outputs { y : m }
+}

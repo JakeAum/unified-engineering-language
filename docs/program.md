@@ -138,7 +138,7 @@ From Phase 3 onward, every capability lands on one real, physically tested, brut
 
 ### 5.2 Supporting indicators
 
-Adoption depth (fraction of user-org analyses living in the graph vs. outside it); issue flow health (time-to-triage, time-to-fix, reopen rate); staleness honesty (fraction of downstream consumers correctly flagged when upstream changed — measured by seeded perturbations); gate integrity (red-team escapes per phase); coherence (re-litigation rate of settled decisions — a Historian metric).
+Adoption depth (fraction of user-org analyses living in the graph vs. outside it); issue flow health (time-to-triage, time-to-fix, reopen rate); staleness honesty (fraction of downstream consumers correctly flagged when upstream changed — measured by seeded perturbations); gate integrity (red-team escapes per phase); coherence (re-litigation rate of settled decisions — a Historian metric); **cost per merged claim** (wall clock and agent context spend per claim that survives the merge gate — the cognition denominator the leverage claim divides by); **information yield per test** (envelope-band shrinkage per physical campaign — whether the org is choosing experiments well; computed against the `info-value` ranking, ADR-0005).
 
 ### 5.3 Anti-metrics
 

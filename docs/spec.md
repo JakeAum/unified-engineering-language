@@ -329,7 +329,7 @@ FMI/FMU is adopted as **transport, not ontology**: a standard plug shape for co-
 ## 11. Roadmap
 
 - **v0.1 (kernel proof):** text format + parser; units/dimensions; ports + conservation check; quantities with uncertainty and provenance; shell-and-core analysis nodes; content hashing + staleness over Git; Build123d geometry nodes with topological assertions; compile-time checker as a merge gate.
-- **v0.2 (loop closure):** runtime scheduler; FMU transport; surrogate nodes; COTS datasheet ingestion; cost/lead-time rollups with distributor refresh; work-instruction projection with as-built write-back; SysML v2 import.
+- **v0.2 (loop closure):** sensitivity-aware attention and experiment selection (the crude-first cut shipped post-v0.1 — ADR-0005: stale-set ranking, information value of candidate measurements, candidate entailment rules from discrepancies; v0.2 upgrades all three with derivative information) — ahead of transport and bridges, because the loop's scarce resources are agent attention and oracle contact, not plumbing; FMU transport; surrogate nodes; COTS datasheet ingestion; cost/lead-time rollups with distributor refresh; work-instruction projection with as-built write-back; SysML v2 import. (Runtime scheduler shipped in v0.1.)
 - **v0.3 (calibration at scale):** envelope-tightening machinery with confidence history; discrepancy events; sensitivity-aware staleness; DFM ruleset library; SysML export for certification views.
 - **Vertical slice throughout:** every version proves itself on one real cross-coupled vehicle, against the leverage metric (§10.2). The candidate testbed is small, fast to iterate, and unforgiving across aero, propulsion, structures, thermal, and RF.
 

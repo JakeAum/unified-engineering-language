@@ -21,10 +21,11 @@ Kept deliberately short; prune as aggressively as you grow it.*
 | Identity | `uel/lockfile.py` | uel.lock: recorded recipes, outputs, features, assertions, run provenance. |
 | Identity | `uel/staleness.py` | Lock diff → fresh/stale/missing with named reasons; topological order. |
 | Runtime | `uel/scheduler.py` | Topological walk of the stale set; executes cores via the JSON core protocol; early cutoff. |
-| Loop | `uel/calibration.py` | Measurement write-back (overlays, per-serial as-built), tightening, discrepancy events. |
+| Loop | `uel/calibration.py` | Measurement write-back (overlays, per-serial as-built), tightening, discrepancy events; candidate entailment rules from output discrepancies (ADR-0005). |
+| Loop | `uel/attention.py` | The economics scheduler (ADR-0005): stale-set attention ranking, information value of candidate measurements, the agenda. Advice, not authority — the checker still gates. |
 | Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status. |
 | Surfaces | `uel/diagnostics.py` | Structured diagnostics (JSON + human render). Error-code registry. |
-| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / calibrate / query`. |
+| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale [--rank] / hash / graph / project / calibrate / query / agenda`. |
 
 ## Grading artifacts
 
@@ -38,8 +39,13 @@ Kept deliberately short; prune as aggressively as you grow it.*
 Tracked in `docs/spec.md` §10. R1 (envelope formalism): **discharged 11/11**
 (ADR-0003, `conformance/cases/derisk/`). R2 (leverage): substrate-mechanical
 numbers recorded in `docs/boot/leverage-v0.1.md`; org-level claim open until the
-user org flies. R4 (gate gamed): round 1 findings fixed and pinned (ADR-0004).
+user org flies — the standing loop (`docs/org/user-org-loop.md`) exists to
+discharge it. R4 (gate gamed): round 1 findings fixed and pinned (ADR-0004).
 R5 (hash semantics): tolerance grids + pinned seeds shipped; sensitivity-aware
-staleness is v0.2. Deliberately not built in v0.1 (spec §11 puts them in
-v0.2/0.3): LSP, FMU transport, surrogates, remote execution, SysML bridges,
-distributor refresh, sensitivity staleness.
+staleness is v0.2. Strategy: `gap-analysis-v0.1.md` (this directory) names six
+gaps and five moves; moves 2/3/5 (attention ranking, info-value, empirical
+entailment growth) shipped as ADR-0005; move 1 (the continuous loop) is stood
+up per the org runbook; move 4 (governance-by-recorded-argument) is triggered
+by the next genuine merge conflict (program §8 R7). Deliberately not built in
+v0.1 (spec §11 puts them in v0.2/0.3): LSP, FMU transport, surrogates, remote
+execution, SysML bridges, distributor refresh, sensitivity staleness.

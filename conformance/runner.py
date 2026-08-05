@@ -11,6 +11,7 @@ Case kinds are registered per phase; each kind owns a directory:
   stale/     Phase 3 — edit scripts → expected stale sets
   build/     Phase 3 — scheduler runs → expected outputs within tolerance
   derisk/    Phase 4 — R1 envelope-formalism pair set (spec §10.1)
+  agenda/    ADR-0005 — attention ranking / info-value → expected orderings
 
 Exit code 0 iff every discovered case passes. Run: python -m conformance.runner
 """
@@ -211,6 +212,64 @@ def run_check_case(path: Path) -> tuple[bool, str]:
         res = resolve_project(project, bag)
         run_checks(res, bag, lock=False)
     return _match_diags(expected, bag.sorted())
+
+
+@handler("agenda", "*")
+def run_agenda_case(path: Path) -> tuple[bool, str]:
+    """ADR-0005 attention machinery, graded against expected orderings.
+
+    expected.json may assert: "stale_rank" (exact value-order of non-fresh
+    executables), "frontier" (node -> buildable-now flag), "measure_top" (the
+    highest-information-value measurement target). Cases carry no lock, so
+    every executable is 'missing' — fully deterministic without a build."""
+    import json
+
+    from uel.attention import info_value, rank
+    from uel.diagnostics import Bag
+    from uel.lockfile import Lock
+    from uel.project import load_project
+    from uel.resolver import resolve_project
+    from uel.staleness import compute
+
+    if not path.is_dir():
+        return True, "skipped (not a case dir)"
+    expected = json.loads((path / "expected.json").read_text(encoding="utf-8"))
+    bag = Bag()
+    project = load_project(path, bag)
+    res = None
+    if not bag.errors:
+        res = resolve_project(project, bag)
+    if res is None or bag.errors:
+        return False, "agenda case must resolve cleanly: " + \
+            "; ".join(f"{d.code}" for d in bag.sorted()[:5])
+    lock = Lock.load(project.lock_path)
+    rep = compute(res, lock)
+    ranked = rank(res, rep, lock)
+    got_order = [r.name for r in ranked]
+    want_order = expected.get("stale_rank")
+    if want_order is not None and got_order != want_order:
+        return False, f"stale_rank: expected {want_order}, got {got_order}"
+    by_name = {r.name: r for r in ranked}
+    for name, want in sorted(expected.get("frontier", {}).items()):
+        r = by_name.get(name)
+        if r is None:
+            return False, f"frontier: '{name}' not in the ranked set"
+        if r.frontier != want:
+            return False, f"frontier: '{name}' expected {want}, got {r.frontier}"
+    want_top = expected.get("measure_top")
+    if want_top is not None:
+        mv = info_value(res, rep, lock)
+        got_top = mv[0].target if mv else None
+        if got_top != want_top:
+            return False, f"measure_top: expected {want_top!r}, got {got_top!r}"
+    parts = []
+    if want_order is not None:
+        parts.append(f"rank order exact ({len(got_order)} nodes)")
+    if expected.get("frontier"):
+        parts.append(f"{len(expected['frontier'])} frontier flags")
+    if want_top is not None:
+        parts.append("top measurement")
+    return True, ", ".join(parts) or "nothing asserted"
 
 
 # ---------------------------------------------------------------------------

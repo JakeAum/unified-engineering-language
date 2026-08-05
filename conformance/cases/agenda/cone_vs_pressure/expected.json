@@ -1,0 +1,4 @@
+{
+  "stale_rank": ["HotLeaf", "BigCone", "D1", "D2", "D3"],
+  "frontier": {"HotLeaf": true, "BigCone": true, "D1": false, "D2": false, "D3": false}
+}

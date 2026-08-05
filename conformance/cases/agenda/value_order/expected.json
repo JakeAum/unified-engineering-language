@@ -1,0 +1,5 @@
+{
+  "stale_rank": ["Hot", "Cold", "Mid"],
+  "frontier": {"Hot": true, "Cold": true, "Mid": false},
+  "measure_top": "req.LOAD.limit"
+}
