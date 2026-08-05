@@ -55,5 +55,10 @@ Setting `cost_cap` to a tenth did not produce an argument; it produced a work
 list: the budget rollup errors named exactly which groups were impossible under
 the old architecture, the link-margin chain said precisely how many dB the
 smaller aperture had to find (array factor + accepted-margin spend), and the
-reused baseline `link_margin.py` core ran verbatim against the new producers —
-same capability question, same code, different design answering it.
+baseline's LinkMargin **expr formula is reused verbatim** against the new
+producers — the two projects' `core expr` bodies are character-identical, so
+their content hashes prove it is the same capability question, the same
+physics, and a different design answering it. Since v0.2 the margin floor is a
+declared output target, and the checker adds what this table cannot: the
+worst-case band on the excursion's margin crosses the 3 dB line — a standing
+warning on every check, which is this design's thinness made mechanical.

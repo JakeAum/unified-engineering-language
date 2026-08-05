@@ -51,6 +51,9 @@ CODES: dict[str, str] = {
     "UEL0305": "port attribute dimension mismatch",
     "UEL0306": "malformed interval",
     "UEL0307": "budget dimension mismatch",
+    "UEL0310": "expression error",
+    "UEL0311": "expression dimension mismatch",
+    "UEL0312": "illegal level operation",
     # 04xx — ports, conservation, budgets
     "UEL0401": "connection domain mismatch",
     "UEL0402": "connection direction conflict",
@@ -79,6 +82,11 @@ CODES: dict[str, str] = {
     "UEL0801": "discrepancy: measurement outside predicted envelope",
     "UEL0802": "measurement target not found",
     "UEL0803": "measurement tightens envelope",
+
+    "UEL0804": "output target violated",
+    "UEL0805": "output target pending",
+    "UEL0806": "seam value outside consumer fence",
+    "UEL0807": "stub core in the graph",
 }
 
 SEVERITIES = ("error", "warning", "info")
@@ -181,6 +189,15 @@ class Bag:
 
     def ok(self) -> bool:
         return not self.errors
+
+    # Lock-derived verdicts (a violated target, a seam value outside its fence)
+    # compare computed state against declared intent: they red-gate a merge, but
+    # they must not gate the scheduler — only a rebuild can refresh the very
+    # values they complain about.
+    _RESULT_CODES = ("UEL0804", "UEL0806")
+
+    def gates_runtime(self) -> bool:
+        return any(d.code not in self._RESULT_CODES for d in self.errors)
 
     def extend(self, other: "Bag") -> None:
         self.items.extend(other.items)

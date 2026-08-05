@@ -12,7 +12,7 @@ requirement MIS-001 {
 
 requirement LNK-002 {
   text "The receive chain shall close the I-ALiRT link with margin >= 3 dB at maximum L1 range, worst-case declared conditions."
-  eirp_dbw = 22 dB ± cal from "I-ALiRT ICD draft: broadcast EIRP toward Earth, edge of coverage"
+  eirp_dbw = 22 dBW ± cal from "I-ALiRT ICD draft: broadcast EIRP toward Earth, edge of coverage"
   max_range = 1650000 km from "L1 halo apogee + margin"
   required_ebn0_db = 4 dB from "CCSDS turbo r=1/2 BPSK at FER 1e-5"
   impl_loss_db = 1.5 dB from "demod implementation loss allocation"

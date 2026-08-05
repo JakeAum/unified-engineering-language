@@ -42,7 +42,7 @@ class TestQuantity(unittest.TestCase):
     def test_interval_roundtrip(self):
         doc, errs = GraphDoc.from_obj(
             {
-                "uel_schema": "0.1",
+                "uel_schema": "0.2",
                 "nodes": {
                     "c": {
                         "kind": "component",
@@ -60,7 +60,7 @@ class TestQuantity(unittest.TestCase):
     def test_bad_confidence_rejected(self):
         _, errs = GraphDoc.from_obj(
             {
-                "uel_schema": "0.1",
+                "uel_schema": "0.2",
                 "nodes": {"c": {"kind": "component", "quantities": {"x": {"value": 1.0, "conf": 1.5}}}},
             }
         )
@@ -70,7 +70,7 @@ class TestQuantity(unittest.TestCase):
 class TestGraphDoc(unittest.TestCase):
     def test_unknown_field_rejected(self):
         _, errs = GraphDoc.from_obj(
-            {"uel_schema": "0.1", "nodes": {"c": {"kind": "component", "warp": 1}}}
+            {"uel_schema": "0.2", "nodes": {"c": {"kind": "component", "warp": 1}}}
         )
         self.assertTrue(any("unknown field" in e.message for e in errs))
 
@@ -81,7 +81,7 @@ class TestGraphDoc(unittest.TestCase):
     def test_connections_sorted_in_canonical(self):
         doc, errs = GraphDoc.from_obj(
             {
-                "uel_schema": "0.1",
+                "uel_schema": "0.2",
                 "nodes": {},
                 "connections": [
                     {"from": "b.p", "to": "c.q"},
@@ -96,7 +96,7 @@ class TestGraphDoc(unittest.TestCase):
 
     def test_fixpoint(self):
         raw = {
-            "uel_schema": "0.1",
+            "uel_schema": "0.2",
             "edition": "2026",
             "nodes": {
                 "req.R1": {"kind": "requirement", "text": "hold", "quantities": {"limit": {"value": 5.0, "unit": "kN"}}},

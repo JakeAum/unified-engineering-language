@@ -189,7 +189,6 @@ analysis PointingBudget {
     hpbw <- AntennaGain.outputs.hpbw
     gust_moment <- WindLoads.outputs.gust_moment
     stiffness <- pedestal_ae5.locked_rotor_stiffness
-    max_err <- req.PNT-003.max_pointing_error
   }
   params {
     servo_error = 0.025 deg ± 20 % from "residual tracking jitter at the f1/3 loop bandwidth incl. drive ripple and quantization"
@@ -197,10 +196,14 @@ analysis PointingBudget {
     ephemeris_error = 0.008 deg from "L1 ephemeris + station time-tag allocation"
     thermal_error = 0.018 deg ± 30 % from "differential solar heating of pedestal and backing structure, white paint"
   }
-  core python "analysis/pointing_budget.py"
-  outputs {
-    total_pointing_error : deg ±
-    pointing_loss_db : dB ±
+  core expr {
+    let wind_error = gust_moment / stiffness
+    total_pointing_error = sqrt(servo_error ^ 2 + encoder_error ^ 2 + wind_error ^ 2 + ephemeris_error ^ 2 + thermal_error ^ 2)
+    pointing_loss_db = 12 * (total_pointing_error / hpbw) ^ 2 * (1 dB)
   }
-  judgment accepted "0.039 deg RSS of 0.05 required and 0.074 dB of 0.3 allocated — margin in both; the wind term carries the true 3 s gust moment from WindLoads" doubts "terms treated as independent; servo jitter and gust deflection are partly the same physics, so the RSS may flatter the total by a few millidegrees"
+  outputs {
+    total_pointing_error : deg ± target <= req.PNT-003.max_pointing_error
+    pointing_loss_db : dB ± target <= req.PNT-003.max_pointing_loss_db
+  }
+  judgment accepted "0.039 deg RSS against the 0.05 deg target and 0.074 dB against the 0.3 dB target — both now declared as output targets and re-verdicted on every build; the wind term carries the true 3 s gust moment from WindLoads" doubts "terms treated as independent; servo jitter and gust deflection are partly the same physics, so the RSS may flatter the total by a few millidegrees — and the worst-case band's upper edge sits within 0.4 millideg of the pointing target"
 }

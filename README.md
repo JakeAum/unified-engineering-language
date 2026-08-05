@@ -9,10 +9,15 @@ consumed primarily by AI engineering agents, and compiled outward into the
 artifacts (geometry, BOMs, travelers, status views) through which a design is born
 into the physical world.
 
-**Status: v0.1 — the kernel proof (spec §11), complete.** Parser → units →
-conservation → envelopes → content hashing → staleness → scheduler → DFM →
-calibration → projections, all behind a conformance suite, all demonstrated on a
-physically coherent vertical slice.
+**Status: v0.2 — the compiler sees inside the physics.** Everything v0.1 proved
+(parser → units → conservation → envelopes → content hashing → staleness →
+scheduler → DFM → calibration → projections), plus the three features the v0.1
+retrospective demanded: **level quantities as types** (`22 dBW`, `dB/K`, dBHz
+derived not asserted — ADR-0006), **expression cores** (formulas in the
+language, dimension-checked before anything runs, interval uncertainty —
+ADR-0005), and **targets + seam values** (acceptance computed against the lock
+on every build; fences checked against the values actually flowing —
+ADR-0007).
 
 ## The two documents
 
@@ -24,43 +29,53 @@ Everything else in this repository is downstream of those two.
 ## Sixty seconds of UEL
 
 ```text
-component MainSpar : functional {
-  port root_attach : mechanical.translation { force: [0, 3 kN] ± cal }
-  budget mass <= 470 g ± 10 g              # rollups compute the margin
+requirement LNK-002 {
+  eirp_dbw = 22 dBW ± cal                   # a LEVEL: dB re W is the type
+  min_margin_db = 3 dB
 }
 
-binding MainSpar -> spar_v8 : physical {
-  process cnc_turn                          # activates that DFM ruleset
-  material AL7075_T6 from lib.materials
-  geometry spar_v8_geom                     # shape is code + assertions
-}
-
-analysis SparStaticLimit {
-  intent req.STR-014 "carry limit root moment, FoS >= 1.5"
-  framing {
-    model beam.euler_bernoulli
-    assume rigid_root because "root fitting stiffness >> spar"
-    envelope { root_moment in [0, 260 N*m] }
+analysis LinkMargin {
+  intent req.LNK-002 "does the link close at max range?"
+  framing { envelope { g_over_t_dbk in [20, 40 dB/K] } }   # checked against the
+  knowns {                                                 # value that FLOWS
+    eirp_dbw <- req.LNK-002.eirp_dbw        # references, never copies
+    freq <- req.MIS-001.carrier_freq
+    max_range <- req.LNK-002.max_range
+    data_rate <- req.MIS-001.data_rate
+    required_ebn0_db <- req.LNK-002.required_ebn0_db
+    g_over_t_dbk <- GtAnalysis.outputs.g_over_t_dbk
   }
-  knowns { root_moment <- req.STR-014.root_moment
-           section_Ixx <- spar_v8.section_Ixx }   # references, never copies
-  core python "analysis/spar_static.py"
-  outputs { FoS : dimensionless ± }
-  judgment accepted "FoS 2.04; physical" doubts "root stiffness unverified until W12"
+  core expr {                               # the formula IS language now
+    let lambda = const.c0 / freq
+    let fspl_db = 2 * db(4 * const.pi * max_range / lambda)
+    cn0_dbhz = eirp_dbw - fspl_db + g_over_t_dbk - db(const.k_B)
+    margin_db = cn0_dbhz - db(data_rate) - required_ebn0_db
+  }
+  outputs {
+    cn0_dbhz : dBHz ±                       # dBHz DERIVED by the checker:
+    margin_db : dB ± target >= req.LNK-002.min_margin_db   # acceptance computed
+  }
+  judgment accepted "5.38 dB, T02-validated 5.1 ± 0.3" doubts "EIRP moves it 1:1"
 }
 ```
 
-- The **physics is the type checker**: units are a free-abelian-group checker;
-  every power domain's effort×flow must be power; nets balance statically.
+- The **physics is the type checker** — now inside the formula too: units are a
+  free-abelian-group checker with log-referenced *levels* as first-class types;
+  `dBW − dB + dB/K − db(J/K)` type-checks to `dBHz`, and forgetting `db()`
+  around a data rate is a compile error naming both types, not a wrong margin.
 - The **fence is the type**: downstream assumptions must sit inside upstream
-  guarantees, or the compile error tells you which physics was dropped and why
-  ("you modeled this beam as rigid; flutter needs its first bending mode").
+  guarantees — compared against the *locked value actually flowing* across the
+  seam, with the producer cited. Targets make requirement satisfaction a
+  computed verdict: violated = red gate; met-on-the-nominal-but-band-crosses =
+  a standing warning handed to the reviewer.
 - **Change is computed, not remembered**: content hashes quantize to declared
-  tolerances in SI, so `850 mm` → `0.85 m` is not a change, sub-tolerance noise
-  is not a change, and a requirement bump invalidates exactly its cone.
+  tolerances in SI, so `850 mm` → `0.85 m` is not a change, `52 dBm` → `22 dBW`
+  is not a change, sub-tolerance noise is not a change, and a requirement bump
+  invalidates exactly its cone. An expr core's canonical text is its identity.
 - **Reality writes back**: measurements land as overlays with provenance and
   history; bands tighten; discrepancies open investigations; consumers flip
-  stale through the same hash machinery.
+  stale through the same hash machinery. Uncertainty from expr cores is a
+  computed worst-case enclosure, not an asserted number.
 
 ## Quickstart
 
@@ -96,17 +111,19 @@ is deliberately zero-dependency (ADR-0002).
 ## Grading
 
 ```sh
-python3 -m unittest discover -s tests    # 41 tests
-python3 -m conformance.runner            # 52 cases: schema/parse/units/fmt/fixloop/check/derisk
+python3 -m unittest discover -s tests    # 50 tests
+python3 -m conformance.runner            # 60 cases: schema/parse/units/fmt/fixloop/check/derisk
 ```
 
 Both run in CI on every push; the checker gates the scheduler; nothing merges on
 trust (program §2.2).
 
-## What v0.1 deliberately does not do
+## What v0.2 deliberately does not do
 
 LSP, FMU transport, surrogates, remote execution, SysML bridges, distributor
-refresh, sensitivity-aware staleness — all named for v0.2/v0.3 in spec §11.
+refresh, sensitivity-aware staleness, expression conditionals, per-instance
+graph state, statistical (non-enclosure) uncertainty — all named for v0.3+ in
+spec §11 and the ADRs.
 The open problems are held honestly in spec §10; current status per problem is
 tracked in [`docs/boot/architecture.md`](docs/boot/architecture.md).
 

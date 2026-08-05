@@ -1,0 +1,26 @@
+requirement LNK-1 {
+  eirp_dbw = 22 dBW
+  freq = 8447.5 MHz
+  max_range = 1650000 km
+  data_rate = 2000 Hz
+  required_ebn0_db = 4 dB
+}
+
+analysis LinkMargin {
+  knowns {
+    eirp_dbw <- req.LNK-1.eirp_dbw
+    freq <- req.LNK-1.freq
+    max_range <- req.LNK-1.max_range
+    data_rate <- req.LNK-1.data_rate
+    required_ebn0_db <- req.LNK-1.required_ebn0_db
+  }
+  core expr {
+    let lambda = const.c0 / freq
+    let fspl_db = 2 * db(4 * const.pi * max_range / lambda)
+    let cn0_dbhz = eirp_dbw - fspl_db - db(const.k_B)
+    margin_db = cn0_dbhz - data_rate - required_ebn0_db
+  }
+  outputs {
+    margin_db : dB
+  }
+}

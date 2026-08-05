@@ -16,11 +16,13 @@ from .resolver import Resolution
 
 
 def run_checks(res: Resolution, bag: Bag, lock: bool = True):
-    from . import conservation, dfm, envelopes, staleness
+    from . import conservation, contracts, dfm, envelopes, staleness
 
     lk = Lock.load(res.project.lock_path, bag)
     rollups = conservation.check(res, bag, lk)
     envelopes.check(res, bag)
+    envelopes.check_locked(res, bag, lk)
+    contracts.check(res, bag, lk)
     dfm.check(res, bag, lk)
     if lock:
         staleness.report(res, bag)

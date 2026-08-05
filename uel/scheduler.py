@@ -1,10 +1,13 @@
 """Model runtime: the local scheduler (spec §4.4).
 
-Walks the stale set in dependency order and re-executes cores through the JSON
-core protocol (docs/core-protocol.md). Compile time gates runtime: nothing runs
-while the checker reports errors. Early cutoff is re-evaluated *after* each
-upstream completes — an upstream re-run that lands within tolerance leaves its
-consumers fresh, and they are skipped.
+Walks the stale set in dependency order and re-executes cores. Python cores run
+through the JSON core protocol (docs/core-protocol.md); expr/stub cores (v0.2,
+ADR-0005) are evaluated by the kernel itself — interval arithmetic over the
+knowns' declared bands, no subprocess, with the canonical body as content.
+Compile time gates runtime: nothing runs while the checker reports errors.
+Early cutoff is re-evaluated *after* each upstream completes — an upstream
+re-run that lands within tolerance leaves its consumers fresh, and they are
+skipped.
 
 Geometry nodes (spec §6.2) must return topological assertions; a geometry core
 that returns none fails the build (UEL0601), and any failed assertion is a
@@ -20,6 +23,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 
+from . import expr as X
 from . import graph as G
 from .diagnostics import Bag, Span
 from .hashing import output_value_hash, sha, tool_pins
@@ -68,7 +72,7 @@ def _node_span(res: Resolution, name: str) -> Span:
 def build(res: Resolution, bag: Bag, only: list[str] | None = None,
           dry_run: bool = False, verbose: bool = True) -> BuildResult:
     result = BuildResult()
-    if not bag.ok():
+    if bag.gates_runtime():
         bag.info("UEL0701", "build refused: compile-time errors present (compile time gates runtime, spec §4.4)")
         return result
 
@@ -93,8 +97,12 @@ def build(res: Resolution, bag: Bag, only: list[str] | None = None,
             result.ran.append(name)
             continue
         if verbose:
-            print(f"build: running {name} ({an.core.path}) — {'; '.join(current.reasons)}")
-        entry = _run_core(res, an, name, lock, bag)
+            what = an.core.path or f"{an.core.lang} core"
+            print(f"build: running {name} ({what}) — {'; '.join(current.reasons)}")
+        if an.core.lang in ("expr", "stub"):
+            entry = _run_expr_core(res, an, name, lock, bag)
+        else:
+            entry = _run_core(res, an, name, lock, bag)
         entry.recipe = current.recipe
         entry.parts = current.parts
         lock.nodes[name] = entry
@@ -273,5 +281,111 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
         "wall_s": round(wall, 3),
         "tools": tool_pins(),
         "seed": PINNED_SEED,
+    }
+    return entry
+
+
+# ---------------------------------------------------------------------------
+# expr/stub cores: kernel-evaluated (v0.2, ADR-0005)
+# ---------------------------------------------------------------------------
+
+
+def _si_iv(value, unit_text: str, unc: dict | None) -> X.IV | None:
+    """A value + declared band → a canonical-SI (lo, nominal, hi) triple.
+
+    Absolute uncertainty is a delta (scales by the unit factor, never picks up
+    affine/level offsets); relative uncertainty is a fraction of the surface
+    value, which for levels means a fraction of the dB figure."""
+    try:
+        u = parse_unit(unit_text)
+    except UnitError:
+        return None
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        lo, hi = u.to_si(float(value[0])), u.to_si(float(value[1]))
+        return (min(lo, hi), (lo + hi) / 2.0, max(lo, hi))
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    si = u.to_si(float(value))
+    half = 0.0
+    if unc and isinstance(unc.get("value"), (int, float)):
+        if unc.get("kind") == "abs":
+            half = abs(float(unc["value"])) * u.factor
+        elif unc.get("kind") == "rel":
+            half = abs(float(value)) * abs(float(unc["value"])) * u.factor
+    return (si - half, si, si + half)
+
+
+def _run_expr_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) -> LockEntry:
+    sp = _node_span(res, name)
+    entry = LockEntry(status="failed")
+    pol = res.project.tolerances
+    prog = res.expr_programs.get(name)
+    if prog is None:
+        bag.error("UEL0703", f"{name}: {an.core.lang} core has no parsed body "
+                  "(graph loaded without sources?)", sp)
+        return entry
+
+    ivs: dict[str, X.IV] = {}
+    for local in sorted(an.knowns):
+        rr = res.known_refs.get((name, local))
+        if rr is None:
+            bag.error("UEL0703", f"{name}: known '{local}' is unresolved at run time", sp)
+            return entry
+        if rr.kind == "output":
+            producer = lock.nodes.get(rr.node)
+            out_name = rr.target.rsplit(".", 1)[1]
+            out = producer.outputs.get(out_name) if producer else None
+            if out is None:
+                bag.error("UEL0703", f"{name}: upstream output '{rr.target}' has never been produced", sp)
+                return entry
+            iv = _si_iv(out.value, out.unit, out.unc if isinstance(out.unc, dict) else None)
+        else:
+            assert rr.quantity is not None
+            q = rr.quantity
+            iv = _si_iv(list(q.value) if isinstance(q.value, tuple) else q.value,
+                        q.unit, q.unc.to_obj())
+        if iv is None:
+            bag.error("UEL0703", f"{name}: known '{local}' has no numeric value to evaluate", sp)
+            return entry
+        ivs[local] = iv
+    for pname, q in sorted(an.params.items()):
+        iv = _si_iv(list(q.value) if isinstance(q.value, tuple) else q.value, q.unit, q.unc.to_obj())
+        if iv is None:
+            bag.error("UEL0703", f"{name}: param '{pname}' has no numeric value to evaluate", sp)
+            return entry
+        ivs[pname] = iv
+
+    t0 = time.monotonic()
+    try:
+        outs = X.evaluate_program(prog, ivs, list(an.outputs))
+    except X.ExprEvalError as e:
+        bag.error("UEL0703", f"{name}: expression for '{e.target}' failed: {e}", sp,
+                  reason="a diverged formula is a failed run, not a value (spec §4.4)")
+        return entry
+    wall = time.monotonic() - t0
+
+    def rnd(v: float) -> float:
+        return float(f"{v:.6g}")
+
+    for oname, decl in an.outputs.items():
+        lo, nom, hi = outs[oname]
+        try:
+            u = parse_unit(decl.unit)
+        except UnitError:
+            bag.error("UEL0704", f"{name}: output '{oname}' has an invalid declared unit", sp)
+            return entry
+        half = max(nom - lo, hi - nom) / u.factor
+        value = rnd(u.from_si(nom))
+        unc = {"kind": "abs", "value": rnd(half)} if half > 1e-12 + abs(value) * 1e-9 else None
+        entry.outputs[oname] = LockOutput(value, decl.unit, unc,
+                                          output_value_hash(value, decl.unit, unc, pol))
+
+    entry.status = "fresh"
+    entry.run = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "wall_s": round(wall, 6),
+        "tools": tool_pins(),
+        "seed": PINNED_SEED,
+        "engine": an.core.lang,
     }
     return entry

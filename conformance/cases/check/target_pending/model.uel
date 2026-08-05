@@ -1,0 +1,15 @@
+requirement R-1 {
+  floor = 3 dB
+}
+
+analysis M {
+  knowns {
+    floor <- req.R-1.floor
+  }
+  core expr {
+    m_db = (5 dB) - (1 dB)
+  }
+  outputs {
+    m_db : dB target >= req.R-1.floor
+  }
+}

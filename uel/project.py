@@ -39,11 +39,13 @@ class TolerancePolicy:
 
     Each `[tolerances]` entry is a labeled quantity like `mass = "0.1 g"`; the
     entry's *own unit* determines which dimension it grids (so `Ixx = "0.001 mm^4"`
-    just works). Quantities whose dimension has no absolute grid quantize to
-    `default_rel` significant precision.
+    just works). A level-unit entry (`margin = "0.001 dB"`) grids level quantities
+    of that referenced dimension, on the dB scale. Quantities whose type has no
+    absolute grid quantize to `default_rel` significant precision.
     """
 
     abs_tol: dict[tuple, float] = field(default_factory=dict)  # Dim -> grid in SI units
+    level_tol: dict[tuple, float] = field(default_factory=dict)  # Dim -> grid in dB
     labels: dict[str, str] = field(default_factory=dict)  # label -> original text (docs)
     default_rel: float = 1e-6
 
@@ -73,13 +75,14 @@ class TolerancePolicy:
             if mag <= 0:
                 bag.error("UEL0705", f"tolerance for '{k}' must be positive, got {mag}", Span(file))
                 continue
-            grid = mag * unit.factor  # affine offset irrelevant for a grid spacing
-            if unit.dim in pol.abs_tol and pol.abs_tol[unit.dim] != grid:
+            grid = mag * unit.factor  # affine/level offset irrelevant for a grid spacing
+            table = pol.level_tol if unit.level else pol.abs_tol
+            if unit.dim in table and table[unit.dim] != grid:
                 bag.error("UEL0705",
                           f"tolerance '{k}' conflicts with an earlier entry for the same dimension",
                           Span(file))
                 continue
-            pol.abs_tol[unit.dim] = grid
+            table[unit.dim] = grid
             pol.labels[k] = v
         return pol
 

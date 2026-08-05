@@ -15,12 +15,24 @@ Affine units (degC) carry an offset and are only legal standalone — composing 
 prefixing an affine unit is a hard error (UEL0303) because `K/W` means something and
 `degC/W` does not.
 
+**Level units (v0.2, ADR-0006).** A level is `10·log10` of a linear quantity
+against an SI-coherent reference: `dBW` is a level of power, `dBHz` a level of
+frequency, `dB` the level of a dimensionless ratio. A level's *type* is the
+referenced linear dimension plus the level flag; its canonical scale is
+"dB re the SI-coherent unit", so `dBm` converts by an additive −30. Composing a
+level with a linear unit shifts the reference (`dB/K` ≡ level of 1/K;
+`dBW/(K*Hz)` ≡ level of W/(K·Hz)); composing two levels, exponentiating a level,
+or dividing a linear unit by a level has no affine-map meaning and is an error.
+Arithmetic between level *values* lives in the expression layer (uel.expr):
+levels add where linear quantities multiply.
+
 The unit table is data. Libraries may extend it in later versions; v0.1 ships the
 SI-plus-engineering set below.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from difflib import get_close_matches
 from typing import Optional
@@ -105,16 +117,26 @@ def dim_name(d: Dim) -> str:
     return f"{known} ({dim_str(d)})" if known and d != DIMENSIONLESS else dim_str(d)
 
 
+def type_name(d: Dim, level: bool = False) -> str:
+    """Human name of a full quantity type: dimension + level flag."""
+    if not level:
+        return dim_name(d)
+    if d == DIMENSIONLESS:
+        return "level (dB, a log ratio)"
+    return f"level (dB re {dim_str(d)})"
+
+
 @dataclass(frozen=True)
 class UnitDef:
     factor: float  # multiply by this to reach SI-coherent value
     dim: Dim
     offset: float = 0.0  # affine units only (to SI: v*factor + offset)
     prefixable: bool = False
+    level: bool = False  # log-referenced level unit (dB family); offset is the dB shift
 
     @property
     def affine(self) -> bool:
-        return self.offset != 0.0
+        return self.offset != 0.0 and not self.level
 
 
 _PI = 3.141592653589793
@@ -147,11 +169,17 @@ UNITS: dict[str, UnitDef] = {
     "rad": UnitDef(1.0, DIMENSIONLESS),
     "deg": UnitDef(_PI / 180.0, DIMENSIONLESS),
     "rev": UnitDef(2.0 * _PI, DIMENSIONLESS),
-    # decibel: a dimensionless RATIO label (gains, losses, margins). The value is
-    # carried on the dB scale; the group law is untouched because no conversion is
-    # implied. Absolute log-referenced levels (dBW, dBm, dB-Hz) are NOT units —
-    # carry the reference in the quantity name (eirp_dbw, cn0_dbhz).
-    "dB": UnitDef(1.0, DIMENSIONLESS),
+    # decibels: LEVEL units (v0.2, ADR-0006). The type is the referenced linear
+    # dimension + the level flag; the canonical scale is dB re the SI-coherent
+    # unit, so conversion between level units of one dimension is additive
+    # (dBm -> dBW is -30). `dB` is the level of a dimensionless ratio (gains,
+    # losses, margins); `dBi` is the same type, named for the isotropic reference.
+    "dB": UnitDef(1.0, DIMENSIONLESS, level=True),
+    "dBi": UnitDef(1.0, DIMENSIONLESS, level=True),
+    "dBW": UnitDef(1.0, D_POWER, level=True),
+    "dBm": UnitDef(1.0, D_POWER, offset=-30.0, level=True),  # dB re mW
+    "dBHz": UnitDef(1.0, D_FREQ, level=True),
+    "dBK": UnitDef(1.0, D_TEMP, level=True),
     # time, engineering
     "min": UnitDef(60.0, D_TIME),
     "hr": UnitDef(3600.0, D_TIME),
@@ -208,6 +236,7 @@ _ALIASES: dict[str, str] = {
     "radian": "rad", "radians": "rad",
     "revs": "rev", "revolutions": "rev",
     "tonne": "t", "tonnes": "t", "ton": "t",
+    "db": "dB", "dbw": "dBW", "dbm": "dBm", "dbhz": "dBHz", "dbi": "dBi", "dbk": "dBK",
 }
 
 
@@ -241,16 +270,27 @@ def _lookup_symbol(sym: str) -> UnitDef:
 
 @dataclass(frozen=True)
 class Unit:
-    """A resolved unit expression: canonical text + conversion + dimension."""
+    """A resolved unit expression: canonical text + conversion + dimension.
+
+    Level units (dB family) use the same affine map to reach canonical form —
+    factor 1.0 and an additive dB shift in `offset` — but carry `level=True`:
+    type equality is (dim, level), and canonical SI form is "dB re SI-coherent".
+    """
 
     text: str  # canonical surface form, e.g. "kN", "kg/m^3", "" for dimensionless
     factor: float
     dim: Dim
     offset: float = 0.0
+    level: bool = False
 
     @property
     def affine(self) -> bool:
-        return self.offset != 0.0
+        return self.offset != 0.0 and not self.level
+
+    @property
+    def vtype(self) -> tuple[Dim, bool]:
+        """The quantity type this unit measures: (dimension, level flag)."""
+        return (self.dim, self.level)
 
     def to_si(self, v: float) -> float:
         return v * self.factor + self.offset
@@ -264,7 +304,12 @@ DIMENSIONLESS_UNIT = Unit("", 1.0, DIMENSIONLESS)
 
 class _UnitParser:
     """unit_expr := term (('*'|'/') term)* ; term := factor ('^' int)? ;
-    factor := SYMBOL | '(' unit_expr ')' — whitespace-free surface strings."""
+    factor := SYMBOL | '(' unit_expr ')' — whitespace-free surface strings.
+
+    Each production yields (factor, dim, offset, level). Level composition
+    (ADR-0006): level ∘ linear shifts the reference additively; level ∘ level,
+    level^n, and linear/level are errors — no affine map realizes them.
+    """
 
     def __init__(self, text: str):
         self.text = text
@@ -276,27 +321,47 @@ class _UnitParser:
     def peek(self) -> str:
         return self.text[self.i] if self.i < len(self.text) else ""
 
-    def parse(self) -> tuple[float, Dim, float, bool]:
-        """Returns (factor, dim, offset, is_composite)."""
-        f, d, off = self.parse_term()
+    def _combine(self, a, op: str, b):
+        f1, d1, off1, lv1 = a
+        f2, d2, off2, lv2 = b
+        if lv1 and lv2:
+            raise UnitError(
+                f"cannot combine two level units in '{self.text}': levels add as values, not as units"
+            )
+        if (off1 != 0.0 and not lv1) or (off2 != 0.0 and not lv2):
+            raise UnitError(f"affine unit composed in '{self.text}'")
+        if lv2 and op == "/":
+            raise UnitError(
+                f"cannot divide by a level unit in '{self.text}': 1/dB has no meaning as a unit"
+            )
+        if lv1 or lv2:
+            # exactly one side is a level; the linear side shifts the reference
+            lin_f = f2 if lv1 else f1
+            shift = (off1 if lv1 else off2)
+            log_shift = 10.0 * math.log10(lin_f)
+            if op == "*":
+                return 1.0, dim_mul(d1, d2), shift + log_shift, True
+            return 1.0, dim_div(d1, d2), shift - log_shift, True
+        if op == "*":
+            return f1 * f2, dim_mul(d1, d2), 0.0, False
+        return f1 / f2, dim_div(d1, d2), 0.0, False
+
+    def parse(self) -> tuple[float, Dim, float, bool, bool]:
+        """Returns (factor, dim, offset, level, is_composite)."""
+        cur = self.parse_term()
         composite = False
         while self.peek() in ("*", "/"):
             composite = True
             op = self.text[self.i]
             self.i += 1
-            f2, d2, off2 = self.parse_term()
-            if off != 0.0 or off2 != 0.0:
-                raise UnitError(f"affine unit composed in '{self.text}'")
-            if op == "*":
-                f, d = f * f2, dim_mul(d, d2)
-            else:
-                f, d = f / f2, dim_div(d, d2)
+            cur = self._combine(cur, op, self.parse_term())
         if self.i != len(self.text):
             self.error(f"unexpected character '{self.peek()}'")
-        return f, d, off, composite
+        f, d, off, lv = cur
+        return f, d, off, lv, composite
 
-    def parse_term(self) -> tuple[float, Dim, float]:
-        f, d, off = self.parse_factor()
+    def parse_term(self) -> tuple[float, Dim, float, bool]:
+        f, d, off, lv = self.parse_factor()
         if self.peek() == "^":
             self.i += 1
             neg = False
@@ -309,16 +374,21 @@ class _UnitParser:
             if start == self.i:
                 self.error("expected integer exponent after '^'")
             n = int(self.text[start:self.i]) * (-1 if neg else 1)
+            if lv:
+                raise UnitError(
+                    f"cannot raise a level unit to a power in '{self.text}': "
+                    "exponentiation of a level is multiplication of its value"
+                )
             if off != 0.0:
                 raise UnitError(f"affine unit composed in '{self.text}'")
             f, d = f**n, dim_pow(d, n)
-        return f, d, off
+        return f, d, off, lv
 
-    def parse_factor(self) -> tuple[float, Dim, float]:
+    def parse_factor(self) -> tuple[float, Dim, float, bool]:
         if self.peek() == "(":
             self.i += 1
-            f, d, off, _ = _UnitParser(self._until_close()).parse()
-            return f, d, off
+            f, d, off, lv, _ = _UnitParser(self._until_close()).parse()
+            return f, d, off, lv
         start = self.i
         while self.peek().isalnum() or self.peek() in ("_", "µ"):
             self.i += 1
@@ -326,7 +396,7 @@ class _UnitParser:
             self.error("expected unit symbol")
         sym = self.text[start:self.i]
         u = _lookup_symbol(sym)
-        return u.factor, u.dim, u.offset
+        return u.factor, u.dim, u.offset, u.level
 
     def _until_close(self) -> str:
         depth, start = 1, self.i
@@ -355,13 +425,24 @@ def parse_unit(text: str) -> Unit:
     if text in ("", "dimensionless", "1"):
         return DIMENSIONLESS_UNIT
     compact = text.replace(" ", "")
-    f, d, off, composite = _UnitParser(compact).parse()
-    if off != 0.0 and composite:
+    f, d, off, lv, composite = _UnitParser(compact).parse()
+    if off != 0.0 and composite and not lv:
         raise UnitError(f"affine unit composed in '{text}'")
-    return Unit(compact, f, d, off)
+    return Unit(compact, f, d, off, lv)
+
+
+def is_unit_symbol(sym: str) -> bool:
+    """True iff `sym` resolves as a unit symbol (exact or prefixed; aliases are
+    suggestions, not units). Used by the expression parser to decide whether an
+    identifier after a numeric literal is a unit or an operand."""
+    try:
+        _lookup_symbol(sym)
+        return True
+    except UnitError:
+        return False
 
 
 def check_effort_flow_power(effort_unit: str, flow_unit: str) -> bool:
     """Kernel invariant for power domains: dim(effort) * dim(flow) == power."""
     eu, fu = parse_unit(effort_unit), parse_unit(flow_unit)
-    return dim_mul(eu.dim, fu.dim) == D_POWER
+    return not eu.level and not fu.level and dim_mul(eu.dim, fu.dim) == D_POWER

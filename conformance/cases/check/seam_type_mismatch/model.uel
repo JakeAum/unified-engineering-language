@@ -1,0 +1,25 @@
+analysis Producer {
+  core expr {
+    power_dbw = 10 dBW
+  }
+  outputs {
+    power_dbw : dBW
+  }
+}
+
+analysis Consumer {
+  framing {
+    envelope {
+      power_dbw in [0, 20 dB]
+    }
+  }
+  knowns {
+    power_dbw <- Producer.outputs.power_dbw
+  }
+  core expr {
+    out_dbw = power_dbw - (3 dB)
+  }
+  outputs {
+    out_dbw : dBW
+  }
+}

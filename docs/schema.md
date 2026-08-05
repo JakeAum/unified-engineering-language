@@ -1,4 +1,4 @@
-# UEL semantic schema — edition 2026, schema 0.1
+# UEL semantic schema — edition 2026, schema 0.2
 
 *Phase 1 artifact (program §4). This schema is defined before concrete syntax and is
 frozen for the edition: the surface language (Phase 2) parses **to** it, hashing
@@ -28,7 +28,7 @@ normalization pass, and `encode(decode(x))` is byte-identical for already-canoni
 
 ```json
 {
-  "uel_schema": "0.1",
+  "uel_schema": "0.2",
   "edition": "2026",
   "nodes": { "<qualified-name>": { "kind": "...", ... } },
   "connections": [ { "from": "comp.port", "to": "comp.port" } ]
@@ -89,10 +89,16 @@ closure (Phase 4).
 ### analysis (spec §3)
 `akind` (analysis | geometry), `intent` ({ref, text}), `framing` ({model, envelope}),
 `knowns{}` (local name → graph ref; **references, never copies**), `params{}`
-(literal quantities local to this node), `core` ({lang, path}), `outputs{}`
-({unit, unc, artifact}), `judgment` ({status, text, doubts}).
+(literal quantities local to this node), `core` ({lang, path, text}), `outputs{}`
+({unit, unc, artifact, target}), `judgment` ({status, text, doubts}).
 Geometry nodes are ordinary shell-and-core analyses whose cores must also return
 topological assertions (spec §6.2); the scheduler enforces this at run time.
+
+v0.2 (ADR-0005/0007): `core.lang` ∈ python | expr | stub. For expr/stub cores
+`core.text` holds the canonical formatted body — it IS the content that hashes;
+`core.path` is empty. `outputs.<name>.target` = `{"op": ">="|"<=",` then exactly
+one of `"ref": "<value reference>"` or `"value": {<quantity>}}` — the acceptance
+bound this output is re-verdicted against on every build.
 
 ### requirement
 `text`, `quantities{}`.
@@ -132,4 +138,8 @@ Every field is classified (markers in `uel/graph.py`):
   Early cutoff is by construction: if an upstream re-run reproduces equal-within-
   tolerance outputs, downstream recipe hashes do not move.
 - Core file **content** is identity; its path is not. CAD kernel / tool versions are
-  identity (spec §6.2).
+  identity (spec §6.2). For expr/stub cores the canonical body text is the content.
+- Quantized identity records the quantity **type**, not the surface unit: the
+  dimension vector, prefixed with a `"dB"` marker for level quantities (ADR-0006) —
+  `850 mm` == `0.85 m`, `52 dBm` == `22 dBW`. Level types may declare their own
+  tolerance grids (`"0.001 dB"`), applied on the dB scale.

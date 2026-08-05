@@ -77,9 +77,14 @@ analysis AntennaGain {
     efficiency <- Reflector.aperture_efficiency
     surface_rms <- Reflector.surface_rms_spec
   }
-  core python "analysis/antenna_gain.py"
+  core expr {
+    let lambda = const.c0 / freq
+    let ruze_db = db(exp((4 * const.pi * surface_rms / lambda) ^ 2))
+    gain_dbi = db(efficiency * (const.pi * diameter / lambda) ^ 2) - ruze_db
+    hpbw = (70 deg) * lambda / diameter
+  }
   outputs {
-    gain_dbi : dB ±
+    gain_dbi : dBi ±
     hpbw : deg
   }
   judgment accepted "50.65 dBi at 8447.5 MHz — 50.84 ideal aperture minus 0.20 dB Ruze at 0.6 mm rms — and 0.497 deg HPBW; in family with 5 m prime-focus X-band apertures" doubts "aperture efficiency is a class estimate until the pattern range test; carrier frequency is ± cal pending the mission ICD"
@@ -103,7 +108,7 @@ analysis SystemNoise {
     min_elevation <- req.ENV-004.min_elevation
   }
   params {
-    zenith_atm_temp = 3 K ± 30 % from "clear-air zenith sky brightness at 8.4 GHz, moderate humidity; scaled by flat-atmosphere airmass in the core"
+    zenith_atm_temp = 3 K ± 30 % from "clear-air zenith sky brightness at 8.4 GHz, moderate humidity; scaled by flat-atmosphere airmass"
     cmb_temp = 2.7 K from "cosmic microwave background"
     spillover_temp = 35 K ± 30 % from "prime-focus feed spillover and rear sidelobes seeing ~290 K ground, worst case at 10 deg elevation"
     feed_physical_temp = 290 K ± 10 K from "feed/OMT ambient at the hub, hot-case bias"
@@ -111,11 +116,17 @@ analysis SystemNoise {
     lna_drift_coeff = 0.3 ± 50 % from "Te drift per kelvin of flange temperature above rating, GaAs pHEMT class value"
     downstream_temp = 0.3 K ± 50 % from "downconverter NF ~10 dB (~2600 K) plus IF chain, referred through the 40 dB LNA gain"
   }
-  core python "analysis/system_noise.py"
+  core expr {
+    let airmass = 1 / sin(min_elevation)
+    let t_ant = zenith_atm_temp * airmass + cmb_temp + spillover_temp
+    let t_feed = feed_physical_temp * (lin(feed_loss_db) - 1)
+    let t_lna = lna_noise_temp + lna_drift_coeff * max(0 K, lna_physical_temp - lna_ref_temp)
+    t_sys = t_ant + t_feed + t_lna + downstream_temp
+  }
   outputs {
     t_sys : K ±
   }
-  judgment accepted "123.0 K worst case at 10 deg elevation and the integrated 31.7 degC enclosure hot case; LNA and spillover dominate the stack" doubts "spillover temperature is a prime-focus class estimate, not a pattern integral — validate by cold-sky Y-factor at commissioning; single-plane additive bookkeeping is conservative by a few kelvin"
+  judgment accepted "119.0 K worst case at 10 deg elevation with the T01-measured LNA and the 31.7 degC enclosure hot case; LNA and spillover dominate. The ±25 K band is a worst-case enclosure over every declared input band (v0.2 expr semantics), not a 1-sigma RSS" doubts "spillover temperature is a prime-focus class estimate, not a pattern integral — the cold-sky Y-factor at commissioning is what will actually tighten this; single-plane additive bookkeeping is conservative by a few kelvin"
 }
 
 analysis GtAnalysis {
@@ -129,11 +140,13 @@ analysis GtAnalysis {
     t_sys <- SystemNoise.outputs.t_sys
     feed_loss_db <- feed_x84.insertion_loss_db
   }
-  core python "analysis/gt_analysis.py"
-  outputs {
-    g_over_t_dbk : dB ±
+  core expr {
+    g_over_t_dbk = gain_dbi - feed_loss_db - db(t_sys)
   }
-  judgment accepted "29.45 dB/K at the LNA input at minimum elevation — carries the 3 dB link margin requirement with room" doubts "inherits the antenna-temperature estimate from SystemNoise; a 1 dB gain shortfall at the pattern test takes G/T down 1:1"
+  outputs {
+    g_over_t_dbk : dB/K ±
+  }
+  judgment accepted "29.59 dB/K at the LNA input at minimum elevation, T01-validated at 29.6 ± 0.2 — carries the 3 dB link margin requirement with room. The dB/K output type is derived by the checker: dBi - dB - db(K) = dB/K" doubts "inherits the antenna-temperature estimate from SystemNoise; a 1 dB gain shortfall at the pattern test takes G/T down 1:1"
 }
 
 analysis LinkMargin {
@@ -142,7 +155,7 @@ analysis LinkMargin {
     model link.budget_ebn0
     assume static because "worst-case snapshot at maximum range with all declared losses taken simultaneously; no fade dynamics"
     envelope {
-      eirp_dbw in [18, 26 dB]
+      eirp_dbw in [18, 26 dBW]
       freq in [8, 8.9 GHz]
     }
   }
@@ -151,7 +164,6 @@ analysis LinkMargin {
     max_range <- req.LNK-002.max_range
     required_ebn0_db <- req.LNK-002.required_ebn0_db
     impl_loss_db <- req.LNK-002.impl_loss_db
-    min_margin_db <- req.LNK-002.min_margin_db
     atm_loss_db <- req.LNK-002.atm_loss_db
     rain_alloc_db <- req.LNK-002.rain_alloc_db
     pol_loss_db <- req.LNK-002.pol_loss_db
@@ -160,11 +172,17 @@ analysis LinkMargin {
     g_over_t_dbk <- GtAnalysis.outputs.g_over_t_dbk
     pointing_loss_db <- PointingBudget.outputs.pointing_loss_db
   }
-  core python "analysis/link_margin.py"
-  outputs {
-    cn0_dbhz : dB ±
-    ebn0_db : dB ±
-    margin_db : dB ±
+  core expr {
+    let lambda = const.c0 / freq
+    let fspl_db = 2 * db(4 * const.pi * max_range / lambda)
+    cn0_dbhz = eirp_dbw - fspl_db - atm_loss_db - rain_alloc_db - pol_loss_db - pointing_loss_db + g_over_t_dbk - db(const.k_B)
+    ebn0_db = cn0_dbhz - db(data_rate) - impl_loss_db
+    margin_db = ebn0_db - required_ebn0_db
   }
-  judgment accepted "5.23 dB margin against 3 dB required at 1650000 km with every declared loss taken at once, including the gusted pointing term; C/N0 43.7 dB-Hz at 2000 bit/s" doubts "EIRP is ± cal from the ICD draft and moves margin 1:1; pointing loss rides on the structures PointingBudget; rain allocation is a temperate-site statistic, not this site's measurement"
+  outputs {
+    cn0_dbhz : dBHz ±
+    ebn0_db : dB ±
+    margin_db : dB ± target >= req.LNK-002.min_margin_db
+  }
+  judgment accepted "5.38 dB margin against the 3 dB target at 1650000 km with every declared loss taken at once, T02-validated at 5.1 ± 0.3; C/N0 43.89 dBHz at 2000 bit/s. The dBHz type falls out of the algebra: dBW - dB + dB/K - db(J/K) = dBHz, with Boltzmann entering exactly as db(const.k_B), not as a 228.6 contract constant. Eb/N0 here is the effective value after implementation loss" doubts "EIRP is ± cal from the ICD draft and moves margin 1:1; the ±1.35 dB band is a worst-case enclosure, dominated by the SystemNoise input stack; rain allocation is a temperate-site statistic, not this site's measurement"
 }

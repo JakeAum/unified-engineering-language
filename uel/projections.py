@@ -126,7 +126,14 @@ def bom(res: Resolution, lock: Lock, rollups: dict) -> str:
         mass = _fmt_q(leaf_q(target, "mass"), "g")
         cost = _fmt_q(leaf_q(target, "unit_cost"), "USD")
         lead = _fmt_q(leaf_q(target, "lead_time"), "week")
-        lines.append(f"| {indent}{name} | {real} | {count} | {mat} | {proc} | {mass} | {cost} | {lead} |")
+        # instance designators (v0.2): `contains X x N` mints addressable slots —
+        # the names per-serial overlays (calibration/<designator>.json) target
+        qty = str(count)
+        if count > 1:
+            short = name.rsplit(".", 1)[-1]
+            qty = (f"{count} ({', '.join(f'{short}#{i}' for i in range(1, count + 1))})"
+                   if count <= 4 else f"{count} ({short}#1…#{count})")
+        lines.append(f"| {indent}{name} | {real} | {qty} | {mat} | {proc} | {mass} | {cost} | {lead} |")
         for c in (target.contains or comp.contains):
             emit(c.ref, c.count, depth + 1)
 
@@ -296,6 +303,58 @@ def status(res: Resolution, lock: Lock) -> str:
         lines.append("")
         lines.append(f"**Analyses with no recorded intent** (an answer detached from its intent "
                      f"is meaningless, spec §3.1): {', '.join(f'`{o}`' for o in orphans)}")
+
+    # -- targets: acceptance computed, not narrated (v0.2, ADR-0007) --
+    from .contracts import _bound_si
+
+    trows: list[str] = []
+    for aname, an in sorted(analyses.items()):
+        for oname in sorted(an.outputs):
+            od = an.outputs[oname]
+            if not od.target_op:
+                continue
+            bound_si, bound_txt, source = _bound_si(res, lock, aname, oname, od)
+            entry = lock.nodes.get(aname)
+            out = entry.outputs.get(oname) if entry else None
+            if out is None or out.value is None or isinstance(out.value, list) or bound_si is None:
+                verdict, shown = "⏳ pending", "—"
+            else:
+                try:
+                    v_si = parse_unit(out.unit).to_si(float(out.value))
+                except UnitError:
+                    continue
+                meets = v_si >= bound_si if od.target_op == ">=" else v_si <= bound_si
+                verdict = "✅ meets" if meets else "❌ VIOLATED"
+                shown = f"{out.value:g} {out.unit}"
+            trows.append(f"| `{aname}.{oname}` | {od.target_op} {bound_txt} ({source}) "
+                         f"| {shown} | {verdict} |")
+    if trows:
+        lines.append("")
+        lines.append("## Targets")
+        lines.append("")
+        lines.append("| Output | Target | Computed | Verdict |")
+        lines.append("|---|---|---|---|")
+        lines.extend(trows)
+
+    # -- maturity: what still stands on placeholders (v0.2) --
+    kinds: dict[str, list[str]] = {"python": [], "expr": [], "stub": []}
+    for aname, an in sorted(analyses.items()):
+        if an.core.path or an.core.text:
+            kinds.setdefault(an.core.lang, []).append(aname)
+    total = sum(len(v) for v in kinds.values())
+    if total:
+        lines.append("")
+        lines.append("## Maturity")
+        lines.append("")
+        lines.append(f"{total} executable nodes: "
+                     f"{len(kinds['expr'])} expr (kernel-checked formulas), "
+                     f"{len(kinds['python'])} python (opaque cores), "
+                     f"{len(kinds['stub'])} stub (declared nominals).")
+        if kinds["stub"]:
+            lines.append("")
+            lines.append("**Still standing on stubs**: "
+                         + ", ".join(f"`{n}`" for n in kinds["stub"])
+                         + " — every number downstream of these is a placeholder.")
     lines.append("")
     return "\n".join(lines)
 
@@ -351,6 +410,51 @@ def dot(res: Resolution) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Instance query (v0.2): `contains X x N` mints addressable slots
+# ---------------------------------------------------------------------------
+
+
+def instances(res: Resolution) -> str:
+    """Expand the containment tree into instance designators — the addresses
+    per-serial calibration overlays and as-built records attach to. A quantity
+    is not an identity; `ApertureElement#2` is."""
+    doc = res.doc
+    comps = doc.components()
+    contained = {c.ref for comp in comps.values() for c in comp.contains}
+    roots = sorted(n for n, c in comps.items() if n not in contained and not c.realizes)
+    lines: list[str] = []
+    CAP = 64
+
+    def walk(name: str, prefix: str, depth: int) -> None:
+        comp = comps.get(name)
+        if comp is None:
+            return
+        target = comps.get(name)
+        realizer = next((c for c in comps.values() if c.realizes == name), None)
+        eff = realizer or target
+        for c in (eff.contains or comp.contains):
+            short = c.ref.rsplit(".", 1)[-1]
+            child = comps.get(c.ref)
+            bound = next((r.name for r in comps.values() if r.realizes == c.ref), None)
+            for i in range(1, min(c.count, CAP) + 1):
+                desig = f"{prefix}{short}#{i}" if c.count > 1 else f"{prefix}{short}"
+                mark = f" -> {bound}" if bound else ("" if (child and child.level == "physical") else "  (unbound)")
+                lines.append("  " * depth + f"{desig}{mark}")
+                walk(c.ref, f"{desig}." if c.count > 1 else prefix, depth + 1)
+            if c.count > CAP:
+                lines.append("  " * depth + f"… {c.count - CAP} more {short} instances")
+
+    for r in roots:
+        lines.append(r)
+        walk(r, "", 1)
+    if not lines:
+        return "instances: no containment tree in this graph\n"
+    lines.append("")
+    lines.append("as-built state attaches per designator: `uel calibrate <file> --serial <designator>`")
+    return "\n".join(lines) + "\n"
+
+
+# ---------------------------------------------------------------------------
 # Provenance query
 # ---------------------------------------------------------------------------
 
@@ -371,7 +475,8 @@ def provenance(res: Resolution, target: str, lock: Lock) -> str:
         if entry and out_name in entry.outputs:
             o = entry.outputs[out_name]
             lines.append(f"  value    {o.value} {o.unit}  (hash {o.hash[7:19]})")
-            lines.append(f"  computed by '{node_name}' ({an.core.path}), "
+            how = an.core.path or f"{an.core.lang} core, kernel-evaluated"
+            lines.append(f"  computed by '{node_name}' ({how}), "
                          f"run {entry.run.get('ts', '?')} in {entry.run.get('wall_s', '?')}s")
         else:
             lines.append(f"  value    never computed (run `uel build`)")

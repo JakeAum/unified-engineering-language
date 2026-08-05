@@ -1,5 +1,5 @@
 {
-  "uel_schema": "0.1",
+  "uel_schema": "0.2",
   "edition": "2026",
   "nodes": {
     "req.STR-014": {

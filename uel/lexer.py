@@ -5,8 +5,9 @@ contextual — the lexer emits IDENT and the parser matches by value, so no doma
 word ('flow', 'model', 'text', …) is stolen from users.
 
 Identifier rule: identifiers may contain internal hyphens when both neighbors are
-alphanumeric (`STR-014`), because v0.1 has no arithmetic expressions and the only
-uses of '-' are negative number literals and arrows. `±` may be written `+-`.
+alphanumeric (`STR-014`). Inside v0.2 expression bodies this means subtraction
+needs spaces — `a - b` — because `a-b` is one identifier; the expression checker
+recognizes that shape and says so. `±` may be written `+-`.
 """
 
 from __future__ import annotations
@@ -44,6 +45,7 @@ class T(Enum):
     STAR = "*"
     SLASH = "/"
     MINUS = "-"
+    PLUS = "+"
     PERCENT = "%"
     NEWLINE = "\\n"
     EOF = "eof"
@@ -74,7 +76,8 @@ _PUNCT1 = {
     "{": T.LBRACE, "}": T.RBRACE, "[": T.LBRACKET, "]": T.RBRACKET,
     "(": T.LPAREN, ")": T.RPAREN, ":": T.COLON, ";": T.SEMI, ",": T.COMMA,
     ".": T.DOT, "=": T.EQ, "<": T.LT, ">": T.GT, "±": T.PM, "@": T.AT,
-    "^": T.CARET, "*": T.STAR, "/": T.SLASH, "-": T.MINUS, "%": T.PERCENT,
+    "^": T.CARET, "*": T.STAR, "/": T.SLASH, "-": T.MINUS, "+": T.PLUS,
+    "%": T.PERCENT,
 }
 
 _ESCAPES = {"n": "\n", "t": "\t", '"': '"', "\\": "\\"}

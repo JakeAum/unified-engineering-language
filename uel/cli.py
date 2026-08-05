@@ -68,13 +68,23 @@ def _load_and_resolve(path: str, bag: Bag, serial: str = "", checks: bool = True
 def cmd_build(args: argparse.Namespace) -> int:
     bag = Bag()
     project, res, _ = _load_and_resolve(args.path, bag, serial=getattr(args, "serial", "") or "")
-    if res is None or not bag.ok():
+    if res is None or bag.gates_runtime():
         print(bag.render(project.sources_map()))
         print("build: refused — fix compile-time errors first (compile time gates runtime)")
         return 1
     from .scheduler import build as run_build
 
     result = run_build(res, bag, only=args.node or None, dry_run=args.dry_run)
+    if not args.dry_run:
+        # the pre-build check judged the *old* lock; re-verdict targets and
+        # seams against the values this build just produced
+        from . import contracts, envelopes
+        from .lockfile import Lock
+
+        bag.items = [d for d in bag.items if d.code not in ("UEL0804", "UEL0805", "UEL0806")]
+        lk = Lock.load(project.lock_path, bag)
+        envelopes.check_locked(res, bag, lk)
+        contracts.check(res, bag, lk)
     out = bag.render(project.sources_map())
     if out:
         print(out)
@@ -259,13 +269,19 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
 
 def cmd_query(args: argparse.Namespace) -> int:
     bag = Bag()
-    project, res, _ = _load_and_resolve(args.path, bag, serial=args.serial, checks=False)
+    path = args.path
+    if args.what == "instances" and args.target and path == ".":
+        path = args.target  # `uel query instances <dir>` — no target for this query
+    project, res, _ = _load_and_resolve(path, bag, serial=args.serial, checks=False)
     if res is None:
         print(bag.render(project.sources_map()))
         return 1
     from .lockfile import Lock
-    from .projections import provenance
+    from .projections import instances, provenance
 
+    if args.what == "instances":
+        sys.stdout.write(instances(res))
+        return 0
     print(provenance(res, args.target, Lock.load(project.lock_path)))
     return 0
 
@@ -313,8 +329,9 @@ def main(argv: list[str] | None = None) -> int:
     p_cal.add_argument("--no-stubs", action="store_true", help="do not generate investigation stubs")
 
     p_query = sub.add_parser("query", help="ask the graph")
-    p_query.add_argument("what", choices=["provenance"])
-    p_query.add_argument("target", help="e.g. spar_v7.mass or SparStaticLimit.outputs.FoS")
+    p_query.add_argument("what", choices=["provenance", "instances"])
+    p_query.add_argument("target", nargs="?", default="",
+                         help="provenance: e.g. spar_v7.mass or SparStaticLimit.outputs.FoS")
     p_query.add_argument("path", nargs="?", default=".")
     p_query.add_argument("--serial", default="")
 

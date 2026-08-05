@@ -55,7 +55,7 @@ class StaleReport:
 
 
 def executable_nodes(doc: G.GraphDoc) -> dict[str, G.Analysis]:
-    return {n: a for n, a in doc.analyses().items() if a.core.path}
+    return {n: a for n, a in doc.analyses().items() if a.core.path or a.core.text}
 
 
 def compute(res: Resolution, lock: Lock) -> StaleReport:
@@ -111,7 +111,7 @@ def compute(res: Resolution, lock: Lock) -> StaleReport:
             if old.get("def") != parts["def"]:
                 reasons.append("definition changed (envelope, params, outputs, or framing)")
             if old.get("core") != parts["core"]:
-                reasons.append(f"core script changed ({an.core.path})")
+                reasons.append(f"core changed ({an.core.path or an.core.lang + ' body'})")
             if old.get("tools") != parts["tools"]:
                 reasons.append("tool versions changed")
             for local, h in parts["inputs"].items():

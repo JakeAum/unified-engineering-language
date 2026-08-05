@@ -72,7 +72,12 @@ analysis ElementNoise {
     feed_physical_temp = 290 K ± 10 K from "feed at ambient, hot-case bias"
     downstream_temp = 3 K ± 50 % from "shared-LO downconverter (~2600 K) referred through 36 dB LNA gain plus coax run"
   }
-  core python "analysis/element_noise.py"
+  core expr {
+    let airmass = 1 / sin(min_elevation)
+    let t_ant = zenith_atm_temp * airmass + cmb_temp + spillover_temp
+    let t_feed = feed_physical_temp * (lin(feed_loss_db) - 1)
+    t_sys = t_ant + t_feed + lna_noise_temp + downstream_temp
+  }
   outputs {
     t_sys : K ±
   }
@@ -97,13 +102,19 @@ analysis ArrayGain {
     surface_rms <- element_a1.surface_rms
   }
   params {
-    n_elements = 2 from "two elements; the envelope and core scale to 4 if margin is ever bought back"
+    n_elements = 2 from "two elements; the envelope and formula scale to 4 if margin is ever bought back"
     combining_loss_db = 0.3 dB ± 50 % from "residual phase-cal error across shared-LO channels, correlation-calibrated on the I-ALiRT carrier"
   }
-  core python "analysis/array_gain.py"
+  core expr {
+    let lambda = const.c0 / freq
+    let ruze_db = db(exp((4 * const.pi * surface_rms / lambda) ^ 2))
+    element_gain_dbi = db(efficiency * (const.pi * diameter / lambda) ^ 2) - ruze_db
+    g_array_dbi = element_gain_dbi + db(n_elements) - combining_loss_db
+    hpbw = (70 deg) * lambda / diameter
+  }
   outputs {
-    g_array_dbi : dB ±
-    element_gain_dbi : dB ±
+    element_gain_dbi : dBi ±
+    g_array_dbi : dBi ±
     hpbw : deg
   }
   judgment accepted "46.27 dBi per element, 49.0 dBi effective for the pair after combining loss — 1.7 dB under the baseline's single 5 m; the price of the price" doubts "combining loss is the honest unknown: it is a software-quality number, measured only at first light"
@@ -120,11 +131,13 @@ analysis GtArray {
     t_sys <- ElementNoise.outputs.t_sys
     feed_loss_db <- element_a1.feed_loss_db
   }
-  core python "analysis/gt_array.py"
-  outputs {
-    g_over_t_dbk : dB ±
+  core expr {
+    g_over_t_dbk = g_array_dbi - feed_loss_db - db(t_sys)
   }
-  judgment accepted "27.5 dB/K for the pair — 2.1 dB under the baseline single-dish figure; the link analysis says that is still enough" doubts "inherits the element spillover estimate; both elements assumed identical, which install tolerances will test"
+  outputs {
+    g_over_t_dbk : dB/K ±
+  }
+  judgment accepted "27.68 dB/K for the pair — 1.9 dB under the baseline single-dish figure; the dB/K type is derived by the checker from dBi - dB - db(K)" doubts "inherits the element spillover estimate; both elements assumed identical, which install tolerances will test"
 }
 
 analysis SteptrackPointing {
@@ -148,12 +161,16 @@ analysis SteptrackPointing {
     wind_jitter = 0.04 deg ± 50 % from "gust excursion inside the worm-drive deadband at full-track wind"
     ephemeris_bias = 0.01 deg from "L1 ephemeris + mount model feed-forward residual"
   }
-  core python "analysis/steptrack_pointing.py"
+  core expr {
+    let steptrack_residual = steptrack_residual_frac * hpbw
+    total_pointing_error = sqrt((backlash / 2) ^ 2 + steptrack_residual ^ 2 + wind_jitter ^ 2 + ephemeris_bias ^ 2)
+    pointing_loss_db = 12 * (total_pointing_error / hpbw) ^ 2 * (1 dB)
+  }
   outputs {
     total_pointing_error : deg ±
-    pointing_loss_db : dB ±
+    pointing_loss_db : dB ± target <= req.PNT-003.max_pointing_loss_db
   }
-  judgment accepted "0.107 deg RSS on a 0.83 deg beam — 0.20 dB of a 0.30 dB allocation; software precision on hardware imprecision, the second cost move" doubts "steptrack residual assumes the carrier stays demod-lockable through the dither; verify at first light before trusting the fraction"
+  judgment accepted "0.108 deg RSS on a 0.83 deg beam — 0.20 dB against the 0.30 dB target; software precision on hardware imprecision, the second cost move. The worst-case band crosses the allocation (standing UEL0804 warning) — first light decides whether the steptrack fraction was flattery" doubts "steptrack residual assumes the carrier stays demod-lockable through the dither; verify at first light before trusting the fraction"
 }
 
 analysis LinkMargin {
@@ -162,7 +179,7 @@ analysis LinkMargin {
     model link.budget_ebn0
     assume static because "worst-case snapshot at maximum range, all declared losses simultaneous"
     envelope {
-      eirp_dbw in [18, 26 dB]
+      eirp_dbw in [18, 26 dBW]
       freq in [8, 8.9 GHz]
     }
   }
@@ -176,17 +193,22 @@ analysis LinkMargin {
     atm_loss_db <- req.LNK-002.atm_loss_db
     rain_alloc_db <- req.LNK-002.rain_alloc_db
     pol_loss_db <- req.LNK-002.pol_loss_db
-    min_margin_db <- req.LNK-002.min_margin_db
     g_over_t_dbk <- GtArray.outputs.g_over_t_dbk
     pointing_loss_db <- SteptrackPointing.outputs.pointing_loss_db
   }
-  core python "analysis/link_margin.py"
-  outputs {
-    cn0_dbhz : dB ±
-    ebn0_db : dB ±
-    margin_db : dB ±
+  core expr {
+    let lambda = const.c0 / freq
+    let fspl_db = 2 * db(4 * const.pi * max_range / lambda)
+    cn0_dbhz = eirp_dbw - fspl_db - atm_loss_db - rain_alloc_db - pol_loss_db - pointing_loss_db + g_over_t_dbk - db(const.k_B)
+    ebn0_db = cn0_dbhz - db(data_rate) - impl_loss_db
+    margin_db = ebn0_db - required_ebn0_db
   }
-  judgment accepted "3.2 dB against 3 required — the excursion closes, with essentially zero luxury; every dB the baseline had in hand was spent buying the 10x" doubts "margin is one combining-loss surprise from the floor; the 4-element growth path in ArrayGain's envelope is the recovery plan"
+  outputs {
+    cn0_dbhz : dBHz ±
+    ebn0_db : dB ±
+    margin_db : dB ± target >= req.LNK-002.min_margin_db
+  }
+  judgment accepted "3.34 dB against the 3 dB target — the excursion closes, with essentially zero luxury; every dB the baseline had in hand was spent buying the 10x. The checker now says the quiet part on every run: the worst-case band crosses the floor (standing UEL0804 warning), which is this design accepted honestly, not a defect" doubts "margin is one combining-loss surprise from the floor; the 4-element growth path in ArrayGain's envelope is the recovery plan"
 }
 
 analysis WindLoadsElement {

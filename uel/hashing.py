@@ -64,8 +64,8 @@ def _sig_round(v: float, rel: float) -> float:
     return float(f"{v:.{digits}e}")
 
 
-def quantize_si(value_si: float, dim: tuple, pol: TolerancePolicy) -> float:
-    grid = pol.abs_tol.get(dim)
+def quantize_si(value_si: float, dim: tuple, pol: TolerancePolicy, level: bool = False) -> float:
+    grid = (pol.level_tol if level else pol.abs_tol).get(dim)
     if grid:
         return round(value_si / grid) * grid
     return _sig_round(value_si, pol.default_rel)
@@ -74,15 +74,25 @@ def quantize_si(value_si: float, dim: tuple, pol: TolerancePolicy) -> float:
 def quantize_in_unit(value: float, unit_text: str, pol: TolerancePolicy) -> float:
     """Quantize a surface value via its SI image; returns the quantized SI value.
 
-    Hashing always works in SI so that `850 mm` and `85 cm` are the same content.
-    Unknown units (already diagnosed elsewhere) fall back to raw significant-digit
-    rounding so hashing never crashes.
+    Hashing always works in SI so that `850 mm` and `85 cm` are the same content
+    (and `30 dBm` == `0 dBW`). Unknown units (already diagnosed elsewhere) fall
+    back to raw significant-digit rounding so hashing never crashes.
     """
     try:
         u = parse_unit(unit_text)
     except UnitError:
         return _sig_round(value, pol.default_rel)
-    return quantize_si(u.to_si(value), u.dim, pol)
+    return quantize_si(u.to_si(value), u.dim, pol, u.level)
+
+
+def quantize_delta_in_unit(value: float, unit_text: str, pol: TolerancePolicy) -> float:
+    """Quantize a *difference* (an uncertainty half-width): scale by the unit
+    factor only — affine and level offsets cancel in deltas."""
+    try:
+        u = parse_unit(unit_text)
+    except UnitError:
+        return _sig_round(value, pol.default_rel)
+    return quantize_si(value * u.factor, u.dim, pol, u.level)
 
 
 def _q_value(raw: Any, unit_text: str, pol: TolerancePolicy) -> Any:
@@ -114,24 +124,20 @@ def _strip_and_quantize(obj: Any, pol: TolerancePolicy) -> Any:
                 u = dict(v)
                 if isinstance(u.get("value"), (int, float)) and not isinstance(u.get("value"), bool):
                     if u.get("kind") == "abs":
-                        u["value"] = quantize_in_unit(float(u["value"]), unit_text, pol)
+                        u["value"] = quantize_delta_in_unit(float(u["value"]), unit_text, pol)
                     else:
                         u["value"] = _sig_round(float(u["value"]), pol.default_rel)
                 out[k] = u
             else:
                 out[k] = _strip_and_quantize(v, pol)
         # once quantized into SI, the surface unit text must not affect identity —
-        # record the dimension instead so `850 mm` == `0.85 m` and unit renames
-        # (same dimension) don't invalidate.
-        if is_quantity and unit_text:
+        # record the quantity *type* (dimension + level flag) instead, so
+        # `850 mm` == `0.85 m`, `30 dBm` == `0 dBW`, and unit renames of the
+        # same type don't invalidate.
+        if (is_quantity or is_predicate) and unit_text:
             try:
-                out["dim"] = list(parse_unit(unit_text).dim)
-            except UnitError:
-                out["dim"] = ["?", unit_text]
-            out.pop("unit", None)
-        if is_predicate and unit_text:
-            try:
-                out["dim"] = list(parse_unit(unit_text).dim)
+                u = parse_unit(unit_text)
+                out["dim"] = (["dB"] if u.level else []) + list(u.dim)
             except UnitError:
                 out["dim"] = ["?", unit_text]
             out.pop("unit", None)
@@ -167,6 +173,8 @@ def output_value_hash(value: Any, unit: str, unc: dict | None, pol: TolerancePol
 
 
 def core_content_hash(project_root: Path, core: G.Core) -> str:
+    if core.text:  # expr/stub cores: the canonical body IS the content
+        return sha(core.text.encode("utf-8"))
     if not core.path:
         return "sha256:no-core"
     p = project_root / core.path

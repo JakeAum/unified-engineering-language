@@ -2,9 +2,14 @@
 
 *Spec §3.2: every analysis has a uniform shell and an opaque core. The shell never
 scales with cost; a 100 ms script and a 10-hour CFD campaign are the same shape of
-thing. This protocol is that shape, for v0.1 local execution.*
+thing. This protocol is that shape, for local execution of **Python cores**.*
 
-A core is an executable script (v0.1: Python, run with the project root as cwd).
+*v0.2 note (ADR-0005): `core expr` and `core stub` bodies do NOT use this
+protocol — they are parsed, type-checked, and evaluated by the kernel itself
+(interval arithmetic in canonical SI, no subprocess), and their canonical text
+is their content hash. This document governs the opaque kind only.*
+
+A core is an executable script (Python, run with the project root as cwd).
 The scheduler sends one JSON object on **stdin** and expects one JSON object on
 **stdout**. Exit code 0 with valid JSON is success; anything else marks the node
 `failed` (UEL0703) with stderr's tail in the diagnostic.

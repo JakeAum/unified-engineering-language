@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.2.0 — the compiler sees inside the physics (2026-08-05)
+
+Every feature in this release is a fix for a weakness the v0.1 retrospective
+named after building three real projects with the language. Schema 0.2;
+hashing epoch bumped (tool pins + level encoding) — all locks re-locked, with
+apache-one values reproducing byte-identically and the ground stations to
+sub-millidecibel.
+
+- **Level quantities as types** (ADR-0006) — `dB` family units carry their
+  reference in the type: `dBW`, `dBm` (additive −30), `dBHz`, `dBK`, `dBi`,
+  composition (`dB/K`, `dBW/(K*Hz)`), one arithmetic rule (levels add where
+  linear quantities multiply), `db()`/`lin()` conversions, dB-delta
+  uncertainty, level-aware hashing (`52 dBm` == `22 dBW`) and tolerance
+  grids. The RF blind spot the retrospective named is closed: a link budget's
+  `dBHz` is now derived by the checker, not asserted by a naming convention.
+- **Expression cores** (ADR-0005) — `core expr { let … ; out = … }`: the
+  formula moves into the language. Dimensional/level inference over the whole
+  body at check time (UEL0310–0312: unknown names with hyphen-aware hints,
+  mixed-scale arithmetic, output-vs-declaration contract); kernel-side
+  interval evaluation seeded from the knowns' declared bands (worst-case
+  enclosures, documented as such); canonical body text is the content hash;
+  `sin`/`cos` with exact interval extrema; physical constants under `const.*`
+  (Boltzmann enters link budgets as `db(const.k_B)` exactly, retiring the
+  228.6 contract constant). `core stub { … }` promotes the ground-station
+  contract-and-stubs org pattern into the language, with a maturity ledger
+  (UEL0807 + status projection).
+- **Targets and seam values** (ADR-0007) — `outputs { margin_db : dB ± target
+  >= req.LNK-002.min_margin_db }` re-verdicted against the lock on every
+  build/check (UEL0804 violated = red gate; band-crossing = warning; UEL0805
+  pending); fences on output-referencing knowns checked statically for type
+  (UEL0505) and against the **value actually flowing** with its band
+  (UEL0806, producer cited). Lock-derived verdicts red-gate merges but never
+  gate the scheduler. `contains X x N` mints instance designators (BOM,
+  `uel query instances`) for per-serial as-built addressing.
+- **Migration** — both ground stations' RF/pointing chains are expr cores now
+  (ten Python cores deleted); the baseline and the 1/10-cost excursion share
+  the identical LinkMargin formula text, hash-provably. The LC margin's
+  worst-case band crossing the 3 dB floor is a standing computed warning —
+  TRADE.md's declared thinness, now enforced by the checker. Requirements
+  state EIRP in `dBW`, G/T in `dB/K`, C/N0 in `dBHz`.
+- Conformance grows to 60 cases (expr dimensional catch, level algebra
+  derivation, target pending, seam type mismatch, stub ledger, level-unit
+  verdicts); 50 unit tests (closed-form physics match, level-rename staleness
+  invariance, target/seam re-verdicts, interval arithmetic edge cases).
+
 ## v0.1.0 — the kernel proof (2026-08-04)
 
 The spec §11 v0.1 scope, complete and load-bearing, per the program plan's phases:

@@ -4,41 +4,42 @@
     "AntennaGain": {
       "outputs": {
         "gain_dbi": {
-          "hash": "sha256:83b573543a86101b661913c311ee42e9bdc06e907c1aa3c0ce498d2e5d2037ac",
+          "hash": "sha256:1ebb65da359696262dfd9918f5032f104960e9fcbcb7d50532fe16a8c6af9e8f",
           "unc": {
             "kind": "abs",
-            "value": 0.238
+            "value": 0.222764
           },
-          "unit": "dB",
-          "value": 50.648
+          "unit": "dBi",
+          "value": 50.6484
         },
         "hpbw": {
-          "hash": "sha256:fedc584a9bdb1a116c6ea0e8f2e2726c17f1e5f53eac5372c99d644a47cec0b1",
+          "hash": "sha256:c0488890e5d39e980a4c94eca647b53492c58dddd776c73b14175c3b583e8cc0",
           "unit": "deg",
-          "value": 0.4968
+          "value": 0.496845
         }
       },
       "parts": {
-        "core": "sha256:4acbacdf297ab1a740e5d5913c9b666aec4771b13a0532cbb2ec4ca21358c530",
-        "def": "sha256:e930d93d46fe9d923fb9026d57447e35a8ef663e74aa4f8ba64ea21759f705a4",
+        "core": "sha256:f0ebd0eff1695dccc0e41367d34c1d904535f698bccb391b533d07357818a7a5",
+        "def": "sha256:838b6d7ef35de8e873a74a0239597282932d0d8971ea47996f2ed32dbf54f987",
         "inputs": {
           "diameter": "sha256:c8996ed71ec932f613347e164f3bc701485ea3c691063b4f18de907cdbe24e23",
           "efficiency": "sha256:123e599e14e4cfafe2eb9a5c2e4897ed537968011cc70214370c687fa12c68d7",
           "freq": "sha256:9b3b516a274e34e85b10a21702a50419e531870b95e06ca9bf9e6a190b9caa14",
           "surface_rms": "sha256:16f7e9ed03d14d6756679113b2ec1a672a181e815a769e9b0f6b01647f36c9d6"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:bb73accd23437ef3ad0ff57013fd6b31f377d0ec7624efaee470e76399dec334",
+      "recipe": "sha256:69ee94669fc6d76c65d4dafd9c9b1d30f26dd2ff34aa20ecf2aaac6cd38a574c",
       "run": {
+        "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 8.8e-05
       },
       "status": "fresh"
     },
@@ -53,7 +54,7 @@
           "value": 0.3
         },
         "lna_physical_temp": {
-          "hash": "sha256:a69da9eee6337019dae9e8d9d2885da48e87cab89f2353eddbe419a575069c85",
+          "hash": "sha256:0c95baeba8c1149ab960a0bfd04c4bf492c7181d8a3290991c77611eddc9e6ca",
           "unc": {
             "kind": "abs",
             "value": 4.29
@@ -70,114 +71,124 @@
           "t_amb_max": "sha256:893855c9a1b075ab36752d0ca89ba466852e52b530c71816b41e541315ea4f70",
           "t_amb_min": "sha256:058a4a9ce5d6b2a11919c766befd3c41233063ff4bb8c0d297e0046f1c9368b2"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:2295a00cea446fe178186af397f500b86051cb247bb00c692502e09b152855c1",
+      "recipe": "sha256:bf1a400c6ca00e262db72f006497618ba4f83d291a62093739758304d6805276",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
-        "wall_s": 0.023
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.032
       },
       "status": "fresh"
     },
     "GtAnalysis": {
       "outputs": {
         "g_over_t_dbk": {
-          "hash": "sha256:4e091f87c8460b7c59816e519d5ece4745f1477a78acebb27720a137630dbfb0",
+          "hash": "sha256:c26142602903543c063f358d935142c613dfcb719f7b781fa6b27dbe3866ca6d",
           "unc": {
             "kind": "abs",
-            "value": 0.518
+            "value": 1.30609
           },
-          "unit": "dB",
-          "value": 29.592
+          "unit": "dB/K",
+          "value": 29.5923
         }
       },
       "parts": {
-        "core": "sha256:ed3e4427d7c1edd9fc72a1c0616f249d8d616194ae599f59581f97ed19b6d871",
-        "def": "sha256:c4bc52eeec28ffd9787433b79474020d53ecdf497a66184d35d6d5dfd1e6ed7b",
+        "core": "sha256:1207c54eec22eacff9128697344ca4b1ffb677ead68f2d1d71d2932491c99f86",
+        "def": "sha256:e7761424d12b4ba6fdd40bdb7ebab87706966379f1097d356f36048b2febbd28",
         "inputs": {
-          "feed_loss_db": "sha256:d8b2627756bb47968fa0833f9f673a40a1b9665d169fa8f5dd4da7892c8f323c",
-          "gain_dbi": "sha256:83b573543a86101b661913c311ee42e9bdc06e907c1aa3c0ce498d2e5d2037ac",
-          "t_sys": "sha256:7c58e11535d3e8c9d1896b97de2fd4bc4e8d5d0a028f759b7a9917687bb87e75"
+          "feed_loss_db": "sha256:e072be279ae9493018174b80b55e89e810c18a19acff69a24a35c7a480c8ef03",
+          "gain_dbi": "sha256:1ebb65da359696262dfd9918f5032f104960e9fcbcb7d50532fe16a8c6af9e8f",
+          "t_sys": "sha256:401315f714bef455d46b2639bc8e4dcb6724b10bb0cd42b701b4c7236bf0520f"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:3172ddfdfc6f13b001338ae9c7cd05162962a5c248a830f96ad63e5cfd06f542",
+      "recipe": "sha256:8d3ee35ce73c0d8976ee63c93516f49f12d09394c81df161937d5ce258c53860",
       "run": {
+        "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:58:35Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T01:15:42Z",
+        "validation": {
+          "g_over_t_dbk": {
+            "measured": 29.6,
+            "source": "T01 station acceptance — solar Y-factor and LNA bench, day 1",
+            "ts": "2026-08-25T00:00:00Z",
+            "unit": "dB",
+            "verdict": "consistent"
+          }
+        },
+        "wall_s": 1.8e-05
       },
       "status": "fresh"
     },
     "LinkMargin": {
       "outputs": {
         "cn0_dbhz": {
-          "hash": "sha256:f0d674a56bb87d60a20e90c12f1848c5162142731d4011b7ca2f019df1c3ed1e",
+          "hash": "sha256:1648c11a81e689b5b5aceb7d088bf89220c1869ef923d2cf36f08de465adba69",
           "unc": {
             "kind": "abs",
-            "value": 0.518
+            "value": 1.35155
           },
-          "unit": "dB",
-          "value": 43.886
+          "unit": "dBHz",
+          "value": 43.8854
         },
         "ebn0_db": {
-          "hash": "sha256:ea114617275b611685fd436501fea0e94c004f88f6a0b9dca868554aaadfbbbc",
+          "hash": "sha256:bbecf92b341cc77590785015709ef02e2c5e09f9113255c10e8dcb3e26977181",
           "unc": {
             "kind": "abs",
-            "value": 0.518
+            "value": 1.35155
           },
           "unit": "dB",
-          "value": 10.876
+          "value": 9.37513
         },
         "margin_db": {
-          "hash": "sha256:2d87fbed8fd371a67fc926c495eb3352e453927946ceee9fe3bf364c8f04fe15",
+          "hash": "sha256:5d3a413e16aec02a8a65c190e5a670c09f19c09ba3508e6f5cc5e2966f55e549",
           "unc": {
             "kind": "abs",
-            "value": 0.518
+            "value": 1.35155
           },
           "unit": "dB",
-          "value": 5.376
+          "value": 5.37513
         }
       },
       "parts": {
-        "core": "sha256:9295cc125e82490b2be21d4860bfc31eb990a2ce0f5a0193f23e54721d2fb648",
-        "def": "sha256:f76433df9acf12d5bc0ca1b6bad6af8092c8704558f78b3bb294f1c4ff85d9a3",
+        "core": "sha256:a190b4ad9744c0abe5895e1e87a0de173d69f0d19130fbee75ad81c3e399ab42",
+        "def": "sha256:34f13e84ae5f5479ad2c401f208e770d32065f0afb7cd78ee607e3fc4cecdb81",
         "inputs": {
-          "atm_loss_db": "sha256:860f25ab4d18dceafdbd1fcb5747e5c9f4e8ffb4122a169d3be6801b3946c989",
+          "atm_loss_db": "sha256:deed9ccf7ff35aa724a3c8c21956496ca5abe932880c68d7fd347ec1c9abb6c1",
           "data_rate": "sha256:072128b36f0fc70c33dc624610ee6d01b3b45c9b58bfe42c48c7fed1d9a17f69",
-          "eirp_dbw": "sha256:ec284feebb0c2e2a5fe5fa9aee83ed2cfa04d017cf57fa43ff5771e9d1739082",
+          "eirp_dbw": "sha256:29056d3177ae34a5e51267606e0e63ea1005c893b3a6c43d81b56b5f0d604255",
           "freq": "sha256:9b3b516a274e34e85b10a21702a50419e531870b95e06ca9bf9e6a190b9caa14",
-          "g_over_t_dbk": "sha256:4e091f87c8460b7c59816e519d5ece4745f1477a78acebb27720a137630dbfb0",
-          "impl_loss_db": "sha256:44435e492e69d0014c8865b3541bb74cdc1f4b47040970c7f3eeda7b359eaaab",
+          "g_over_t_dbk": "sha256:c26142602903543c063f358d935142c613dfcb719f7b781fa6b27dbe3866ca6d",
+          "impl_loss_db": "sha256:45240d64a281395adbc38e5e26fe73d3d016a8f7cbe11b3ffd915ebefa37ab54",
           "max_range": "sha256:447ae3153eb18764ed71fbaddfee62986029c4b49da9a6d385d774e5a1bff669",
-          "min_margin_db": "sha256:32769b214dacedac64293952bbe86f2d862ca32121a9807705018eec9cace1a0",
-          "pointing_loss_db": "sha256:dcb880ccef5e88e5f508040c97b24b6037460939d1242177fedeebf46f5a18ea",
-          "pol_loss_db": "sha256:860f25ab4d18dceafdbd1fcb5747e5c9f4e8ffb4122a169d3be6801b3946c989",
-          "rain_alloc_db": "sha256:54f7ea7a9b1dc482ffb2c304927b242488b8c537e4aef73376da002c29a4ad45",
-          "required_ebn0_db": "sha256:c597302818494bc5f81fcd5ca225e96453d82ab63410dd7575dad507fa09db4e"
+          "pointing_loss_db": "sha256:d2244df1225c295a5e486160060305bb954a84d512ae33add163e0f002d86b55",
+          "pol_loss_db": "sha256:deed9ccf7ff35aa724a3c8c21956496ca5abe932880c68d7fd347ec1c9abb6c1",
+          "rain_alloc_db": "sha256:a5b9007fe5228ca3f319e35e2813c3fdcb27390e1a80a773643744480783e33a",
+          "required_ebn0_db": "sha256:fb016c4d2973cf682c6c61d0b188faa6a22d5b633ffa00910d07b69115866220"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:2f3a2649b839840ffb261433b86dbb78447ecfaf42523005e880f38ccda8677a",
+      "recipe": "sha256:0ce8b527f162e206d5f09a107fa67b10e11048b4fb825237cc49317f28e570bc",
       "run": {
+        "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:58:35Z",
+        "ts": "2026-08-05T01:15:42Z",
         "validation": {
           "margin_db": {
             "measured": 5.1,
@@ -187,7 +198,7 @@
             "verdict": "consistent"
           }
         },
-        "wall_s": 0.022
+        "wall_s": 4.3e-05
       },
       "status": "fresh"
     },
@@ -220,63 +231,63 @@
           "dish_mass": "sha256:079574007799aa58854ea52768ed891ea4999d936782ec3a6c57fc5926922968",
           "stiffness": "sha256:e24ff92597d600a9cf23e5253b3df73c7607d7694da8cafb4346fc967b438025"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:d68c51624086b15a3d2852e0b69878cf67c31055ee51d16f1514f6a76ec0fcf9",
+      "recipe": "sha256:b77e970b1b011fb42929e96c61025bc3f3104b38ce4813e13c353013c300e5c1",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.022
       },
       "status": "fresh"
     },
     "PointingBudget": {
       "outputs": {
         "pointing_loss_db": {
-          "hash": "sha256:dcb880ccef5e88e5f508040c97b24b6037460939d1242177fedeebf46f5a18ea",
+          "hash": "sha256:d2244df1225c295a5e486160060305bb954a84d512ae33add163e0f002d86b55",
           "unc": {
-            "kind": "rel",
-            "value": 0.22
+            "kind": "abs",
+            "value": 0.0454601
           },
           "unit": "dB",
-          "value": 0.074
+          "value": 0.0740073
         },
         "total_pointing_error": {
-          "hash": "sha256:9873f421abad5f572367127a8201289ba83ab816cdb8860b4834be3ad5f0b302",
+          "hash": "sha256:5028b599d80b5a1f71c8c29a960865b665c4b4fbba2cae64fe8e71d101806f97",
           "unc": {
-            "kind": "rel",
-            "value": 0.11
+            "kind": "abs",
+            "value": 0.0105559
           },
           "unit": "deg",
-          "value": 0.039
+          "value": 0.0390182
         }
       },
       "parts": {
-        "core": "sha256:00ddd4c248b2eae9eb813b17b0c4e2035a4a216bfe3eb013d302528f8e8d7c5c",
-        "def": "sha256:66b37425a322ab2dcbae4a59dda213616489a62109f5ab734d1111e567891a05",
+        "core": "sha256:3f84b1ed97309d6bfaf0e949fec98007e15fbc37b18a2bb21498bc22f9da026c",
+        "def": "sha256:dab621019fa20e104532948e786e1e4dfaa7c26bc81a5568eadbe4556d0322de",
         "inputs": {
           "gust_moment": "sha256:520632da91c7c75c690557d1387cb1fe919b0f0916c51b334bd3126c2f6b5d87",
-          "hpbw": "sha256:fedc584a9bdb1a116c6ea0e8f2e2726c17f1e5f53eac5372c99d644a47cec0b1",
-          "max_err": "sha256:f7bc00beda4e1a969e60499cd7e0e7f6dfc1b6391dfefbb07a8b6bdf3d80c3f8",
+          "hpbw": "sha256:c0488890e5d39e980a4c94eca647b53492c58dddd776c73b14175c3b583e8cc0",
           "stiffness": "sha256:e24ff92597d600a9cf23e5253b3df73c7607d7694da8cafb4346fc967b438025"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:f305ee5f0de5c5a7a0ef3ccec8aecbaf0202a4c0a6d58633abdea867ef995dbf",
+      "recipe": "sha256:341f99b5b6af97d873ba9357780516f511ada1c34e8d46a0a91e9a64728843d1",
       "run": {
+        "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 5e-05
       },
       "status": "fresh"
     },
@@ -320,18 +331,18 @@
           "rf_chain_dc": "sha256:9771b4ef85517d42feeae465e0a3f953e494ea421183baa04a679c203b2e2cd7",
           "server_draw": "sha256:29c0a0b438dcd2ae19437b3327eeaaa815c213c91bffd5deceee961ecd1390d7"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:6fefd140e3e5803778e6fc2c087a3801ea47e5161101c7392d50afcd6fb000dd",
+      "recipe": "sha256:072bef1e2119b145d8772f752b2223410e49da004e5130b8e57bb0392f547375",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
-        "wall_s": 0.021
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.023
       },
       "status": "fresh"
     },
@@ -361,18 +372,18 @@
         "inputs": {
           "f1": "sha256:3e3bd5b1e1b14e7250af3e68190b7ea71cb6a663369d7b3d93c34937e13c94ca"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:bfecdb9e5edd465cd5169898293bd325a740be07f89921b40f4627a9afe59412",
+      "recipe": "sha256:e92a467dd4136f9fcdb53264988f69d10c4181f3e2d60ecccfe9a98d8241b943",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.022
       },
       "status": "fresh"
     },
@@ -405,54 +416,55 @@
           "rotating_inertia": "sha256:af38f3643c7b587d2d7abb3e8747bae84d47cc2dbf03426e3b445cc5a9d8dc20",
           "track_rate": "sha256:f7354bcb92449796eebcc1affe3d0143a4327e3ec797dd5bc51bb8902acc4be3"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:b17326f52c6097570876e78d601f606dc8cf26d1b21c85aaecb2cc49a50c15ce",
+      "recipe": "sha256:bef60fd37f0fae101681aa0ad3b14fbab50a1d66df78f57bdcc5f7a27c063886",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.022
       },
       "status": "fresh"
     },
     "SystemNoise": {
       "outputs": {
         "t_sys": {
-          "hash": "sha256:7c58e11535d3e8c9d1896b97de2fd4bc4e8d5d0a028f759b7a9917687bb87e75",
+          "hash": "sha256:401315f714bef455d46b2639bc8e4dcb6724b10bb0cd42b701b4c7236bf0520f",
           "unc": {
             "kind": "abs",
-            "value": 12.53
+            "value": 25.2014
           },
           "unit": "K",
-          "value": 119.02
+          "value": 119.018
         }
       },
       "parts": {
-        "core": "sha256:e0e80bc33df1713b535cbbe3e6471ce7eeb56673dff8ccf9dcc53acfdabb9657",
-        "def": "sha256:9216dfc6258f9755d6b73fae515e7bf3a3bc692c56226a3a3f1b671633a3965b",
+        "core": "sha256:91953453cac9ceb8dd145d9bcab5935eee41d06540f6bfa578a009e126e40175",
+        "def": "sha256:ff19ad36d3b7db3c7c927b200c2f81b500d239162c1eb4bc83b8fa7e19187f78",
         "inputs": {
-          "feed_loss_db": "sha256:d8b2627756bb47968fa0833f9f673a40a1b9665d169fa8f5dd4da7892c8f323c",
+          "feed_loss_db": "sha256:e072be279ae9493018174b80b55e89e810c18a19acff69a24a35c7a480c8ef03",
           "lna_noise_temp": "sha256:ea4363852f63755d0c3ea59c66244fca473fd36b4a4c69a7eaa0018d36a390ab",
-          "lna_physical_temp": "sha256:a69da9eee6337019dae9e8d9d2885da48e87cab89f2353eddbe419a575069c85",
+          "lna_physical_temp": "sha256:0c95baeba8c1149ab960a0bfd04c4bf492c7181d8a3290991c77611eddc9e6ca",
           "min_elevation": "sha256:20b5e33319f599a183f6ee22ac34d4e8cffedf2ac57c8f9d63f8c3133ad55d5e"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:cdf765a74509ee37701b3b909eb85b7026129a1492205c33ca7a611515e754ee",
+      "recipe": "sha256:040452a8bc8f443383c18f94be70997b42951c6797b235ee574c8206716a21e4",
       "run": {
+        "engine": "expr",
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:58:35Z",
-        "wall_s": 0.043
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.000146
       },
       "status": "fresh"
     },
@@ -477,18 +489,18 @@
           "min_ride": "sha256:2f48cbb5f2d6b51caf3cac79fe651eb4d9d4d50032bc4b242858baedc0410253",
           "server_draw": "sha256:29c0a0b438dcd2ae19437b3327eeaaa815c213c91bffd5deceee961ecd1390d7"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:a8ae029af9ded0beda0407ffc4963810859f9f7b760eb7c67111e54f3dda0da4",
+      "recipe": "sha256:4749e56db4414e9e31bb481d75c6d61405419bc156b88b0f728513a4decfa1e7",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
@@ -539,17 +551,17 @@
           "wind_op": "sha256:7b20462d439998fcdeb8b2898fffd9e22aeefbb34bd976094e963a03710d7e79",
           "wind_survival": "sha256:462d67415106ec3132ae7674c988ce55b68dd7398108f6bd4d3febdb2354e1c6"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:c94198085ec1e6a3e8107e9429c37735b97c3170533aa85f18de23f1f5abd9bf",
+      "recipe": "sha256:e2ef1a2167606568fd2ee36b58bc58ddad54d53a336406a14a496c9427378834",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
+        "ts": "2026-08-05T01:15:42Z",
         "wall_s": 0.021
       },
       "status": "fresh"
@@ -620,18 +632,18 @@
         "inputs": {
           "density": "sha256:908d32d9793da7bdccb4860a6f29de13b112f3ddf46f4d5d2b066d53d66c2ba4"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:20b305fb9fdadefa05244560d321379caae91ad199ebcc4d315193065bbdb867",
+      "recipe": "sha256:1a79a48996f0aa4732edbcff6c0d308839b3ef4645c739efb685fbd84d8c706c",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:38:37Z",
-        "wall_s": 0.02
+        "ts": "2026-08-05T01:15:42Z",
+        "wall_s": 0.022
       },
       "status": "fresh"
     },
@@ -686,17 +698,17 @@
           "diameter": "sha256:c8996ed71ec932f613347e164f3bc701485ea3c691063b4f18de907cdbe24e23",
           "focal_ratio": "sha256:fe6965d5ed418afbd7534b5a569663e3e38446a3eb5ac61cb28594a496477e1f"
         },
-        "tools": "sha256:868844a02134a415798d98be18235835d4c264a4a669cd1ffc922d98a71eb84b"
+        "tools": "sha256:b5ab31554771d16d49fa23ffbc864c474696a68763e1fee430513f39ce33af3a"
       },
-      "recipe": "sha256:38e584438b8f17d3b84f1d5f122e5f3add38160d682c69a87da0fe4b5f0a57f5",
+      "recipe": "sha256:09b5705f26e4101369a5a2f30339d0ffb5f61174f659700de1c1f4dfdd756c15",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.1.0"
+          "uel": "0.2.0"
         },
-        "ts": "2026-08-04T17:56:38Z",
+        "ts": "2026-08-05T01:15:42Z",
         "wall_s": 0.021
       },
       "status": "fresh"
@@ -705,7 +717,7 @@
   "tools": {
     "edition": "2026",
     "python": "3.11.15",
-    "uel": "0.1.0"
+    "uel": "0.2.0"
   },
   "uel_lock": "0.1"
 }

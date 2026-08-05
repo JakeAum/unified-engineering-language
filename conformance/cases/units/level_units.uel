@@ -1,0 +1,10 @@
+requirement U-1 {
+  a = 30 dBm ± 1 dB
+  b = 22 dBW ± cal
+  c = 29 dB/K
+  d = -228.6 dBW/(K*Hz)
+  bad_square = 3 dB^2
+  bad_pair = 5 dB*dBW
+  bad_div = 2 W/dB
+  bad_unc = 22 dBW ± 3 K
+}

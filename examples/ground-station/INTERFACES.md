@@ -29,7 +29,7 @@ provenance tails), `uel/stdlib/*.uel` (materials, claims, DFM rulesets).
 
 | Team | Model file | Cores (create under examples/ground-station/) |
 |---|---|---|
-| RF | `model/rf.uel` | `analysis/antenna_gain.py`, `analysis/system_noise.py`, `analysis/gt_analysis.py`, `analysis/link_margin.py` |
+| RF | `model/rf.uel` | expr cores in `model/rf.uel` itself (v0.2 migration; the v0.1 deliverable was four Python cores) |
 | Structures | `model/structures.uel` | `geom/reflector_geom.py`, `geom/counterweight_bracket.py`, `analysis/wind_loads.py`, `analysis/pedestal_modes.py`, `analysis/servo_sizing.py`, `analysis/servo_bandwidth.py`, `analysis/pointing_budget.py` |
 | Facilities | `model/facilities.uel` | `analysis/power_budget.py`, `analysis/enclosure_thermal.py`, `analysis/ups_ride_through.py` |
 

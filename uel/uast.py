@@ -195,6 +195,8 @@ class OutputDeclA:
     unit_span: Span = field(default_factory=Span)
     unc: bool = False
     artifact: bool = False
+    target_op: str = ""  # v0.2: "" | ">=" | "<="
+    target_expr: Optional[QExpr] = None  # literal or reference the output must satisfy
     span: Span = field(default_factory=Span)
 
 
@@ -216,6 +218,7 @@ class AnalysisDecl:
     params: list[QuantityDecl] = field(default_factory=list)
     core_lang: str = ""
     core_path: str = ""
+    core_body: list = field(default_factory=list)  # v0.2: expr.ExprStmt for expr/stub cores
     outputs: list[OutputDeclA] = field(default_factory=list)
     judgment: Optional[JudgmentDecl] = None
     doc: str = ""

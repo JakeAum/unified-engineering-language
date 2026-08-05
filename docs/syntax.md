@@ -1,8 +1,8 @@
-# UEL surface syntax — v0.1 reference
+# UEL surface syntax — v0.2 reference
 
 *The customer is an AI agent (spec §5.1): plain text, line-oriented, diff-friendly,
 locally checkable, explicit over implicit. This document is the normative reference
-for the v0.1 grammar; `uel fmt` is the normative layout.*
+for the v0.2 grammar; `uel fmt` is the normative layout.*
 
 ## Lexical rules
 
@@ -11,7 +11,8 @@ for the v0.1 grammar; `uel fmt` is the normative layout.*
 - All keywords are **contextual** — nothing is reserved; `flow`, `model`, `text`
   remain valid names everywhere else.
 - Identifiers may contain internal hyphens between alphanumerics (`STR-014`).
-  There is no arithmetic in v0.1, so no ambiguity with minus.
+  Inside v0.2 expression bodies, subtraction therefore needs spaces (`a - b`);
+  the checker recognizes `a-b` and suggests the fix.
 - `±` may be typed `+-`. Strings are double-quoted with `\n \t \" \\`.
 - Paths (core scripts, datasheets) are quoted strings.
 
@@ -31,10 +32,16 @@ for the v0.1 grammar; `uel fmt` is the normative layout.*
 Unit expressions: `kN`, `kg/m^3`, `N*m`, `mm^4`, `kg/(m*s^2)`, `W/K`, `A*hr`.
 SI prefixes n µ m c d k M G T on prefixable symbols. Affine units (`degC`, `degF`)
 are standalone-only. Angle is dimensionless (`rad` = 1, `deg` = π/180), so
-torque `N*m` × speed `rad/s` = power. `dB` is a dimensionless *ratio label*
-(gains, losses, margins) carried on the dB scale; absolute log-referenced levels
-are not units — carry the reference in the name (`eirp_dbw = 22 dB`,
-`cn0_dbhz`).
+torque `N*m` × speed `rad/s` = power.
+
+**Levels (v0.2, ADR-0006).** The dB family are *level units*: a level's type is
+the referenced linear dimension plus a level flag, and its canonical scale is
+dB re the SI-coherent unit. `dB` is the level of a pure ratio (gains, losses,
+margins); `dBi`, `dBW`, `dBm` (−30 to canonical), `dBHz`, `dBK` are named
+references; composition shifts the reference (`dB/K`, `dBW/(K*Hz)`). EIRP is
+`22 dBW`, not "22 dB with the reference in the name". Uncertainty on a level is
+a dB delta: `22 dBW ± 1.5 dB`. Two levels cannot compose as units, a level
+takes no exponent, and nothing divides *by* a level.
 
 ## Top-level items
 
@@ -132,6 +139,61 @@ analysis SparStaticLimit {
 
 Analysis outputs are addressed with an explicit segment: `SparStaticLimit.outputs.FoS`.
 
+### expression and stub cores (v0.2, ADR-0005/0006/0007)
+
+The formula itself may live in the language. The checker infers every
+expression's type — dimension **plus level flag** — before anything runs, and
+evaluation is kernel-side interval arithmetic over the knowns' declared bands:
+
+```
+analysis LinkMargin {
+  knowns {
+    eirp_dbw <- req.LNK-002.eirp_dbw     # 22 dBW ± cal — a level of power
+    freq <- req.MIS-001.carrier_freq
+    max_range <- req.LNK-002.max_range
+    data_rate <- req.MIS-001.data_rate
+    g_over_t_dbk <- GtAnalysis.outputs.g_over_t_dbk
+    required_ebn0_db <- req.LNK-002.required_ebn0_db
+  }
+  core expr {
+    let lambda = const.c0 / freq
+    let fspl_db = 2 * db(4 * const.pi * max_range / lambda)
+    cn0_dbhz = eirp_dbw - fspl_db + g_over_t_dbk - db(const.k_B)
+    margin_db = cn0_dbhz - db(data_rate) - required_ebn0_db
+  }
+  outputs {
+    cn0_dbhz : dBHz ±                     # the dBHz is DERIVED by the checker
+    margin_db : dB ± target >= req.LNK-002.min_margin_db
+  }
+}
+
+analysis GtStub {
+  core stub { g_over_t_dbk = 29.6 dB/K }  # executable placeholder, ledgered
+  outputs { g_over_t_dbk : dB/K }
+}
+```
+
+- Statements are `let name = expr` (intermediate) or `output = expr`; each
+  declared output is assigned exactly once, in order; later statements may
+  consume earlier outputs. Statements end at newline; a line continues after a
+  binary operator or inside parentheses.
+- Operators `+ - * / ^` (integer exponents); functions `sqrt log10 ln exp sin
+  cos abs min max db lin`; constants `const.pi c0 k_B h g0`.
+- Numeric literals take units greedily but *validated*: `3 m / span` divides
+  `(3 m)` by the name `span`, because `span` is not a unit symbol. The
+  formatter parenthesizes united literals under `*`, `/`, and `^`.
+- Levels (`dB`, `dBi`, `dBW`, `dBm`, `dBHz`, `dBK`, `dB/K`, …) follow one
+  rule: **levels add where linear quantities multiply** — `Level(D1) ±
+  Level(D2) = Level(D1·D2 or D1/D2)`, `db()`/`lin()` cross the scales, and a
+  scalar multiplies only a plain `dB` figure. Uncertainty on a level is a dB
+  delta (`± 1.5 dB`).
+- `target >= bound` / `target <= bound` on an output (literal or reference) is
+  re-verdicted against the lock on every build and check: violated = error,
+  band-crosses-the-line = warning, unbuilt = pending.
+- Identifiers may contain hyphens (`STR-014`), so **subtraction needs
+  spaces**: `a - b`. The checker recognizes `a-b` and says so.
+- Geometry nodes cannot be expr/stub cores — they must assert topology.
+
 ### connect
 
 ```
@@ -169,9 +231,13 @@ lib/*.uel         # project libraries (lib.<stem>.*)
 uel.lock          # recorded hashes + outputs (written by `uel build`)
 ```
 
-## v0.1 restrictions (deliberate)
+## Restrictions (deliberate)
 
-- No arithmetic expressions; quantities are literals. Derived values are analysis
-  outputs — that is what keeps staleness honest.
-- Quantities cannot be reference-valued; references live in `knowns`.
+- Arithmetic lives only inside `core expr` bodies (v0.2). Declared quantities
+  remain literals, and derived values remain analysis outputs — that is what
+  keeps staleness honest.
+- Quantities cannot be reference-valued; references live in `knowns` (and in
+  output `target` bounds).
 - One namespace per project; no imports. Libraries are namespaced by file.
+- Expression bodies have no conditionals, loops, or fractional powers of
+  dimensioned quantities; a core that needs them is a Python core.

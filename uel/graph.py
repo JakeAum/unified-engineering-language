@@ -612,18 +612,23 @@ class Framing:
 
 @dataclass
 class Core:
-    """The opaque executable recipe (spec §3.2). Compile time never opens it; its
-    *content hash* participates in the recipe hash (the path does not, so moving a
-    file without changing it does not invalidate anything)."""
+    """The executable recipe (spec §3.2). Python cores are opaque: compile time
+    never opens them; the file's *content hash* participates in the recipe hash
+    (the path does not, so moving a file without changing it invalidates
+    nothing). v0.2 expr/stub cores (ADR-0005) are transparent: the canonical
+    formatted body is stored in `text`, type-checked at compile time, and IS the
+    content that hashes."""
 
-    lang: str = "python"  # identity
+    lang: str = "python"  # identity: python | expr | stub
     path: str = ""  # record-as-locator (content is identity, fetched at hash time)
+    text: str = ""  # identity: canonical expr/stub body (empty for python cores)
 
     def to_obj(self) -> Optional[dict]:
         o: dict = {}
         if self.lang != "python":
             o["lang"] = self.lang
         _put(o, "path", self.path)
+        _put(o, "text", self.text)
         return o or None
 
     @classmethod
@@ -633,8 +638,9 @@ class Core:
         d = r.obj(v, path)
         lang = r.str_(d, "lang", path, default="python")
         p = r.str_(d, "path", path)
-        r.unknown_fields(d, ("lang", "path"), path)
-        return cls(lang, p)
+        text = r.str_(d, "text", path)
+        r.unknown_fields(d, ("lang", "path", "text"), path)
+        return cls(lang, p, text)
 
 
 @dataclass
@@ -642,6 +648,12 @@ class OutputDecl:
     unit: str = ""  # identity
     unc: bool = False  # identity: output carries uncertainty
     artifact: bool = False  # identity: file artifact (mesh, field) rather than quantity
+    # v0.2 (ADR-0007): the acceptance bound this output must satisfy, checked
+    # against the lock after every build — requirement satisfaction is computed,
+    # not narrated. Exactly one of target_ref / target_value when target_op set.
+    target_op: str = ""  # identity: "" | ">=" | "<="
+    target_ref: str = ""  # identity: canonical value reference
+    target_value: Optional[Quantity] = None  # identity: literal bound
 
     def to_obj(self) -> dict:
         o: dict = {}
@@ -650,6 +662,11 @@ class OutputDecl:
             o["unc"] = True
         if self.artifact:
             o["artifact"] = True
+        if self.target_op:
+            t: dict = {"op": self.target_op}
+            _put(t, "ref", self.target_ref)
+            _put(t, "value", self.target_value.to_obj() if self.target_value else None)
+            o["target"] = t
         return o
 
     @classmethod
@@ -658,8 +675,19 @@ class OutputDecl:
         unit = r.str_(d, "unit", path)
         unc = r.bool_(d, "unc", path)
         artifact = r.bool_(d, "artifact", path)
-        r.unknown_fields(d, ("unit", "unc", "artifact"), path)
-        return cls(unit, unc, artifact)
+        target_op, target_ref, target_value = "", "", None
+        traw = d.get("target")
+        if traw is not None:
+            td = r.obj(traw, f"{path}.target")
+            target_op = r.enum(td, "op", f"{path}.target", (">=", "<="), ">=")
+            target_ref = r.str_(td, "ref", f"{path}.target")
+            if "value" in td:
+                target_value = Quantity.from_obj(td["value"], r, f"{path}.target.value")
+            if bool(target_ref) == (target_value is not None):
+                r.err(f"{path}.target", "target carries exactly one of 'ref' or 'value'")
+            r.unknown_fields(td, ("op", "ref", "value"), f"{path}.target")
+        r.unknown_fields(d, ("unit", "unc", "artifact", "target"), path)
+        return cls(unit, unc, artifact, target_op, target_ref, target_value)
 
 
 @dataclass

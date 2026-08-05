@@ -1,0 +1,8 @@
+analysis Placeholder {
+  core stub {
+    t = 120 K
+  }
+  outputs {
+    t : K
+  }
+}

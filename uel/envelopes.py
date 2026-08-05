@@ -32,8 +32,9 @@ from typing import Optional
 
 from . import graph as G
 from .diagnostics import Bag, Span
+from .lockfile import Lock
 from .resolver import Resolution
-from .units import D_TEMP, UnitError, dim_name, parse_unit
+from .units import D_TEMP, UnitError, parse_unit, type_name
 
 
 def _span_of(node: G.Node) -> Span:
@@ -86,13 +87,15 @@ class Taxonomy:
 
 
 def _pred_si(p: G.Predicate) -> Optional[tuple[Optional[float], Optional[float], tuple]]:
+    """(lo_si, hi_si, vtype) of a fence — vtype is (dim, level), so a dB fence
+    and a plain-ratio fence are different types (ADR-0006)."""
     try:
         u = parse_unit(p.unit)
     except UnitError:
         return None
     lo = u.to_si(p.lo) if p.lo is not None else None
     hi = u.to_si(p.hi) if p.hi is not None else None
-    return lo, hi, u.dim
+    return lo, hi, u.vtype
 
 
 def _fmt_pred(p: G.Predicate) -> str:
@@ -130,8 +133,8 @@ def _check_predicate_cover(
         if n_si[2] != h_si[2]:
             bag.error(
                 "UEL0505",
-                f"envelope variable '{var}' is {dim_name(n_si[2])} in '{consumer_name}' "
-                f"but {dim_name(h_si[2])} in '{provider_name}'",
+                f"envelope variable '{var}' is {type_name(*n_si[2])} in '{consumer_name}' "
+                f"but {type_name(*h_si[2])} in '{provider_name}'",
                 consumer_span,
                 related=[(f"fenced here in '{provider_name}'", provider_span)],
             )
@@ -234,17 +237,17 @@ def check(res: Resolution, bag: Bag) -> None:
         if iv is None or p_si is None:
             continue
         try:
-            qdim = parse_unit(rr.quantity.unit).dim
+            qt = parse_unit(rr.quantity.unit).vtype
         except UnitError:
             continue
-        if qdim != p_si[2]:
+        if qt != p_si[2]:
             bag.error(
                 "UEL0505",
-                f"'{cname}': known '{lname}' is {dim_name(qdim)} but its envelope fence is {dim_name(p_si[2])}",
+                f"'{cname}': known '{lname}' is {type_name(*qt)} but its envelope fence is {type_name(*p_si[2])}",
                 c_span,
             )
             continue
-        ok, how = _contained((iv[0], iv[1], qdim), p_si)
+        ok, how = _contained((iv[0], iv[1], qt), p_si)
         if not ok:
             shown = list(rr.quantity.value) if isinstance(rr.quantity.value, tuple) else rr.quantity.value
             bag.error(
@@ -253,6 +256,32 @@ def check(res: Resolution, bag: Bag) -> None:
                 f"analysis's own validity fence {lname} in {_fmt_pred(pred)}",
                 c_span,
                 reason="an analysis fed values outside its declared envelope produces numbers, not results (spec §2.5)",
+            )
+
+    # -- fences over flowing values: static type agreement (v0.2, ADR-0007) --
+    # A fence on a known that references an upstream *output* must be the same
+    # quantity type as that output — the v0.1 name-match gap that let a fence
+    # silently guard nothing.
+    for (cname, lname), rr in sorted(res.known_refs.items()):
+        consumer = analyses.get(cname)
+        if consumer is None or rr.kind != "output":
+            continue
+        pred = consumer.framing.envelope.predicates.get(lname)
+        if pred is None:
+            continue
+        p_si = _pred_si(pred)
+        if p_si is None:
+            continue
+        try:
+            ot = parse_unit(rr.unit).vtype
+        except UnitError:
+            continue
+        if ot != p_si[2]:
+            bag.error(
+                "UEL0505",
+                f"'{cname}': fence on '{lname}' is {type_name(*p_si[2])}, but the referenced "
+                f"output '{rr.target}' is {type_name(*ot)}",
+                _span_of(consumer),
             )
 
     # -- binding covers (spec §2.3/§7.2): realization envelope ⊇ functional envelope --
@@ -285,7 +314,7 @@ def check(res: Resolution, bag: Bag) -> None:
             continue
         for var, pred in comp.envelope.predicates.items():
             p_si = _pred_si(pred)
-            if p_si is None or p_si[2] != D_TEMP or p_si[1] is None:
+            if p_si is None or p_si[2] != (D_TEMP, False) or p_si[1] is None:
                 continue
             if p_si[1] > s_si + 1e-9:
                 bag.warning(
@@ -296,3 +325,65 @@ def check(res: Resolution, bag: Bag) -> None:
                     _span_of(comp),
                     reason="a DFM rule and a materials limit are the same kind of claim: shop and metallurgy knowledge made statically checkable (spec §7.1)",
                 )
+
+
+# ---------------------------------------------------------------------------
+# Fences vs the values actually flowing (v0.2, ADR-0007)
+# ---------------------------------------------------------------------------
+
+
+def check_locked(res: Resolution, bag: Bag, lock: Lock) -> None:
+    """Verify every fence on an output-referencing known against the *locked
+    value* (nominal ± band) that actually flows across the seam.
+
+    This is the check the v0.1 name-matched envelope comparison could not make:
+    the guarantee compared is what the producer computed, not what a
+    same-named variable in its framing happened to fence."""
+    analyses = res.doc.analyses()
+    for (cname, lname), rr in sorted(res.known_refs.items()):
+        consumer = analyses.get(cname)
+        if consumer is None or rr.kind != "output":
+            continue
+        pred = consumer.framing.envelope.predicates.get(lname)
+        if pred is None:
+            continue
+        p_si = _pred_si(pred)
+        if p_si is None:
+            continue
+        producer_entry = lock.nodes.get(rr.node)
+        out_name = rr.target.rsplit(".", 1)[1]
+        out = producer_entry.outputs.get(out_name) if producer_entry else None
+        if out is None or out.value is None:
+            continue  # staleness already says "never built"; nothing flows yet
+        try:
+            u = parse_unit(out.unit)
+        except UnitError:
+            continue
+        if u.vtype != p_si[2]:
+            continue  # type mismatch already reported statically
+        if isinstance(out.value, list):
+            lo, hi = u.to_si(float(out.value[0])), u.to_si(float(out.value[1]))
+        else:
+            v = u.to_si(float(out.value))
+            half = 0.0
+            if isinstance(out.unc, dict) and isinstance(out.unc.get("value"), (int, float)):
+                if out.unc.get("kind") == "abs":
+                    half = abs(float(out.unc["value"])) * u.factor
+                elif out.unc.get("kind") == "rel":
+                    half = abs(float(out.value)) * abs(float(out.unc["value"])) * u.factor
+            lo, hi = v - half, v + half
+        ok, how = _contained((lo, hi, p_si[2]), p_si)
+        if not ok:
+            shown = out.value if not isinstance(out.value, list) else list(out.value)
+            band = f" (± band [{u.from_si(lo):g}, {u.from_si(hi):g}])" if hi > lo else ""
+            bag.error(
+                "UEL0806",
+                f"'{cname}' fences '{lname}' in {_fmt_pred(pred)}, but the value flowing from "
+                f"'{rr.target}' is {shown} {out.unit}{band} — {how} the fence",
+                _span_of(consumer),
+                reason="the fence is checked against the locked value crossing the seam, not a "
+                       "name-matched variable (v0.2): rebuild after widening the fence or fixing "
+                       "the producer, and say which in the judgment",
+                related=[(f"produced by '{rr.node}' here", _span_of(res.doc.nodes[rr.node]))]
+                if rr.node in res.doc.nodes else [],
+            )

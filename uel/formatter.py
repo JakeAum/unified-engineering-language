@@ -12,6 +12,7 @@ preservation (fingerprint(parse(fmt(x))) == fingerprint(parse(x))).
 
 from __future__ import annotations
 
+from . import expr as E
 from . import uast as A
 from .lexer import Comment
 
@@ -213,7 +214,12 @@ class Formatter:
             for q in a.params:
                 self.quantity(q, 2)
             self.put(1, "}")
-        if a.core_path:
+        if a.core_lang in ("expr", "stub"):
+            self.put(1, f"core {a.core_lang} {{")
+            for st in a.core_body:
+                self.put(2, E.format_stmt(st), st.span.line)
+            self.put(1, "}")
+        elif a.core_path:
             self.put(1, f'core {a.core_lang or "python"} "{_esc(a.core_path)}"')
         if a.outputs:
             self.put(1, "outputs {")
@@ -225,7 +231,10 @@ class Formatter:
                 else:
                     ty = "dimensionless"
                 pm = " ±" if o.unc else ""
-                self.put(2, f"{o.name} : {ty}{pm}", o.span.line)
+                tgt = ""
+                if o.target_op and o.target_expr is not None:
+                    tgt = f" target {o.target_op} {_qexpr(o.target_expr)}"
+                self.put(2, f"{o.name} : {ty}{pm}{tgt}", o.span.line)
             self.put(1, "}")
         if a.judgment:
             j = a.judgment

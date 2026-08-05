@@ -14,6 +14,8 @@ from typing import Optional
 
 from .diagnostics import Bag, Fix, Span
 from .lexer import Comment, T, Token, lex
+from .units import is_unit_symbol
+from . import expr as E
 from . import uast as A
 
 TOP_KEYWORDS = (
@@ -308,6 +310,136 @@ class Parser:
         if self.eat_ident("from"):
             prov = self.string("provenance detail string after 'from'")
         return A.QuantityDecl(name_tok.text, expr, prov, self.span(name_tok))
+
+    # -- expressions (v0.2, core expr/stub bodies) -------------------------
+
+    _BINOPS = {T.PLUS: ("+", 10), T.MINUS: ("-", 10),
+               T.STAR: ("*", 20), T.SLASH: ("/", 20), T.CARET: ("^", 40)}
+
+    def expression(self, min_prec: int = 0) -> Optional[E.Expr]:
+        """Pratt parser. A statement's expression ends at newline, but a line
+        may continue after a binary operator or inside parentheses."""
+        lhs = self.expr_unary()
+        if lhs is None:
+            return None
+        while True:
+            info = self._BINOPS.get(self.cur().kind)
+            if info is None or info[1] < min_prec:
+                return lhs
+            op, prec = info
+            op_tok = self.bump()
+            self.skip_newlines()  # trailing-operator continuation
+            rhs = self.expression(prec if op == "^" else prec + 1)  # ^ is right-assoc
+            if rhs is None:
+                return None
+            lhs = E.EBin(op, lhs, rhs, self.span(op_tok))
+
+    def expr_unary(self) -> Optional[E.Expr]:
+        if self.at(T.MINUS):
+            mt = self.bump()
+            x = self.expression(31)  # binds looser than ^, tighter than * /
+            if x is None:
+                return None
+            return E.EUn("-", x, self.span(mt))
+        return self.expr_primary()
+
+    def expr_primary(self) -> Optional[E.Expr]:
+        t = self.cur()
+        if t.kind == T.NUMBER:
+            nt = self.bump()
+            unit, usp = self.expr_unit_scan()
+            return E.ENum(nt.value if nt.value is not None else 0.0, unit, usp, self.span(nt))
+        if t.kind == T.LPAREN:
+            self.bump()
+            self.skip_newlines()
+            ex = self.expression(0)
+            self.skip_newlines()
+            self.expect(T.RPAREN, "')' to close the expression group")
+            return ex
+        if t.kind == T.IDENT:
+            if self.peek().kind == T.LPAREN:
+                return self.expr_call()
+            ref = self.dotted("name in expression")
+            if ref is None:
+                return None
+            return E.ERef(ref.text, ref.span)
+        self.err(f"expected an expression, found {self.describe(t)}",
+                 reason="expressions are built from numbers (with units), names, "
+                        "functions, and + - * / ^")
+        return None
+
+    def expr_call(self) -> Optional[E.Expr]:
+        fn = self.bump()
+        self.bump()  # '('
+        args: list[E.Expr] = []
+        self.skip_newlines()
+        if not self.at(T.RPAREN):
+            while True:
+                a = self.expression(0)
+                if a is None:
+                    return None
+                args.append(a)
+                self.skip_newlines()
+                if self.at(T.COMMA):
+                    self.bump()
+                    self.skip_newlines()
+                    continue
+                break
+        self.expect(T.RPAREN, f"')' to close the arguments of {fn.text}()")
+        return E.ECall(fn.text, args, self.span(fn))
+
+    def expr_unit_scan(self) -> tuple[str, Span]:
+        """A unit after a numeric literal, consumed greedily but *validated*:
+        an identifier chain is a unit only while each symbol resolves in the
+        unit table, so `3 m / span` divides (3 m) by the name `span`."""
+        usp = self.span(self.cur())
+        if not (self.at(T.IDENT) and is_unit_symbol(self.cur().text)):
+            return "", usp
+        parts: list[str] = []
+
+        def one_symbol() -> None:
+            parts.append(self.bump().text)
+            if self.at(T.CARET) and (
+                self.peek().kind == T.NUMBER
+                or (self.peek().kind == T.MINUS and self.peek(2).kind == T.NUMBER)
+            ):
+                self.bump()
+                parts.append("^")
+                if self.at(T.MINUS):
+                    self.bump()
+                    parts.append("-")
+                parts.append(self.bump().text)
+
+        one_symbol()
+        while self.cur().kind in (T.STAR, T.SLASH) and \
+                self.peek().kind == T.IDENT and is_unit_symbol(self.peek().text):
+            parts.append(self.bump().text)
+            one_symbol()
+        return "".join(parts), usp
+
+    def expr_block(self, kind: str) -> list[E.ExprStmt]:
+        """The body of `core expr { … }` / `core stub { … }`."""
+        stmts: list[E.ExprStmt] = []
+        if not self.expect(T.LBRACE, f"'{{' after 'core {kind}'"):
+            return stmts
+        self.skip_seps()
+        while not self.at(T.RBRACE) and not self.at(T.EOF):
+            is_let = False
+            if self.at_ident("let"):
+                self.bump()
+                is_let = True
+            nt = self.expect(T.IDENT, "assignment target (an output name, or 'let name')")
+            if nt is None:
+                break
+            if not self.expect(T.EQ, f"'=' after '{nt.text}'"):
+                break
+            ex = self.expression(0)
+            if ex is None:
+                break
+            stmts.append(E.ExprStmt(nt.text, is_let, ex, self.span(nt)))
+            self.skip_seps()
+        self.expect(T.RBRACE, f"'}}' to close core {kind}")
+        return stmts
 
     # -- envelope ----------------------------------------------------------
 
@@ -633,9 +765,12 @@ class Parser:
                     self.expect(T.RBRACE, "'}' to close params")
             elif self.at_ident("core"):
                 self.bump()
-                lang = self.ident("core language (v0.1: python)") or ""
+                lang = self.ident("core language: python, expr, or stub") or ""
                 an.core_lang = lang
-                an.core_path = self.string("path string to the core script")
+                if lang in ("expr", "stub"):
+                    an.core_body = self.expr_block(lang)
+                else:
+                    an.core_path = self.string("path string to the core script")
             elif self.at_ident("outputs"):
                 self.bump()
                 if self.expect(T.LBRACE, "'{' after 'outputs'"):
@@ -717,6 +852,24 @@ class Parser:
         unc = self.unc_tail(allow_bare=True)
         if unc is not None:
             out.unc = True
+        if self.at_ident("target"):
+            self.bump()
+            if self.at(T.GE) or self.at(T.LE):
+                out.target_op = self.bump().text
+            else:
+                self.err(f"expected '>=' or '<=' after 'target' on output '{nt.text}'",
+                         reason="a target is the one-sided acceptance bound this output must satisfy (v0.2)")
+                return out
+            te = self.qexpr(f"target bound for output '{nt.text}'")
+            if te is None:
+                return out
+            if isinstance(te, A.QInterval) or (isinstance(te, A.QNumber) and te.unc is not None):
+                self.bag.error("UEL0107",
+                               f"target for '{nt.text}' must be a plain bound (a number with unit, or a reference)",
+                               self.span(self.toks[self.i - 1]),
+                               reason="the acceptance line has no uncertainty of its own; bands live on values")
+            else:
+                out.target_expr = te
         return out
 
     # -- simple items ------------------------------------------------------

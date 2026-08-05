@@ -1,0 +1,22 @@
+requirement L-1 {
+  eirp = 22 dBW
+  gt = 29.6 dB/K
+  rate = 2000 Hz
+}
+
+analysis Cn0 {
+  knowns {
+    eirp <- req.L-1.eirp
+    gt <- req.L-1.gt
+    rate <- req.L-1.rate
+  }
+  core expr {
+    let path_db = 235.3 dB
+    cn0_dbhz = eirp - path_db + gt - db(const.k_B)
+    ebn0_db = cn0_dbhz - db(rate)
+  }
+  outputs {
+    cn0_dbhz : dBHz
+    ebn0_db : dB
+  }
+}

@@ -25,12 +25,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 
+from . import expr as X
 from . import graph as G
 from . import uast as A
 from .diagnostics import Bag, Fix, Span
 from .project import Project, SourceFile
 from .parser import parse_text
-from .units import UnitError, parse_unit, dim_name, D_MASS, D_CURRENCY, D_TIME, D_POWER, dim_mul
+from .units import (
+    DIMENSIONLESS, UnitError, parse_unit, dim_name, type_name,
+    D_MASS, D_CURRENCY, D_TIME, D_POWER, dim_mul,
+)
 
 
 @dataclass
@@ -51,6 +55,10 @@ class Resolution:
     asts: list[A.ASTFile] = field(default_factory=list)
     # every knowns/ref edge resolved: (consumer node, local name) -> ResolvedRef
     known_refs: dict[tuple[str, str], ResolvedRef] = field(default_factory=dict)
+    # v0.2: parsed expr/stub core programs, keyed by analysis name
+    expr_programs: dict[str, list[X.ExprStmt]] = field(default_factory=dict)
+    # v0.2: resolved output-target references: (node, output) -> ResolvedRef
+    target_refs: dict[tuple[str, str], ResolvedRef] = field(default_factory=dict)
 
 
 _BUDGET_DIMS = {"mass": D_MASS, "unit_cost": D_CURRENCY, "lead_time": D_TIME}
@@ -93,6 +101,8 @@ class Resolver:
         # Pass C: cross-node resolution and cycles
         self.resolve_all_refs()
         self.check_cycles()
+        # Pass D (v0.2): type-check expr/stub core bodies against resolved knowns
+        self.check_expr_programs()
         return self.res
 
     # ------------------------------------------------------------------
@@ -173,11 +183,22 @@ class Resolver:
                 if u.unit and unit:
                     try:
                         du, dv = parse_unit(unc_unit), parse_unit(unit)
-                        if du.dim != dv.dim:
+                        # a delta between levels of any one reference is a ratio,
+                        # so ± on a level value is written in dB (or, loosely,
+                        # in the value's own level unit — the difference IS dB)
+                        ok = du.vtype == dv.vtype or (
+                            du.level and dv.level and du.dim == DIMENSIONLESS
+                        )
+                        if not ok:
                             self.bag.error(
                                 "UEL0302",
-                                f"uncertainty unit '{unc_unit}' ({dim_name(du.dim)}) does not match value unit '{unit}' ({dim_name(dv.dim)})",
+                                f"uncertainty unit '{unc_unit}' ({type_name(*du.vtype)}) does not "
+                                f"match value unit '{unit}' ({type_name(*dv.vtype)})",
                                 u.span,
+                                reason="uncertainty on a level is a dB delta ('± 1.5 dB'); "
+                                       "uncertainty on a linear value shares its dimension"
+                                if dv.level or du.level else
+                                "uncertainty and value must share a dimension",
                             )
                     except UnitError:
                         pass
@@ -186,7 +207,8 @@ class Resolver:
                 if u.unit and unit and unc_unit:
                     try:
                         du, dv = parse_unit(unc_unit), parse_unit(unit)
-                        if du.dim == dv.dim and not du.affine and not dv.affine:
+                        if du.dim == dv.dim and not du.affine and not dv.affine \
+                                and du.level == dv.level:
                             value = value * du.factor / dv.factor
                     except UnitError:
                         pass
@@ -499,13 +521,36 @@ class Resolver:
             if o.name in outputs:
                 self.bag.error("UEL0106", f"output '{o.name}' declared twice", o.span)
                 continue
-            outputs[o.name] = G.OutputDecl(self.unit_of(o.unit, o.unit_span), o.unc, o.artifact)
+            od = G.OutputDecl(self.unit_of(o.unit, o.unit_span), o.unc, o.artifact)
+            if o.target_op and o.target_expr is not None:
+                od.target_op = o.target_op
+                self.member_spans[("target", name, o.name)] = o.target_expr.span \
+                    if isinstance(o.target_expr, A.DottedRef) else o.span
+                if isinstance(o.target_expr, A.DottedRef):
+                    od.target_ref = o.target_expr.text  # canonicalized in pass C
+                else:
+                    od.target_value = self.quantity(o.target_expr, file)
+                    self._check_target_type(name, o.name, od, od.target_value.unit if od.target_value else "",
+                                            o.span)
+            outputs[o.name] = od
         judgment = G.Judgment()
         if a.judgment:
             judgment = G.Judgment(a.judgment.status, a.judgment.text, a.judgment.doubts)
         intent = G.Intent()
         if a.intent:
             intent = G.Intent(a.intent.ref.text, a.intent.text)
+        core = G.Core(a.core_lang or "python", a.core_path)
+        if a.core_lang in ("expr", "stub"):
+            core = G.Core(a.core_lang, "", X.canonical_body(a.core_body))
+            self.res.expr_programs[name] = a.core_body
+            if a.akind == "geometry":
+                self.bag.error(
+                    "UEL0310",
+                    f"geometry '{a.name}' cannot use a {a.core_lang} core",
+                    a.span,
+                    reason="geometry cores must return topological assertions (spec §6.2); "
+                           "expression bodies have no way to assert shape",
+                )
         self.doc.nodes[name] = G.Analysis(
             name=name,
             akind=a.akind,
@@ -513,12 +558,28 @@ class Resolver:
             framing=framing,
             knowns=knowns,
             params=self.quantity_decls(a.params, file, f"{a.akind} {a.name}"),
-            core=G.Core(a.core_lang or "python", a.core_path),
+            core=core,
             outputs=outputs,
             judgment=judgment,
             doc=a.doc,
             src=f"{file}:{a.span.line}",
         )
+
+    def _check_target_type(self, node: str, out_name: str, od: G.OutputDecl,
+                           target_unit: str, span: Span) -> None:
+        """A target bound must be the same quantity type as the output it bounds."""
+        try:
+            ot = parse_unit(od.unit).vtype
+            tt = parse_unit(target_unit).vtype
+        except UnitError:
+            return
+        if ot != tt:
+            self.bag.error(
+                "UEL0302",
+                f"target for '{node}.{out_name}' is {type_name(*tt)}, but the output is "
+                f"declared '{od.unit or 'dimensionless'}' ({type_name(*ot)})",
+                span,
+            )
 
     # ------------------------------------------------------------------
     # cross-references
@@ -683,6 +744,16 @@ class Resolver:
             if rr is not None:
                 an.knowns[local] = rr.target
                 self.res.known_refs[(name, local)] = rr
+        for out_name, od in an.outputs.items():
+            if not od.target_ref:
+                continue
+            tsp = self.mspan("target", name, out_name, default=sp)
+            rr = self.resolve_value_ref(od.target_ref, tsp, f"target of {name}.{out_name}")
+            if rr is None:
+                continue
+            od.target_ref = rr.target
+            self.res.target_refs[(name, out_name)] = rr
+            self._check_target_type(name, out_name, od, rr.unit, tsp)
 
     def resolve_value_ref(self, ref: str, span: Span, what: str) -> ResolvedRef | None:
         parts = ref.split(".")
@@ -784,6 +855,44 @@ class Resolver:
             return None
         self.bag.error("UEL0203", f"{what}: '{node_name}' ({node.KIND}) does not provide values", span)
         return None
+
+    # ------------------------------------------------------------------
+    # expr/stub core type checking (v0.2, ADR-0005)
+
+    def check_expr_programs(self) -> None:
+        """Dimensional inference over every expr/stub core body: the formula
+        itself is under the units checker, before anything runs."""
+        for name, stmts in sorted(self.res.expr_programs.items()):
+            an = self.doc.nodes.get(name)
+            if not isinstance(an, G.Analysis):
+                continue
+            env: dict[str, X.VType] = {}
+            for local in an.knowns:
+                rr = self.res.known_refs.get((name, local))
+                if rr is None:
+                    continue  # unresolved reference already diagnosed
+                try:
+                    env[local] = parse_unit(rr.unit).vtype
+                except UnitError:
+                    env[local] = (parse_unit("").dim, False)
+            for pname, q in an.params.items():
+                try:
+                    env[pname] = parse_unit(q.unit).vtype
+                except UnitError:
+                    continue
+            outputs = {oname: od.unit for oname, od in an.outputs.items()
+                       if not od.artifact}
+            for oname, od in an.outputs.items():
+                if od.artifact:
+                    self.bag.error(
+                        "UEL0310",
+                        f"{name}: artifact output '{oname}' is not producible by a "
+                        f"{an.core.lang} core",
+                        self.node_span(name),
+                        reason="artifacts (meshes, fields) come from python cores; expressions produce quantities",
+                    )
+            X.infer_program(name, stmts, env, outputs, self.bag,
+                            self.node_span(name), stub=an.core.lang == "stub")
 
     # ------------------------------------------------------------------
     # cycles
