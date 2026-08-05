@@ -79,6 +79,7 @@ analysis WindLoadsOracle {
   framing {
     model aero.bluff_body_drag
     assume static because "single dynamic-pressure estimate; no spectrum"
+    waive drag_regime_shift because "oracle shares WindLoads' regime choice on purpose: Cd is quoted at the subcritical plateau, which bounds the load from above across the drag crisis"
   }
   knowns {
     wind_op <- req.ENV-004.wind_operational
@@ -105,6 +106,7 @@ analysis WindLoads {
     model aero.bluff_body_drag
     assume static because "quasi-steady drag; gust dynamics carried as a pressure factor, not resolved in time"
     assume incompressible because "site winds are Mach < 0.15"
+    waive drag_regime_shift because "Cd 1.3 is the subcritical plateau for a face-on paraboloid; the drag crisis above Re ~ 3e5 only lowers Cd, so the quoted value bounds the load across the whole wind envelope"
     envelope {
       wind_op in [0, 50 m/s]
     }
@@ -140,6 +142,8 @@ analysis PedestalModes {
     assume elastic_modes because "modal content is the product"
     assume linear_elastic because "millidegree oscillations about a preloaded drive; no backlash traverse"
     assume small_angle because "mode shape, not large deflection"
+    waive coupled_modes because "single-DOF is the declared screening bound; coupled dish/yoke modes below the locked-rotor line are the standing risk in this judgment's doubts, retired only by the GVT at site acceptance"
+    waive foundation_compliance because "foundation spec is a pier on grade with torsional stiffness >= 10x the pedestal's locked-rotor figure, holding the series knockdown under 5 % — site survey verifies before pour"
   }
   knowns {
     stiffness <- pedestal_ae5.locked_rotor_stiffness
@@ -160,12 +164,40 @@ analysis PedestalModes {
   judgment accepted "24.7 Hz with the vendor stiffness and ~3530 kg*m^2 of rotating inertia; the contract nominal of 4-6 Hz would need ~86000 kg*m^2, which this antenna does not have — deviation flagged to the architect" doubts "single-DOF lumping hides coupled dish/yoke modes below the locked-rotor line; vendor stiffness is a bench test, not in-service; GVT at site acceptance"
 }
 
+analysis VortexShedding {
+  doc "the question aero.bluff_body_drag cannot ask: steady drag says nothing about periodic lift. Strouhal shedding off the dish vs the first structural mode — lock-in needs them close; this shows they are a factor ~30 apart."
+  intent req.ENV-004 "can vortex shedding off the dish lock in with the first structural mode?"
+  framing {
+    model aero.strouhal_shedding
+    assume steady_state because "shedding frequency from the mean operational wind; gusts move it, which is what the separation factor absorbs"
+    covers vortex_shedding
+  }
+  knowns {
+    wind_op <- req.ENV-004.wind_operational
+    diameter <- Reflector.aperture_diameter
+    first_mode <- PedestalModes.outputs.first_locked_rotor_mode
+  }
+  params {
+    strouhal = 0.2 ± 15 % from "bluff disc/cylinder class value, Re > 1e5"
+  }
+  core expr {
+    shedding_freq = strouhal * wind_op / diameter
+    mode_separation = first_mode / shedding_freq
+  }
+  outputs {
+    shedding_freq : Hz ±
+    mode_separation : dimensionless ± target >= 3
+  }
+  judgment accepted "shedding sits at 0.8 Hz at the 20 m/s operational wind against a 24.7 Hz first mode — separation ~31 against the >= 3 lock-in floor, no crossing anywhere in the wind envelope" doubts "Strouhal number for an open paraboloid is a class value; the separation is so large the answer survives any plausible St"
+}
+
 analysis ServoSizing {
   intent req.ENV-004 "what torque and drive power must the azimuth drive deliver in operational wind?"
   framing {
     model drive.quasi_static_sizing
     assume rigid because "drive sizing sees the mount as a rigid inertia; flexibility is ServoBandwidth's problem"
     assume static because "wind moment held quasi-statically; drive thermal time constant >> gust period"
+    waive dynamic_torque_amplification because "the gust spectrum (3 s and slower) sits a factor ~70 under the 24.7 Hz drive-train mode; resonant amplification of held loads is not reachable, and the 1.6 gust pressure factor is the dynamic allowance"
   }
   knowns {
     gust_moment <- WindLoads.outputs.gust_moment
@@ -191,6 +223,7 @@ analysis ServoBandwidth {
     model control.loop_shaping
     require elastic_modes because "loop shaping needs the first structural mode"
     assume linear_elastic because "small-signal loop analysis about the track point"
+    waive control_structure_spillover because "crossover at f1/3 with no notch leaves every mode at or above f1 a full decade past crossover on a -40 dB/dec slope; spillover needs control energy at the mode, and there is none"
   }
   knowns {
     f1 <- PedestalModes.outputs.first_locked_rotor_mode
@@ -213,6 +246,8 @@ analysis PointingBudget {
     model budget.rss
     assume small_angle because "millidegree errors; linearized combination valid"
     assume static because "budget of standing worst-case terms; the gust term is carried as a static deflection"
+    covers pointing_loss_dynamics
+    waive correlated_error_terms because "servo jitter and gust deflection share gust physics, so the RSS may flatter the total by a few millidegrees — the standing doubt in this judgment, bounded by the 0.011 deg headroom to the target"
   }
   knowns {
     hpbw <- AntennaGain.outputs.hpbw

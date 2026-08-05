@@ -1,0 +1,20 @@
+# A registered model's blind spot, unanswered: the checker asks the question
+# the solver cannot (v0.6). One hazard waived, one open -> exactly one UEL0510.
+model plate.kirchhoff_thin {
+  hazard transverse_shear "thick plates: deflection underpredicted"
+  hazard membrane_stiffening "large deflection: linear theory overpredicts stress"
+}
+
+analysis PanelBending {
+  framing {
+    model plate.kirchhoff_thin
+    waive transverse_shear because "t/span = 1/80, comfortably thin"
+  }
+  core stub {
+    w_max = 2 mm
+  }
+  outputs {
+    w_max : mm
+  }
+  judgment pending
+}

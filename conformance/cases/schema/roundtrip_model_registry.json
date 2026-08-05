@@ -1,0 +1,70 @@
+{
+  "uel_schema": "0.3",
+  "edition": "2026",
+  "nodes": {
+    "lib.models.beam.euler_bernoulli": {
+      "kind": "model",
+      "hazards": {
+        "lateral_torsional_buckling": "Mcr falls with flange t^3 and unbraced L^2",
+        "shear_deformation": "short spans: stiffness overpredicted"
+      },
+      "doc": "Slender-beam bending."
+    },
+    "Bracket": {
+      "kind": "analysis",
+      "framing": {
+        "model": "beam.euler_bernoulli",
+        "covers": [
+          "local_buckling"
+        ],
+        "waives": {
+          "shear_deformation": "span/depth = 40"
+        },
+        "envelope": {
+          "predicates": {
+            "w": {
+              "lo": 0.0,
+              "hi": 500.0,
+              "unit": "N/m"
+            }
+          }
+        }
+      },
+      "core": {
+        "path": "cores/fea.py"
+      },
+      "verifies": [
+        {
+          "kind": "converged",
+          "output": "residual",
+          "tol": 1e-05
+        },
+        {
+          "kind": "monotone",
+          "output": "sigma_max",
+          "known": "w",
+          "direction": "rising"
+        }
+      ],
+      "outputs": {
+        "sigma_max": {
+          "unit": "MPa",
+          "unc": true
+        }
+      },
+      "knowns": {
+        "w": "req.STR-001.line_load"
+      }
+    },
+    "req.STR-001": {
+      "kind": "requirement",
+      "text": "The panel shall carry the design line load.",
+      "quantities": {
+        "line_load": {
+          "value": 120.0,
+          "unit": "N/m"
+        }
+      }
+    }
+  }
+}

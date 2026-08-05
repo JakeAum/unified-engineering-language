@@ -1,4 +1,4 @@
-# UEL semantic schema — edition 2026, schema 0.2
+# UEL semantic schema — edition 2026, schema 0.3
 
 *Phase 1 artifact (program §4). This schema is defined before concrete syntax and is
 frozen for the edition: the surface language (Phase 2) parses **to** it, hashing
@@ -28,7 +28,7 @@ normalization pass, and `encode(decode(x))` is byte-identical for already-canoni
 
 ```json
 {
-  "uel_schema": "0.2",
+  "uel_schema": "0.3",
   "edition": "2026",
   "nodes": { "<qualified-name>": { "kind": "...", ... } },
   "connections": [ { "from": "comp.port", "to": "comp.port" } ]
@@ -103,9 +103,15 @@ bound this output is re-verdicted against on every build.
 v0.3 (ADR-0008): `core.tools{}` (name → pinned version) and `core.interface`
 ({source, sha256} — the wrapped module's own definition, e.g. an FMU
 modelDescription.xml) are identity. `verifies[]` holds verification contracts:
-`{"kind": "against"|"monotone"|"case", "output", "ref", "known", "direction",
-"path", "tol", "tol_unit"}` — sorted canonically; all identity. Probe evidence
-lands in the lock entry's `run.verify` list.
+`{"kind": "against"|"monotone"|"case"|"converged", "output", "ref", "known",
+"direction", "path", "tol", "tol_unit"}` — sorted canonically; all identity.
+Probe evidence lands in the lock entry's `run.verify` list.
+
+v0.6 (ADR-0009): `framing.covers[]` (hazards this analysis answers) and
+`framing.waives{}` (hazard → engineering reason) are identity. Verify kind
+`converged` binds a reported convergence metric (`output` = metric name,
+`tol` = raw threshold) — the metric itself lands in the lock's
+`run.convergence`.
 
 ### requirement
 `text`, `quantities{}`.
@@ -124,6 +130,11 @@ when the library loads.
 ### process (library)
 `rules{}`: each rule is `{feature, op, limit?, message}` with op ∈ ≥ | ≤ | forbid |
 require, checked against feature quantities declared by geometry outputs.
+
+### model (library, v0.6 — ADR-0009)
+`hazards{}`: failure-mode claim → the one-line reason it kills. A registered
+model obliges every analysis framed with it to cover or waive each hazard
+(UEL0510). Hazard names are claims in the taxonomy.
 
 ## 5. Identity vs. record fields
 

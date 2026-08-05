@@ -209,6 +209,17 @@ analysis GtStub {
   (`%`) or absolute in a unit (`within 0.5 dB`). `uel pack <node>` compiles
   the whole chain — contracts, verdicts, source, wrapper — into one review
   dossier.
+
+  v0.6 adds a fourth form for iterating cores (ADR-0009):
+
+  ```
+  verify converged residual <= 1e-6
+  ```
+
+  The core must report the named metric in its `convergence` object (see
+  core-protocol.md), under the raw threshold; a missing metric is a failed
+  run — silence is not convergence. Closed-form (expr/stub) cores cannot
+  declare it: there is no iteration to converge.
 - Identifiers may contain hyphens (`STR-014`), so **subtraction needs
   spaces**: `a - b`. The checker recognizes `a-b` and says so.
 - Geometry nodes cannot be expr/stub cores — they must assert topology.
@@ -222,12 +233,12 @@ connect battery.main_out -> esc.dc_in
 Endpoints are `component.port`; domains must match; conservation checks run at
 compile time (Phase 4).
 
-### Library items — domain, claim, material, process
+### Library items — domain, claim, material, process, model
 
 Declared in `lib/*.uel` (project) or shipped in the stdlib; namespaced by file
 stem: `lib/domains.uel` → `lib.domains.*`. See `uel/stdlib/*.uel` for the shipped
 set — the domain table, the structural-claim taxonomy with entailments, materials,
-and DFM process rulesets.
+DFM process rulesets, and the physics-model registry.
 
 ```
 domain thermal { class power  effort temperature: K  flow entropy_flow: W/K }
@@ -239,7 +250,20 @@ process cnc_3axis {
   rule no_sharp_internal_corners: forbid sharp_internal_corner_count
     "impossible on a rotating cutter"
 }
+model beam.euler_bernoulli {
+  hazard lateral_torsional_buckling "Mcr ~ flange t^3, ~ 1/L_unbraced^2"
+  hazard shear_deformation "short spans: stiffness overpredicted"
+}
 ```
+
+A registered `model` (v0.6, ADR-0009) names the failure modes it is
+structurally blind to, as claims in the taxonomy. Every analysis framed with
+it must answer each hazard — some analysis carries `covers <hazard>` in its
+framing, or the using framing carries `waive <hazard> because "reason"`
+(the reason is required) — else UEL0510. Registration is opt-in: an
+unregistered framing model imposes nothing. `uel query sensitivity <node>`
+completes the harness: elasticities per (input, output) pair by
+perturbation, superlinear inputs flagged.
 
 ## Projects
 

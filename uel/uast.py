@@ -158,6 +158,10 @@ class IntentDecl:
 class FramingDecl:
     model: Optional[DottedRef] = None
     claims: list[EnvClaim] = field(default_factory=list)  # assume/require outside envelope
+    # v0.6: hazard accounting against the registered model's hazard list —
+    # covers (keyword "covers", no rationale) and waive (rationale required)
+    covers: list[EnvClaim] = field(default_factory=list)
+    waives: list[EnvClaim] = field(default_factory=list)
     envelope: Optional[EnvelopeBlock] = None
     span: Span = field(default_factory=Span)
 
@@ -289,9 +293,19 @@ class ProcessDecl:
     doc: str = ""
     span: Span = field(default_factory=Span)
 
+@dataclass
+class ModelDecl:
+    """v0.6: a registered physics model with its hazard list — the failure modes
+    the model structurally cannot see, each with the reason it kills."""
+
+    name: str  # dotted, e.g. beam.euler_bernoulli
+    hazards: list[EnvClaim] = field(default_factory=list)  # keyword "hazard"
+    doc: str = ""
+    span: Span = field(default_factory=Span)
+
 Item = Union[
     RequirementDecl, ComponentDecl, BindingDecl, AnalysisDecl, ConnectDecl,
-    DomainDecl, ClaimDecl, MaterialDecl, ProcessDecl,
+    DomainDecl, ClaimDecl, MaterialDecl, ProcessDecl, ModelDecl,
 ]
 
 @dataclass

@@ -178,6 +178,36 @@ def check(res: Resolution, bag: Bag, lock: Lock) -> None:
                            "that says why",
                 )
 
+    # -- hazard obligations (v0.6): a used model's blind spots must be answered --
+    # Coverage is project-granular in v0.6: any analysis's `covers` discharges a
+    # hazard for every user of the model; waivers are per-framing. Per-subject
+    # binding (whose bracket was checked?) is named future work in ADR-0009.
+    models = res.doc.models()
+    if models:
+        covered_by: dict[str, list[str]] = {}
+        for aname in sorted(analyses):
+            for c in analyses[aname].framing.covers:
+                covered_by.setdefault(c, []).append(aname)
+        for name in sorted(analyses):
+            an = analyses[name]
+            if not an.framing.model: continue
+            md = next((n for cand in (an.framing.model, f"lib.models.{an.framing.model}")
+                       if isinstance(n := res.doc.nodes.get(cand), G.ModelDef)), None)
+            if md is None: continue
+            for hz in sorted(md.hazards):
+                if hz in covered_by or hz in an.framing.waives: continue
+                bag.warning(
+                    "UEL0510",
+                    f"'{name}' frames with {an.framing.model}, which cannot see "
+                    f"'{hz}' — {md.hazards[hz]}",
+                    span_of(an),
+                    reason="a registered model carries the failure modes it is structurally "
+                           "blind to; silence on one is a diagnostic, not an oversight (v0.6). "
+                           f"Answer it: an analysis with `covers {hz}` in its framing, or "
+                           f"`waive {hz} because \"…\"` here",
+                    related=[("model registered here", span_of(md))],
+                )
+
     # -- maturity: name what still stands on placeholders --
     stubs = sorted(n for n, a in analyses.items() if a.core.lang == "stub")
     for n in stubs:

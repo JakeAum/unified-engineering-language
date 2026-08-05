@@ -310,6 +310,42 @@ def status(res: Resolution, lock: Lock) -> str:
         lines.append("|---|---|---|---|")
         lines.extend(trows)
 
+    # -- hazard coverage (v0.6): the questions the models cannot ask, answered --
+    models = doc.models()
+    hrows: list[str] = []
+    if models:
+        covered_by: dict[str, list[str]] = {}
+        for aname in sorted(analyses):
+            for c in analyses[aname].framing.covers:
+                covered_by.setdefault(c, []).append(aname)
+        for mname in sorted(models):
+            md = models[mname]
+            short = mname.removeprefix("lib.models.")
+            users = sorted(a for a, an in analyses.items() if an.framing.model == short)
+            if not users: continue
+            for hz in sorted(md.hazards):
+                if hz in covered_by:
+                    verdict = "✅ covered by " + ", ".join(f"`{c}`" for c in covered_by[hz])
+                else:
+                    waivers = [(a, analyses[a].framing.waives[hz]) for a in users
+                               if hz in analyses[a].framing.waives]
+                    if waivers and len(waivers) == len(users):
+                        verdict = "; ".join(f"waived by `{a}`: “{r}”" for a, r in waivers)
+                    elif waivers:
+                        open_users = [a for a in users if hz not in analyses[a].framing.waives]
+                        verdict = ("⚠ **OPEN** for " + ", ".join(f"`{a}`" for a in open_users)
+                                   + "; " + "; ".join(f"waived by `{a}`" for a, _ in waivers))
+                    else:
+                        verdict = "⚠ **OPEN** — " + md.hazards[hz]
+                hrows.append(f"| `{short}` | {hz} | {', '.join(f'`{u}`' for u in users)} | {verdict} |")
+    if hrows:
+        lines.append("")
+        lines.append("## Hazard coverage (what the models cannot see, v0.6)")
+        lines.append("")
+        lines.append("| Model | Hazard | Used by | Answered |")
+        lines.append("|---|---|---|---|")
+        lines.extend(hrows)
+
     # -- maturity + verification ledger (v0.2/v0.3): where belief is load-bearing --
     kinds: dict[str, list[str]] = {"python": [], "expr": [], "stub": []}
     for aname, an in sorted(analyses.items()):
@@ -457,6 +493,19 @@ def pack(res: Resolution, lock: Lock, node_name: str) -> str:
     L.append("")
     if an.framing.model:
         L.append(f"- model: `{an.framing.model}`")
+        md = next((n for cand in (an.framing.model, f"lib.models.{an.framing.model}")
+                   if isinstance(n := doc.nodes.get(cand), G.ModelDef)), None)
+        if md is not None:
+            for hz, why in sorted(md.hazards.items()):
+                if hz in an.framing.waives:
+                    L.append(f"- hazard `{hz}` waived: “{an.framing.waives[hz]}”")
+                else:
+                    cov = sorted(a for a, o in doc.analyses().items() if hz in o.framing.covers)
+                    L.append(f"- hazard `{hz}` ({why}) — "
+                             + (f"covered by {', '.join(f'`{c}`' for c in cov)}" if cov
+                                else "**OPEN**"))
+    for c in an.framing.covers:
+        L.append(f"- covers `{c}` — this analysis is the answer to that hazard")
     for c, r in sorted(an.framing.envelope.claims.items()):
         L.append(f"- assumes `{c}`" + (f" because “{r}”" if r else ""))
     for c, r in sorted(an.framing.envelope.requires.items()):
@@ -535,7 +584,9 @@ def pack(res: Resolution, lock: Lock, node_name: str) -> str:
                 L.append(f"- cross-check: `{v.output}` vs `{v.ref}` within {band} — {verdict}")
             else:
                 key = (f"verify {v.output} monotone with {v.known} {v.direction}"
-                       if v.kind == "monotone" else f'verify case "{v.path}"')
+                       if v.kind == "monotone"
+                       else f"verify converged {v.output} <= {v.tol:g}"
+                       if v.kind == "converged" else f'verify case "{v.path}"')
                 r = recorded.get(key)
                 verdict = ("✅ " + r.get("detail", "held") if r and r.get("ok")
                            else "❌ " + r.get("detail", "failed") if r

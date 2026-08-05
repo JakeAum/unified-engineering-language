@@ -24,25 +24,25 @@
       },
       "parts": {
         "core": "sha256:3ca4edd06e9f6ee0480c34a0430f40d7d48043c07ac7ac5ba1248b2b71a4933c",
-        "def": "sha256:6af997276de00393e607ae6946e4dc8d789ff8261bcffdc39b2f9b0a466261d7",
+        "def": "sha256:507c35d553f2be0c383d6d1d2b3046e28690549aa8ccc4307c89a515e1e79881",
         "inputs": {
           "R_jc": "sha256:1bf1e858aed6bcd493cd3ecec69d7a5505285962182d996576b5cfcad0642359",
           "T_amb": "sha256:02221b39adb84234ad2af7f9d9e45f1b92eda85c126adfb5788ee2cff36a4861",
           "T_limit": "sha256:9dfcde6254151e0d03bd23c70b3a122a48f206fd368698409fc10bfb6bed0788",
           "esc_loss": "sha256:49df5a112d5e886343455d9b39a8f7f3024d09ce452c9bc3cd5dac0d4b43f4ae"
         },
-        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
+        "tools": "sha256:2e5c7c45ea25edc0fc8ff795643e3d60597664ef469330ee4f5b54228ee4a6ae"
       },
-      "recipe": "sha256:214030ec4b44687e324b33b5218a625d0fa9e6b17a77edd4ab448549b7c08aff",
+      "recipe": "sha256:4f63977a1fe43bf60c5035e3e8635b378dbf4f55d6415304a864956190354f8a",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.5.0"
+          "uel": "0.6.0"
         },
-        "ts": "2026-08-05T05:03:25Z",
-        "wall_s": 0.025
+        "ts": "2026-08-05T05:54:54Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
@@ -78,23 +78,23 @@
       },
       "parts": {
         "core": "sha256:e87aa1b585c95a8dfaae3e834b39397e473b03243280200c07d6a6714d71772e",
-        "def": "sha256:11c240a5abe29e5cd3b904585f2db2db09de01efc36eb2ff122df5aacf93f86b",
+        "def": "sha256:0598e60d6208d93ff8e6bdffceafdbf538a258bca3ee753f1ef44bf8812662d5",
         "inputs": {
           "shaft_power": "sha256:24ea78837ae1bf8f164c08ce6575de2a95cc95acc56a42a5e52459c3301d26e8",
           "v_bus": "sha256:377b335c7959b434cb10314b14a742ca83548bbd4fee0885619f3425fd7ce09e"
         },
-        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
+        "tools": "sha256:2e5c7c45ea25edc0fc8ff795643e3d60597664ef469330ee4f5b54228ee4a6ae"
       },
-      "recipe": "sha256:c6308e55f2279e7362ec0b2c10ecbd3b75fb310a775ac8653d3f7d3de0c53464",
+      "recipe": "sha256:edb1dfd8c0564f0317876c05ee7765aaa5fcdcf4aac99f63c9f053c1a405c380",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.5.0"
+          "uel": "0.6.0"
         },
-        "ts": "2026-08-05T05:03:25Z",
-        "wall_s": 0.026
+        "ts": "2026-08-05T05:54:54Z",
+        "wall_s": 0.022
       },
       "status": "fresh"
     },
@@ -112,25 +112,25 @@
       },
       "parts": {
         "core": "sha256:4b674d13bd13b6f6774f4e0f91460af48012115ed7d9f76fbf5bcb8632f3915c",
-        "def": "sha256:a5413ca6e45e17f96dc951e17f46b20a450b8debb7f6a52bdbf3adc4c9474bcf",
+        "def": "sha256:5106a1c58e6c85c1e2c8ec33dd0ca3a6d1cf388e032daf2d4ed81821d6e0f9eb",
         "inputs": {
           "E": "sha256:5b618d8cb0a457696df353afc8cf1cf418002d25bb61d27cf8bafdef7c7a886d",
           "length": "sha256:bc7d55d6bc3f5f4edbdc935dfa500b818aa7940c02e537bdbc4232ec109de6be",
           "m_bar": "sha256:3cad90d966afb76307f177a64dc22d0a9c6cdc85eb813239103a555d51a8c04c",
           "section_Ixx": "sha256:87f951dce82b81032610dd179d48174e3f428fd98c4a160adf60197cb892d508"
         },
-        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
+        "tools": "sha256:2e5c7c45ea25edc0fc8ff795643e3d60597664ef469330ee4f5b54228ee4a6ae"
       },
-      "recipe": "sha256:401672b9ab035103e23b8c1e951774cb7baddf2b01d1720be8bf6dd85119268e",
+      "recipe": "sha256:4cc52b422a48737d866a589a81ffbbe7131d77b2053cb733f2eefe54aa7ec760",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.5.0"
+          "uel": "0.6.0"
         },
-        "ts": "2026-08-05T05:03:25Z",
-        "wall_s": 0.024
+        "ts": "2026-08-05T05:54:54Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
@@ -165,7 +165,7 @@
       },
       "parts": {
         "core": "sha256:5f12eef15ead8bfbdffa1bd6d17d7ae2abe2a18ddbb1c83f88b1c64c93cc9dd4",
-        "def": "sha256:5518240a4aef36fa8dc0b31be2971ca0947f2c21d5de1aeacf0a171990b858c3",
+        "def": "sha256:f277de89267f14af595d4bff05d8ab0bf56e59923d95911053e7d422af8feb86",
         "inputs": {
           "E": "sha256:5b618d8cb0a457696df353afc8cf1cf418002d25bb61d27cf8bafdef7c7a886d",
           "length": "sha256:bc7d55d6bc3f5f4edbdc935dfa500b818aa7940c02e537bdbc4232ec109de6be",
@@ -174,18 +174,18 @@
           "section_Ixx": "sha256:87f951dce82b81032610dd179d48174e3f428fd98c4a160adf60197cb892d508",
           "yield_strength": "sha256:7f0fd180e784772327833a659566646eef7f3069538abed29d6e0a4f5aa840b4"
         },
-        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
+        "tools": "sha256:2e5c7c45ea25edc0fc8ff795643e3d60597664ef469330ee4f5b54228ee4a6ae"
       },
-      "recipe": "sha256:26da1a2ce42057b59567ab497da37cf3d4d7993419832025f4d5c31adb4a8747",
+      "recipe": "sha256:5f7bea9685291133fa72b6299c87b54fdb1618df33cc970d540e41bca5e5a86f",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.5.0"
+          "uel": "0.6.0"
         },
-        "ts": "2026-08-05T05:03:25Z",
-        "wall_s": 0.024
+        "ts": "2026-08-05T05:54:54Z",
+        "wall_s": 0.022
       },
       "status": "fresh"
     },
@@ -211,24 +211,24 @@
       },
       "parts": {
         "core": "sha256:d623ace2b0ed1a1bda73d4751cba0948339438f699183ba96f9e26c3f67d2888",
-        "def": "sha256:44f019d129c1ad2027c4215225926c0c348c4bc5b613d923431786b4677d1bce",
+        "def": "sha256:bcdc5c80bc301e4effe5192eef65d72bc8285b32f035d55a318736d41cec184f",
         "inputs": {
           "V_NE": "sha256:db1fd7ed87f7e98b110f1264f583b040ec1c49253ed230e697bbc9fbe2059528",
           "f1": "sha256:bfd1691cdfd56b79051acd945c17a01fcafbe806179adb5eb707022260b1e5b3",
           "m_bar": "sha256:3cad90d966afb76307f177a64dc22d0a9c6cdc85eb813239103a555d51a8c04c"
         },
-        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
+        "tools": "sha256:2e5c7c45ea25edc0fc8ff795643e3d60597664ef469330ee4f5b54228ee4a6ae"
       },
-      "recipe": "sha256:c508ca023802351f15269e6048a4f525ffd72618211781bbb1123b797ad54157",
+      "recipe": "sha256:221eed41d7f498ad2acd1ff763ed7935e19f18978146e566e0fa67381a187251",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.5.0"
+          "uel": "0.6.0"
         },
-        "ts": "2026-08-05T05:03:25Z",
-        "wall_s": 0.025
+        "ts": "2026-08-05T05:54:54Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
@@ -293,18 +293,18 @@
         "inputs": {
           "density": "sha256:908d32d9793da7bdccb4860a6f29de13b112f3ddf46f4d5d2b066d53d66c2ba4"
         },
-        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
+        "tools": "sha256:2e5c7c45ea25edc0fc8ff795643e3d60597664ef469330ee4f5b54228ee4a6ae"
       },
-      "recipe": "sha256:d637aa56d37809f27c7e1144e4478297b8cc63d71ff6949b9aa3f7373a0bd780",
+      "recipe": "sha256:10fe7440fa2d7cb3e6f842620914cb59139aa26549e4c4b5451e902c9c18fab7",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.5.0"
+          "uel": "0.6.0"
         },
-        "ts": "2026-08-05T05:03:25Z",
-        "wall_s": 0.026
+        "ts": "2026-08-05T05:54:54Z",
+        "wall_s": 0.021
       },
       "status": "fresh"
     },
@@ -376,18 +376,18 @@
         "inputs": {
           "density": "sha256:f8678353e8f164a281add0f0179ae308d71e8336b48653fa33a7132348cbd91f"
         },
-        "tools": "sha256:0d05a145860373381e6f370df73fb21d5f1e2d70ea5990e14c1b7d872c53a202"
+        "tools": "sha256:2e5c7c45ea25edc0fc8ff795643e3d60597664ef469330ee4f5b54228ee4a6ae"
       },
-      "recipe": "sha256:f4d30c8ee1cfb3c0f04592ef72b6353df7ac825a2953fc77be7779e571a5b4c5",
+      "recipe": "sha256:13ab67021430cdc8dbcef445bbbc2da74e3af7e348d811b86bbb76e8a497b430",
       "run": {
         "seed": 0,
         "tools": {
           "edition": "2026",
           "python": "3.11.15",
-          "uel": "0.5.0"
+          "uel": "0.6.0"
         },
-        "ts": "2026-08-05T05:03:25Z",
-        "wall_s": 0.027
+        "ts": "2026-08-05T05:54:54Z",
+        "wall_s": 0.022
       },
       "status": "fresh"
     }
@@ -395,7 +395,7 @@
   "tools": {
     "edition": "2026",
     "python": "3.11.15",
-    "uel": "0.5.0"
+    "uel": "0.6.0"
   },
   "uel_lock": "0.1"
 }

@@ -56,6 +56,7 @@ analysis ElementNoise {
     model noise.friis_cascade
     assume steady_state because "thermal equilibrium; the heated micro-enclosure holds the LNA near its rating point"
     assume lumped_element because "single noise temperature per stage"
+    waive impedance_mismatch_ripple because "consumer chain is 50 ohm SMA end to end, VSWR <= 1.5:1 per catalog sheets; the ripple this buys is under 0.2 dB and the ±30-50 % bands on the class estimates dominate it"
     envelope {
       min_elevation in [5, 90 deg]
     }
@@ -90,6 +91,8 @@ analysis ArrayGain {
     model antenna.aperture_ruze_array
     assume lumped_element because "one efficiency factor per element; no pattern integration"
     assume steady_state because "combining weights converge in seconds against a minutes-scale geometry drift"
+    waive correlated_surface_error because "stamped catalog reflectors: the 0.5 mm rms is dominated by panel forming error, small-scale by process; gravity sag on a 3.0 m dish is an order down, and what remains steers rather than scatters — priced in the steptrack residual"
+    waive mutual_coupling because "elements sit tens of wavelengths apart on separate ballast mounts; coupling at that spacing is far below the 0.3 dB ± 50 % combining-loss allowance already carried"
     envelope {
       freq in [8, 8.9 GHz]
       n_elements in [1, 4]
@@ -146,6 +149,8 @@ analysis SteptrackPointing {
     model track.steptrack_dither
     assume steady_state because "steptrack dither period (seconds) is far inside the minutes-scale L1 drift; loop treated at its converged operating point"
     assume rigid because "dish-on-rotator structural modes (>3 Hz) are far above the steptrack dither rate; flexibility invisible to this loop"
+    covers pointing_loss_dynamics
+    waive track_loss_of_lock because "carrier C/N0 at the dither offset stays well above the ~30 dBHz PLL threshold even at the band edge; the standing doubt — verify demod lock through the dither at first light — is the control"
     envelope {
       wind_full_track in [0, 15 m/s]
     }
@@ -178,6 +183,7 @@ analysis LinkMargin {
   framing {
     model link.budget_ebn0
     assume static because "worst-case snapshot at maximum range, all declared losses simultaneous"
+    waive interference because "same coordinated deep-space allocation as the baseline, but a residential-class site: the pre-install spectrum survey is a hard checklist item, and margin_db is one interferer from the floor — which is why the survey is not optional"
     envelope {
       eirp_dbw in [18, 26 dBW]
       freq in [8, 8.9 GHz]
@@ -217,6 +223,8 @@ analysis WindLoadsElement {
     model aero.bluff_body_drag
     assume static because "quasi-steady drag with a gust pressure factor"
     assume incompressible because "site winds are Mach < 0.15"
+    waive vortex_shedding because "at full-track wind (15 m/s) shedding off the 3.0 m dish sits at ~1 Hz against >3 Hz mount modes; above hold wind the dish stows zenith, where the shedding cross-section and the moment arm both collapse"
+    waive drag_regime_shift because "Cd 1.2 is the subcritical plateau; the drag crisis only lowers it, so the quoted value bounds the rotator and anchor loads"
     envelope {
       wind_operational in [0, 50 m/s]
     }
@@ -250,6 +258,7 @@ analysis PowerBudget {
   framing {
     model power.load_ledger
     assume steady_state because "sustained worst-case draws; rotator stall transients are breaker items"
+    waive transient_inrush because "the largest motors are two 180 W worm-drive rotators — start transients are tens of watts-seconds on a 15 A consumer circuit whose breaker curve tolerates 5x for 100 ms; nothing else on the feed has an inrush signature"
   }
   knowns {
     server_draw <- central_c1.server_draw
@@ -276,6 +285,8 @@ analysis UpsRideThrough {
   framing {
     model energy.reservoir_discharge
     assume steady_state because "constant-power discharge; converter dynamics folded into efficiency"
+    waive peukert_effect because "the protected chain discharges the consumer pack at ~C/6; the rate correction is a few percent against the 0.7 end-of-life derate already taken"
+    waive temperature_derate because "UPS and server share the indoor central rack; the VRLA capacity knee sits below any temperature the rack sees"
   }
   knowns {
     capacity <- central_c1.ups_capacity

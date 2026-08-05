@@ -60,7 +60,8 @@ as two-element arrays in both `value` and `si`.
     {"name": "tube_has_two_circular_faces", "passed": true},
     {"name": "wall_positive", "passed": true, "detail": "wall = 1.6 mm"}
   ],
-  "convergence": {"residual": 3.1e-06},          // optional, recorded verbatim
+  "convergence": {"residual": 3.1e-06},          // metrics: persisted to run.convergence;
+                                                 // `verify converged <m> <= t` binds them (v0.6)
   "notes": "free text, recorded"
 }
 ```
@@ -78,6 +79,11 @@ Rules enforced by the shell:
 - `features` are open-vocabulary claims about shape, checked against the bound
   process's DFM ruleset (spec §7.1). Feature values land in the lock and are
   re-checked at compile time from then on.
+- `convergence` metrics (finite numbers only) persist into the lock's
+  `run.convergence`. If the analysis declares `verify converged <metric> <= t`,
+  the metric must be present and under `t` right after the run — a missing
+  metric is a failed run (silence is not convergence), an over-threshold one
+  is UEL0808 (v0.6, ADR-0009).
 - Determinism: any stochastic step must derive from `seed`. Two runs of the same
   recipe should produce equal-within-tolerance outputs; the tolerance policy
   (`[tolerances]` in uel.toml) absorbs float noise below the declared grid.

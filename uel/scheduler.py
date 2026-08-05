@@ -18,6 +18,7 @@ mode this exists to kill.
 from __future__ import annotations
 
 import json
+import math
 import subprocess
 import sys
 import time
@@ -98,7 +99,8 @@ def build(res: Resolution, bag: Bag, only: list[str] | None = None,
             entry = _run_expr_core(res, an, name, lock, bag)
         else:
             entry = _run_core(res, an, name, lock, bag)
-        if entry.status == "fresh" and any(v.kind in ("monotone", "case") for v in an.verifies):
+        if entry.status == "fresh" and any(v.kind in ("monotone", "case", "converged")
+                                           for v in an.verifies):
             run_verify_probes(res, an, name, entry, lock, bag)
         entry.recipe = current.recipe
         entry.parts = current.parts
@@ -253,10 +255,9 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
         # normalize into the declared unit for lock stability
         def conv(v: float) -> float:
             return du.from_si(gu.to_si(float(v)))
-        import math as _math
 
         def finite(v: object) -> bool:
-            return isinstance(v, (int, float)) and not isinstance(v, bool) and _math.isfinite(float(v))
+            return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(float(v))
         if isinstance(raw, list) and len(raw) == 2 and all(finite(v) for v in raw):
             value: object = [conv(raw[0]), conv(raw[1])]
         elif finite(raw):
@@ -305,6 +306,15 @@ def _run_core(res: Resolution, an: G.Analysis, name: str, lock: Lock, bag: Bag) 
         "tools": tool_pins(),
         "seed": PINNED_SEED,
     }
+    # v0.6: a solver's own convergence metrics are evidence — persist them so
+    # `verify converged` contracts (and reviewers) can hold the run to them
+    conv_raw = out_obj.get("convergence", {}) or {}
+    if isinstance(conv_raw, dict):
+        metrics = {str(k): float(v) for k, v in sorted(conv_raw.items())
+                   if isinstance(v, (int, float)) and not isinstance(v, bool)
+                   and math.isfinite(float(v))}
+        if metrics:
+            entry.run["convergence"] = metrics
     return entry
 
 # expr/stub cores: kernel-evaluated (v0.2, ADR-0005)
@@ -489,6 +499,8 @@ def run_verify_probes(res: Resolution, an: G.Analysis, name: str, entry: LockEnt
             rec = _probe_monotone(res, an, name, entry, lock, bag, sp, v)
         elif v.kind == "case":
             rec = _probe_case(res, an, name, lock, bag, sp, v)
+        elif v.kind == "converged":
+            rec = _probe_converged(entry, v)
         else:
             continue  # 'against' is a lock-vs-lock comparison, judged at check time
         records.append(rec)
@@ -519,6 +531,20 @@ def _probe_monotone(res, an, name, entry, lock, bag, sp, v: G.Verify) -> dict:
     detail = (f"{v.known} +{delta:g} (SI) moved {v.output} {base_si:g} -> {probed:g} (SI); "
               f"declared {v.direction}")
     return {"contract": contract, "ok": ok, "detail": detail}
+
+def _probe_converged(entry: LockEntry, v: G.Verify) -> dict:
+    """The coarse-mesh killer: the run must report the metric it promised, under
+    the declared threshold. A silent solver is a failed run, not a clean one."""
+    contract = f"verify converged {v.output} <= {v.tol:g}"
+    got = (entry.run.get("convergence") or {}).get(v.output)
+    if not isinstance(got, (int, float)):
+        reported = sorted(entry.run.get("convergence") or {}) or ["none"]
+        return {"contract": contract, "ok": False,
+                "detail": f"core reported no convergence metric '{v.output}' "
+                          f"(reported: {', '.join(reported)}) — silence is not convergence"}
+    ok = float(got) <= float(v.tol or 0.0)
+    return {"contract": contract, "ok": ok,
+            "detail": f"{v.output} = {got:g} vs threshold {v.tol:g}"}
 
 def _probe_case(res, an, name, lock, bag, sp, v: G.Verify) -> dict:
     contract = f'verify case "{v.path}"'
@@ -556,3 +582,76 @@ def _probe_case(res, an, name, lock, bag, sp, v: G.Verify) -> dict:
     if misses: return {"contract": contract, "ok": False, "detail": "; ".join(misses)}
     n = len(case.get("expect", {}) or {})
     return {"contract": contract, "ok": True, "detail": f"{n} expected output(s) reproduced"}
+
+# ---------------------------------------------------------------------------
+# Sensitivity query (v0.6): elasticities by perturbation — the cube laws made
+# visible. `uel query sensitivity <node>` perturbs each input +5 % (SI) and
+# reports e = %Δoutput / %Δinput per (input, output) pair.
+# ---------------------------------------------------------------------------
+
+def sensitivity(res: Resolution, name: str, lock: Lock, bag: Bag) -> str:
+    an = res.doc.nodes.get(name)
+    if not isinstance(an, G.Analysis):
+        return f"sensitivity: no analysis named '{name}'\n"
+    entry = lock.nodes.get(name)
+    if entry is None or entry.status != "fresh" or not entry.outputs:
+        return (f"sensitivity: '{name}' has no fresh lock entry to perturb around — "
+                f"run `uel build` first\n")
+    sp = _node_span(res, name)
+    base: dict[str, float] = {}
+    for oname, o in entry.outputs.items():
+        si = _out_si(o.value, o.unit)
+        if si is not None:
+            base[oname] = si
+    if not base:
+        return f"sensitivity: '{name}' has no scalar outputs to trace\n"
+    inputs = sorted(set(an.knowns) | set(an.params))
+    outs_order = sorted(base)
+    REL = 0.05
+    rows: list[tuple[str, dict[str, float | None]]] = []
+    for k in inputs:
+        in_si = _current_input_si(res, an, name, lock, k)
+        if in_si is None:
+            rows.append((k, {o: None for o in outs_order}))
+            continue
+        delta = REL * abs(in_si) if in_si != 0.0 else 1.0
+        outs, _err = _rerun_outputs(res, an, name, lock, bag, sp, {k: in_si + delta})
+        if outs is None:
+            rows.append((k, {o: None for o in outs_order}))
+            continue
+        es: dict[str, float | None] = {}
+        for o in outs_order:
+            got = outs.get(o)
+            if got is None or base[o] == 0.0 or in_si == 0.0:
+                es[o] = None
+                continue
+            es[o] = ((got - base[o]) / abs(base[o])) / (delta / abs(in_si))
+        rows.append((k, es))
+
+    SUPER = 1.05  # robust to lock-quantization noise on exactly-linear inputs
+
+    def cell(e: float | None) -> str:
+        if e is None: return "—"
+        mark = " ▲" if abs(e) > SUPER else ("  ·" if abs(e) < 0.01 else "")
+        return f"{e:+.2f}{mark}"
+
+    L = [f"sensitivity: {name} — elasticity e = %Δoutput per %Δinput "
+         f"(each input perturbed +{REL * 100:g} % of its SI value; levels: % of the dB figure)", ""]
+    w0 = max((len(k) for k in inputs), default=5)
+    widths = [max(len(o), 9) for o in outs_order]
+    L.append("  " + "input".ljust(w0) + "  " + "  ".join(o.rjust(w) for o, w in zip(outs_order, widths)))
+    for k, es in rows:
+        L.append("  " + k.ljust(w0) + "  "
+                 + "  ".join(cell(es[o]).rjust(w) for o, w in zip(outs_order, widths)))
+    L.append("")
+    hot = sorted({k for k, es in rows for o, e in es.items() if e is not None and abs(e) > SUPER})
+    dead = sorted({k for k, es in rows
+                   if all(e is not None and abs(e) < 0.01 for e in es.values()) and es})
+    if hot:
+        L.append(f"▲ superlinear (|e| > {SUPER:g}): {', '.join(hot)} — errors amplify through this "
+                 "analysis; a 10 % miss here is not a 10 % miss downstream.")
+    if dead:
+        L.append(f"· dead (|e| < 0.01): {', '.join(dead)} — either genuinely insensitive "
+                 "or not actually load-bearing in the formula; both are worth knowing.")
+    L.append("")
+    return "\n".join(L)

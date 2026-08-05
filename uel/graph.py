@@ -386,13 +386,18 @@ class Intent:
 
 @dataclass
 class Framing:
-    """The creative act (spec §3.1): chosen physics model + the envelope fence."""
+    """The creative act (spec §3.1): chosen physics model + the envelope fence.
+    v0.6: hazard accounting — `covers` names hazards this analysis itself
+    addresses; `waives` maps hazard -> the engineering reason it does not apply."""
 
     model: str = ""  # identity: e.g. "beam.euler_bernoulli"
+    covers: list[str] = field(default_factory=list)  # identity
+    waives: dict[str, str] = field(default_factory=dict)  # identity
     envelope: Envelope = field(default_factory=Envelope)  # identity
 
     EMPTY_NONE = True
-    SPEC = (("model", "model", "s", "p"), ("envelope", "envelope", "o", "p", Envelope))
+    SPEC = (("model", "model", "s", "p"), ("covers", "covers", "sl", "p"),
+            ("waives", "waives", "sm", "p"), ("envelope", "envelope", "o", "p", Envelope))
 
 @dataclass
 class Core:
@@ -471,16 +476,16 @@ class Verify:
     build. Empty tol_unit means relative (tol is a fraction); else absolute in
     that unit (`within 0.5 dB`)."""
 
-    kind: str = "against"  # identity: against | monotone | case
-    output: str = ""  # identity
+    kind: str = "against"  # identity: against | monotone | case | converged
+    output: str = ""  # identity (converged: the reported metric name)
     ref: str = ""  # identity (against)
     known: str = ""  # identity (monotone)
     direction: str = ""  # identity (monotone): rising | falling
     path: str = ""  # identity (case)
-    tol: Optional[float] = None  # identity
+    tol: Optional[float] = None  # identity (converged: raw threshold on the metric)
     tol_unit: str = ""  # identity
 
-    SPEC = (("kind", "kind", "e", "a", ("against", "monotone", "case"), "against"),
+    SPEC = (("kind", "kind", "e", "a", ("against", "monotone", "case", "converged"), "against"),
             ("output", "output", "s", "p"), ("ref", "ref", "s", "p"),
             ("known", "known", "s", "p"), ("direction", "direction", "s", "p"),
             ("path", "path", "s", "p"), ("tol", "tol", "n", "p"),
@@ -682,11 +687,27 @@ class ProcessDef:
     HEAD = (("kind", "process"),)
     SPEC = (("rules", "rules", "om", "p", DfmRule),) + _RECORD_TAIL
 
-Node = Union[Component, Requirement, Analysis, DomainDef, ClaimDef, MaterialDef, ProcessDef]
+@dataclass
+class ModelDef:
+    """v0.6: a registered physics model. `hazards` maps failure-mode claim ->
+    why it kills — the physics the model structurally cannot see. Using the
+    model obliges the project to cover or waive each hazard (UEL0510)."""
+
+    name: str = ""
+    hazards: dict[str, str] = field(default_factory=dict)  # identity
+    doc: str = ""  # record
+    src: str = ""  # record
+
+    KIND = "model"
+    HEAD = (("kind", "model"),)
+    SPEC = (("hazards", "hazards", "sm", "p"),) + _RECORD_TAIL
+
+Node = Union[Component, Requirement, Analysis, DomainDef, ClaimDef, MaterialDef,
+             ProcessDef, ModelDef]
 
 _KIND_MAP = {"component": Component, "requirement": Requirement, "analysis": Analysis,
              "domain": DomainDef, "claim": ClaimDef, "material": MaterialDef,
-             "process": ProcessDef}
+             "process": ProcessDef, "model": ModelDef}
 
 _SUB_DEFAULT = (Uncertainty, Provenance, Envelope, Intent, Framing, Core, Judgment, EffortFlow)
 _SUB_PLAIN = (Predicate, Port, Budget, Contain, DfmRule, Verify, Connection)
@@ -787,3 +808,6 @@ class GraphDoc:
 
     def processes(self) -> dict[str, ProcessDef]:
         return {n: v for n, v in self.nodes.items() if isinstance(v, ProcessDef)}
+
+    def models(self) -> dict[str, ModelDef]:
+        return {n: v for n, v in self.nodes.items() if isinstance(v, ModelDef)}

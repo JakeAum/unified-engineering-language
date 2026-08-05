@@ -66,6 +66,7 @@ analysis AntennaGain {
   framing {
     model antenna.aperture_ruze
     assume lumped_element because "one aperture-efficiency factor lumps taper, spillover, blockage and ohmic loss; no pattern integration behind it"
+    waive correlated_surface_error because "0.6 mm rms is the panel-setting error priced by the PAW metrology report — small-scale by procedure; gravity/thermal astigmatism at 5 m class stays sub-0.1 mm and its beam motion is carried as thermal_error in PointingBudget, not as gain"
     envelope {
       freq in [8, 8.9 GHz]
       surface_rms in [0, 1.5 mm]
@@ -96,6 +97,7 @@ analysis SystemNoise {
     model noise.friis_cascade
     assume steady_state because "temperatures at thermal equilibrium; diurnal drift enters only through the enclosure hot-case input"
     assume lumped_element because "each stage is a single noise temperature; no spectral structure across the 4 kHz channel"
+    waive impedance_mismatch_ripple because "every interface is a flanged 50 ohm joint with VSWR <= 1.3:1 per the three datasheets; worst-case mismatch ripple is < 0.1 dB across the 4 kHz channel, inside the ±15 % Te and ±0.05 dB loss bands already carried"
     envelope {
       lna_physical_temp in [-5, 40 degC]
       min_elevation in [5, 90 deg]
@@ -154,6 +156,7 @@ analysis LinkMargin {
   framing {
     model link.budget_ebn0
     assume static because "worst-case snapshot at maximum range with all declared losses taken simultaneously; no fade dynamics"
+    waive interference because "8.40-8.45 GHz is the coordinated deep-space allocation; the site licensing survey found no in-band emitter inside the coordination contour, and re-survey is on the commissioning checklist"
     envelope {
       eirp_dbw in [18, 26 dBW]
       freq in [8, 8.9 GHz]

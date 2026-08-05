@@ -122,9 +122,42 @@ verify case "test/hotcase.json" within 1 %
   cross-check can never see.
 - `case` re-proves a golden input file every build. Generate it by running
   the core once and pinning what it produced, after you believe it.
+- `verify converged residual <= 1e-6` binds an iterating core to its own
+  discretization/iteration error: the core must report the metric in a
+  `convergence` object, under the threshold. A missing metric is a FAILED
+  run — silence is not convergence, and a plausible-looking number from an
+  under-resolved solve is precisely the failure this kills.
 - A run that breaks its own contract is a FAILED run. Never delete a
   contract to go green; fix the core, fix the oracle, or widen the band
   with a judgment that says why.
+
+## The details harness: hazards and sensitivity (v0.6)
+
+The solver answers the question you asked; the checker asks the ones you
+didn't. A **registered model** (`stdlib/models.uel`, or `model x.y { hazard
+name "why it kills" }` in a project lib) carries the failure modes it is
+structurally blind to — Euler-Bernoulli cannot see lateral-torsional
+buckling, a load ledger cannot see inrush, RSS cannot see correlated terms.
+Using one obliges you per hazard (UEL0510), and silence is a diagnostic:
+
+- **Cover it**: write the analysis that actually answers the failure mode
+  and put `covers <hazard>` in its framing (the ground station's
+  `VortexShedding` node exists because this check asked). Coverage
+  discharges the hazard project-wide.
+- **Waive it**: `waive <hazard> because "closed circular tube: no weak
+  axis"` — per-framing, and the reason is required because a waiver
+  without a reason is denial. Write the engineering, not "N/A".
+
+The status projection carries the coverage ledger; review it like the
+trust ledger. Never waive with boilerplate — a reviewer will read the
+reason against the geometry, and so should you.
+
+**Sensitivity is one query away**: `uel query sensitivity <node> <dir>`
+perturbs each input +5 % and prints elasticities per output. ▲ marks
+superlinear inputs (|e| > 1.05) — the t³ flange, the V² gust — where small
+input errors amplify; `·` marks dead inputs that move nothing, which
+either means insensitive or not actually wired in. Run it before trusting
+any thin margin, and put what you learn in the doubts.
 
 ## Reviewing another agent's work (zero-trust)
 

@@ -9,10 +9,17 @@ consumed primarily by AI engineering agents, and compiled outward into the
 artifacts (geometry, BOMs, travelers, status views) through which a design is born
 into the physical world.
 
-**Status: v0.5 — agents as first-class citizens.** The tool briefs the agent
-using it (`uel agent`), ships its own operating skill (`uel skill`), and
-scaffolds green-by-construction projects (`uel init`). Beneath that, v0.3
-makes every opaque core answer for itself:
+**Status: v0.6 — the recursive-detail harness.** The solver answers the
+question you asked; the checker asks the ones you didn't. **Registered
+models carry hazard lists** — the failure modes they are structurally blind
+to (Euler-Bernoulli cannot see lateral-torsional buckling; a load ledger
+cannot see inrush) — and using one obliges the project to *cover* each
+hazard with an analysis or *waive* it with a required reason (UEL0510,
+ADR-0009). **Sensitivity is a query** (`uel query sensitivity` — the V²/t³
+laws flagged ▲ as elasticities), and **convergence is a contract**
+(`verify converged residual <= 1e-6`; silence is a failed run). Beneath
+that, v0.5 makes agents first-class citizens (`uel agent`, `uel skill`,
+`uel init`), and v0.3 makes every opaque core answer for itself:
 **verification contracts** (cross-check against a transparent oracle, monotone
 probes, golden cases — a run that breaks its own contract is a failed run),
 **declared wrappers** (pinned tools + hashed interface manifests, the FMU
@@ -106,6 +113,7 @@ python3 -m uel project all examples/apache-one   # BOM/ICD/travelers/status, has
 python3 -m uel calibrate examples/apache-one/test/W12_static.json examples/apache-one
 python3 -m uel query provenance spar_v8.panel_mass_per_span examples/apache-one
 python3 -m uel pack WindLoads examples/ground-station   # the review dossier: audit without believing
+python3 -m uel query sensitivity WindLoads examples/ground-station  # elasticities; the V^2 law flagged
 python3 -m uel graph examples/apache-one --dot | dot -Tsvg > graph.svg
 python3 examples/apache-one/leverage.py      # the R2 instrumentation, measured live
 ```
@@ -118,7 +126,7 @@ is deliberately zero-dependency (ADR-0002).
 | Path | Contents |
 |---|---|
 | `uel/` | The reference implementation (Python, stdlib only) |
-| `uel/stdlib/` | Shipped libraries, written in UEL: domain table, claim taxonomy, materials, DFM rulesets |
+| `uel/stdlib/` | Shipped libraries, written in UEL: domain table, claim taxonomy, materials, DFM rulesets, the physics-model hazard registry |
 | `conformance/` | The suite all work is graded against — incl. the R1 de-risk pair set (11/11) and the mechanical fix-loop driver |
 | `tests/` | Implementation unit tests (50-node staleness demo, core-protocol contracts, calibration loop, red-team pins) |
 | `examples/apache-one/` | The vertical slice: cross-coupled, built, calibrated, leverage-measured |
@@ -130,21 +138,21 @@ is deliberately zero-dependency (ADR-0002).
 ## Grading
 
 ```sh
-python3 -m unittest discover -s tests    # 61 tests
-python3 -m conformance.runner            # 63 cases: schema/parse/units/fmt/fixloop/check/derisk
+python3 -m unittest discover -s tests    # 72 tests
+python3 -m conformance.runner            # 67 cases: schema/parse/units/fmt/fixloop/check/derisk
 ```
 
 Both run in CI on every push; the checker gates the scheduler; nothing merges on
 trust (program §2.2).
 
-## What v0.5 deliberately does not do
+## What v0.6 deliberately does not do
 
 LSP, FMU *import* (the interface-manifest pattern is here; the shell generator
 waits for the first real FMU — load-bearing or dead), remote execution, SysML
 bridges, distributor refresh, sensitivity-aware staleness, expression
-conditionals and interpolation tables, per-instance graph state, statistical
-(non-enclosure) uncertainty, property contracts beyond monotone — all named
-for v0.4+ in spec §11 and the ADRs.
+conditionals and interpolation tables, per-instance graph state (so hazard
+coverage is project-granular, not per-subject — ADR-0009 names the gap),
+statistical (non-enclosure) uncertainty — all named in spec §11 and the ADRs.
 The open problems are held honestly in spec §10; current status per problem is
 tracked in [`docs/boot/architecture.md`](docs/boot/architecture.md).
 

@@ -313,6 +313,11 @@ def cmd_query(args: argparse.Namespace) -> int:
     if args.what == "instances":
         sys.stdout.write(instances(res))
         return 0
+    if args.what == "sensitivity":
+        from .scheduler import sensitivity
+
+        sys.stdout.write(sensitivity(res, args.target, Lock.load(project.lock_path), bag))
+        return 0
     print(provenance(res, args.target, Lock.load(project.lock_path)))
     return 0
 
@@ -374,9 +379,10 @@ def main(argv: list[str] | None = None) -> int:
     p_cal.add_argument("--no-stubs", action="store_true", help="do not generate investigation stubs")
 
     p_query = sub.add_parser("query", help="ask the graph")
-    p_query.add_argument("what", choices=["provenance", "instances"])
+    p_query.add_argument("what", choices=["provenance", "instances", "sensitivity"])
     p_query.add_argument("target", nargs="?", default="",
-                         help="provenance: e.g. spar_v7.mass or SparStaticLimit.outputs.FoS")
+                         help="provenance: a value ref; sensitivity: an analysis node "
+                              "(elasticities by perturbation, v0.6)")
     p_query.add_argument("path", nargs="?", default=".")
     p_query.add_argument("--serial", default="")
 

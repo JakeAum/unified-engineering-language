@@ -56,6 +56,8 @@ analysis SparStaticLimit {
     assume rigid_root because "root fitting stiffness >> spar; verify at W12 bench test"
     assume static because "gust transients covered by SparDynamic downstream"
     assume linear_elastic because "FoS is against yield; post-yield behavior out of scope"
+    waive lateral_torsional_buckling because "closed circular tube: polar-symmetric section with no weak axis and GJ of the same order as EI — LTB needs an open thin-walled section with a compression flange free to roll, which this geometry cannot supply"
+    waive shear_deformation because "span/depth = 1200/30 = 40; Timoshenko correction at that slenderness is well under 1 % of tip deflection"
     envelope {
       root_moment in [0, 260 N*m]
       T in [-40, 70 degC]
@@ -85,6 +87,7 @@ analysis SparDynamic {
     assume elastic_modes because "modal content is the product of this analysis"
     assume linear_elastic because "small amplitudes at onset"
     assume small_angle because "mode shapes, not large deflection"
+    waive root_compliance because "the W12 bench static validated tip stiffness against the rigid-root prediction (calibration overlay applied); the residual fitting compliance sits inside the measured band that flows into f1"
   }
   knowns {
     section_Ixx <- spar_v8.section_Ixx
@@ -106,6 +109,7 @@ analysis WingFlutter {
     require elastic_modes because "flutter is an elastic-inertial-aero coupling; needs the first bending mode"
     assume incompressible because "V_NE Mach ~0.1"
     assume linear_elastic because "onset prediction, not limit cycle"
+    waive mode_truncation because "single-bending-mode estimate on a closed tube whose first torsion mode sits several times higher; the classical bending-torsion coalescence is pushed far above the sweep, and the GVT correlation named in the doubts is what retires the residual"
     envelope {
       Mach in [0, 0.3]
     }

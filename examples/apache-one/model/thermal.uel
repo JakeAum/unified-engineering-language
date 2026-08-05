@@ -41,6 +41,7 @@ analysis EscThermal {
     model thermal.rc_network
     assume lumped_element because "single junction-to-case-to-sink chain; package gradients unresolved"
     assume steady_state because "cruise thermal equilibrium; transients enveloped by soak"
+    waive internal_gradient_field because "the guarded limit is the vendor case-temperature rating, measured where their derating curve is defined; junction hot spots inside the package are the vendor's R_jc problem, carried as that datasheet value in this chain"
     envelope {
       T_amb in [-20, 50 degC]
     }

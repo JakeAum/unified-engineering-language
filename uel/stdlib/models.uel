@@ -1,0 +1,114 @@
+# The physics-model registry (v0.6): a registered model names the failure modes
+# it is STRUCTURALLY BLIND TO — not what it assumes (framing claims say that),
+# but what it cannot warn about even when wildly violated. Using a registered
+# model obliges the project to answer every hazard: some analysis `covers` it,
+# or the using framing `waive`s it with an engineering reason (UEL0510). Hazard
+# names are claims in the taxonomy, so typos are caught (UEL0504). Registration
+# is opt-in by design: an unregistered model imposes nothing.
+#
+# The registry is where the graybeard lives: the checklist a solver cannot
+# volunteer, attached to the model choice itself so it follows every use.
+
+model structure.von_mises_static {
+  doc "Static equivalent-stress check against yield. The classic topology-optimization trap: everything below is invisible to it."
+  hazard brittle_fracture "von Mises is a DUCTILE yield criterion; on cast, hardened, or low-elongation material it certifies the wrong failure mode entirely"
+  hazard stress_concentration "a coarse mesh averages risers away; refine at fillets and holes or apply Kt by hand — the crack starts where the element was biggest"
+  hazard buckling_instability "a stress check cannot see stability; slender compression members fail at loads where the stress plot is still green"
+  hazard geometric_nonlinearity "linear analysis holds equilibrium on the undeformed shape; thin optimized sections can lose stiffness large-displacement first"
+}
+
+model beam.euler_bernoulli {
+  doc "Slender-beam bending: plane sections remain plane, in-plane response only."
+  hazard lateral_torsional_buckling "the critical moment falls with the cube of flange thickness and the square of unbraced length; an in-plane check stays green while the compression flange rolls sideways"
+  hazard shear_deformation "below span/depth ~10 the model overpredicts stiffness; deflection and modes come out flattering"
+}
+
+model beam.cantilever_modal {
+  doc "Cantilever mode shapes and frequencies with an ideal clamped root."
+  hazard root_compliance "a real clamp is a spring; measured first modes land below rigid-root predictions, sometimes by tens of percent"
+}
+
+model aeroelastic.reduced_order {
+  doc "Flutter/divergence from a truncated modal basis."
+  hazard mode_truncation "the flutter mechanism lives in the modes you kept; a coalescence involving a dropped mode is invisible at every airspeed you sweep"
+}
+
+model aero.bluff_body_drag {
+  doc "Quasi-steady drag: q times Cd times area, gusts as a pressure factor."
+  hazard vortex_shedding "steady drag says nothing about periodic lift at the Strouhal frequency; lock-in with a structural mode shakes the structure at loads far below the drag design point"
+  hazard drag_regime_shift "Cd is regime data, not a constant; across the drag crisis (Re ~ 3e5) a cylinder's Cd falls ~4x, and a value quoted in one regime silently misprices the other"
+}
+
+model structure.locked_rotor_sdof {
+  doc "First structural mode as a single torsional spring-inertia pair."
+  hazard coupled_modes "one DOF yields one mode; real dish/yoke/drive coupling places additional modes, some below the SDOF line the servo was shaped against"
+  hazard foundation_compliance "the model grounds the spring at the pedestal base; foundation and soil stiffness in series lower every predicted frequency"
+}
+
+model control.loop_shaping {
+  doc "Bandwidth selection against the first structural resonance."
+  hazard control_structure_spillover "shaping against mode one ignores the ladder above it; unmodeled modes near crossover harmonics can be excited by the loop rather than rejected"
+}
+
+model drive.quasi_static_sizing {
+  doc "Drive torque/power from held loads and rigid-body slew profiles."
+  hazard dynamic_torque_amplification "quasi-static torque misses resonant amplification through drive-train compliance; peak gear tooth loads under gusts can exceed the held-load figure"
+}
+
+model thermal.rc_network {
+  doc "Lumped thermal resistances and capacitances between node temperatures."
+  hazard internal_gradient_field "a lumped node has one temperature; junction hot spots and spreading gradients inside the lump are exactly what it cannot represent"
+}
+
+model thermal.lumped_balance {
+  doc "Single-volume heat balance: loads in, UA out, one air temperature."
+  hazard internal_gradient_field "stratification and local hot spots inside the volume are invisible to a single-node balance; the equipment feels the local temperature, not the mean"
+}
+
+model noise.friis_cascade {
+  doc "Cascade noise temperature by Friis from per-stage gains and noise figures."
+  hazard impedance_mismatch_ripple "Friis assumes matched interfaces; VSWR interaction between stages makes gain and noise ripple across the band beyond the scalar cascade numbers"
+}
+
+model antenna.aperture_ruze {
+  doc "Aperture gain with one efficiency factor and Ruze surface-error loss."
+  hazard correlated_surface_error "Ruze assumes small uncorrelated errors; correlated deformation (gravity sag, thermal astigmatism) concentrates loss and moves the beam instead of just scattering power"
+}
+
+model antenna.aperture_ruze_array {
+  doc "Array of Ruze apertures combined with a combining-loss allowance."
+  hazard correlated_surface_error "per-element Ruze loss assumes uncorrelated small-scale errors; correlated (gravity, thermal) deformation concentrates loss and steers the element beam"
+  hazard mutual_coupling "elements are summed as isolated apertures; close spacing re-shapes element patterns and combining behavior in a way per-element math cannot see"
+}
+
+model link.budget_ebn0 {
+  doc "Scalar link budget: EIRP through losses to C/N0, Eb/N0, margin."
+  hazard interference "a link budget prices noise, not other transmitters; one in-band interferer invalidates the margin without touching any term in the sum"
+  hazard pointing_loss_dynamics "the budget carries pointing as one static loss number; tracking dynamics that exceed it show up as fade, not as a budget line"
+}
+
+model budget.rss {
+  doc "Root-sum-square combination of independent error terms."
+  hazard correlated_error_terms "RSS is only valid for independent terms; errors sharing physics add closer to linearly, and the combined figure flatters exactly when terms co-move"
+}
+
+model track.steptrack_dither {
+  doc "Carrier-peaking steptrack loop at its converged operating point."
+  hazard track_loss_of_lock "the loop needs the carrier demod-lockable through the dither; below threshold the tracker walks away instead of converging, and the model has no failure mode for that"
+}
+
+model power.load_ledger {
+  doc "Static sum of continuous and peak electrical loads."
+  hazard transient_inrush "a ledger of steady draws cannot see motor start and converter inrush; breakers and UPS transfer trip on the transient the sum never contained"
+}
+
+model power.chain_efficiency {
+  doc "Series efficiency chain at one operating point."
+  hazard part_load_efficiency "converter and motor efficiency are load-dependent curves, not constants; off the rated point the chain number is wrong in the direction that flatters"
+}
+
+model energy.reservoir_discharge {
+  doc "Energy reservoir divided by constant draw gives ride-through time."
+  hazard peukert_effect "usable battery capacity falls with discharge rate; amp-hours quoted at the 20 h rate overstate what a heavy load can extract"
+  hazard temperature_derate "cold batteries deliver a fraction of rated capacity; a ride-through sized at 25 degC quietly shortens on the winter night it exists for"
+}

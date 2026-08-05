@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.6.0 — the recursive-detail harness (2026-08-05)
+
+The devil is in the details at every layer, so the harness now asks about
+them mechanically: the solver answers the question you asked; the checker
+asks the ones you didn't.
+
+- **Registered models carry hazard lists** (ADR-0009) — a new `model` library
+  kind: `model beam.euler_bernoulli { hazard lateral_torsional_buckling
+  "Mcr falls with the cube of flange thickness…" }`. A hazard is a failure
+  mode the model is structurally blind to. Using a registered model obliges
+  the project per hazard: some analysis `covers` it, or the using framing
+  `waive`s it `because "reason"` (the reason is grammatically required —
+  a waiver without a reason is denial) — else UEL0510, carrying the
+  registry's why-text. `uel/stdlib/models.uel` ships eighteen registrations
+  across structures, aero, thermal, RF, power, controls, and tracking; the
+  hazard names join the claim taxonomy. Status carries the coverage ledger.
+- **Applied, not just shipped**: the check surfaced 34 unanswered questions
+  across the three examples. Answers: one new analysis the checker forced
+  into existence (the ground station's `VortexShedding` — Strouhal vs first
+  mode, separation ≈ 31, computed with a target) plus 25 waivers that are
+  real engineering arguments (the apache-one spar waives lateral-torsional
+  buckling because a closed circular tube has no weak axis; the UPS waives
+  Peukert at C/8; the drag models waive the regime shift because the
+  subcritical Cd bounds the load). Zero boilerplate waivers.
+- **Sensitivity as a query** — `uel query sensitivity <node>`: every input
+  perturbed +5 % in SI through the probe machinery, elasticity matrix
+  e = %Δout/%Δin per output, superlinear inputs flagged ▲ (WindLoads:
+  wind_op e = +2.05 ▲, the V² law visible in one command), dead inputs
+  flagged · (insensitive or not actually wired in — both worth knowing).
+- **Convergence contracts** — `verify converged residual <= 1e-6`: python
+  cores' `convergence` metrics now persist into the lock (`run.convergence`)
+  and the contract binds them right after the run. Metric missing → failed
+  run ("silence is not convergence"); over threshold → UEL0808. Closed-form
+  cores cannot declare it (there is no iteration to converge) — and since
+  every shipped example core is closed-form, the live demonstration is a
+  genuinely iterating Newton solver in the test suite, graded both passing
+  and failing (the ADR-0008 load-bearing-or-dead rule, applied again).
+- Schema 0.3 (node kind `model`, framing `covers`/`waives`, verify kind
+  `converged` — all omit-empty). Full relock under 0.6.0: every previously
+  locked value reproduced identically across all three examples; the only
+  content change is the new VortexShedding node. 72 unit tests, 67
+  conformance cases.
+
 ## v0.5.0 — agents as first-class citizens (2026-08-05)
 
 Two arrival paths, both native now. An agent that fetches the tool gets a

@@ -106,3 +106,35 @@ claim no_viscous_drag { doc "No viscous drag contribution." }
 claim no_internal_gradients { doc "No spatial gradient information inside the element." }
 claim no_rotational_dynamics { doc "No rotational inertia information." }
 claim plasticity { doc "Post-yield behavior modeled." }
+
+# Hazard phenomena (v0.6): the failure modes registered models declare
+# themselves blind to (stdlib/models.uel). They live in the taxonomy so that
+# `hazard`/`covers`/`waive` names are spell-checked (UEL0504) and so covering
+# analyses can `assume`/`require` against them like any structural claim.
+claim lateral_torsional_buckling { doc "Compression flange rolls sideways; Mcr ~ flange t^3, ~ 1/L_unbraced^2." }
+claim shear_deformation { doc "Shear flexibility matters; Euler-Bernoulli stiffness is flattered." }
+claim local_buckling { doc "Plate or flange buckles locally below member-level capacity." }
+claim brittle_fracture { doc "Failure by fracture without yield; ductile criteria do not apply." }
+claim stress_concentration { doc "Local stress riser at a geometric feature; coarse meshes average it away." }
+claim buckling_instability { doc "Stability failure in compression at stresses below yield." }
+claim geometric_nonlinearity { doc "Equilibrium must be held on the deformed shape." }
+claim root_compliance { doc "The clamped boundary is actually a spring; modes shift down." }
+claim mode_truncation { doc "Physics living in modes outside the retained basis." }
+claim vortex_shedding { doc "Periodic shedding at the Strouhal frequency; lock-in excites structure." }
+claim drag_regime_shift { doc "Cd changes regime with Reynolds number (drag crisis)." }
+claim coupled_modes { doc "Multi-DOF coupling places modes a lumped model cannot see." }
+claim foundation_compliance { doc "Foundation/soil stiffness in series lowers structural modes." }
+claim control_structure_spillover { doc "Control energy excites unmodeled structural modes." }
+claim dynamic_torque_amplification { doc "Resonant amplification of drive loads through compliance." }
+claim impedance_mismatch_ripple { doc "VSWR interaction between RF stages; gain/noise ripple across band." }
+claim correlated_surface_error { doc "Correlated aperture deformation (gravity, thermal); Ruze underestimates." }
+claim mutual_coupling { doc "Array elements interact; isolated-element patterns are wrong." }
+claim interference { doc "In-band energy from other transmitters, absent from noise budgets." }
+claim pointing_loss_dynamics { doc "Time-varying pointing error beyond the static loss allowance." }
+claim correlated_error_terms { doc "Error terms sharing physics; RSS combination flatters the total." }
+claim track_loss_of_lock { doc "Tracking loop loses its reference signal and diverges." }
+claim transient_inrush { doc "Start/inrush transients far above steady draw." }
+claim part_load_efficiency { doc "Efficiency is a curve in load, not a constant." }
+claim peukert_effect { doc "Usable battery capacity falls with discharge rate." }
+claim temperature_derate { doc "Capability falls with temperature away from the rating point." }
+claim web_crippling { doc "Concentrated load buckles the web locally at a bearing point." }

@@ -313,6 +313,8 @@ class Resolver:
             )
         elif isinstance(item, A.ProcessDecl):
             self.build_process(item, ns, file)
+        elif isinstance(item, A.ModelDecl):
+            self.build_model(item, ns, file)
 
     def build_port(self, p: A.PortDecl, file: str, owner: str) -> G.Port:
         attrs: dict[str, G.Quantity] = {}
@@ -445,6 +447,17 @@ class Resolver:
             rules[r.name] = G.DfmRule(r.feature, r.op, limit, r.message)
         self.doc.nodes[name] = G.ProcessDef(name, rules, p.doc, f"{file}:{p.span.line}")
 
+    def build_model(self, m: A.ModelDecl, ns: str, file: str) -> None:
+        name = self.qualify(m, ns)
+        hazards: dict[str, str] = {}
+        for h in m.hazards:
+            if h.claim in hazards:
+                self.bag.error("UEL0106", f"hazard '{h.claim}' declared twice", h.span)
+                continue
+            hazards[h.claim] = h.rationale
+            self.check_claim_known(h.claim, h.span)
+        self.doc.nodes[name] = G.ModelDef(name, hazards, m.doc, f"{file}:{m.span.line}")
+
     def build_binding(self, b: A.BindingDecl, ns: str, file: str) -> None:
         name = self.qualify(b, ns)
         self._check_member_collisions(name, b.ports, b.quantities, [])
@@ -503,6 +516,20 @@ class Resolver:
         if a.framing:
             framing.model = a.framing.model.text if a.framing.model else ""
             framing.envelope = self.envelope(a.framing.envelope, a.framing.claims, file)
+            seen_cov: set[str] = set()
+            for c in a.framing.covers:
+                if c.claim in seen_cov:
+                    self.bag.error("UEL0106", f"'{c.claim}' covered twice", c.span)
+                    continue
+                seen_cov.add(c.claim)
+                self.check_claim_known(c.claim, c.span)
+            framing.covers = sorted(seen_cov)
+            for w in a.framing.waives:
+                if w.claim in framing.waives:
+                    self.bag.error("UEL0106", f"'{w.claim}' waived twice", w.span)
+                    continue
+                framing.waives[w.claim] = w.rationale
+                self.check_claim_known(w.claim, w.span)
         knowns: dict[str, str] = {}
         for k in a.knowns:
             if k.name in knowns:
@@ -576,6 +603,15 @@ class Resolver:
 
     def _check_verify(self, name: str, a: A.AnalysisDecl, gv: G.Verify, v: A.VerifyDecl) -> None:
         outputs = {o.name: o for o in a.outputs}
+        if gv.kind == "converged" and a.core_lang in ("expr", "stub"):
+            self.bag.error(
+                "UEL0107",
+                f"verify converged on '{name}': {a.core_lang} cores are closed-form — "
+                "there is no iteration to converge",
+                v.span,
+                reason="convergence contracts bind python cores that wrap iterative solvers; "
+                       "the core reports its metrics in a 'convergence' object (v0.6)",
+            )
         if gv.kind in ("against", "monotone"):
             if gv.output not in outputs:
                 self.unresolved(gv.output, v.span, f"verify output on {name}", outputs)

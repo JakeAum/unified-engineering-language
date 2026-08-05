@@ -77,6 +77,7 @@ analysis PowerDraw {
   framing {
     model power.chain_efficiency
     assume steady_state because "trimmed cruise; startup surge is a separate case"
+    waive part_load_efficiency because "the chain is evaluated at the cruise point where the mission spends its energy, and the current output is the worst case at minimum bus voltage; vendor typical-vs-measured spread is the declared doubt, not the load curve"
     envelope {
       shaft_power in [0, 2200 W]
     }

@@ -20,7 +20,7 @@ from . import uast as A
 
 TOP_KEYWORDS = (
     "requirement", "component", "binding", "analysis", "geometry", "connect",
-    "domain", "claim", "material", "process",
+    "domain", "claim", "material", "process", "model",
 )
 
 _SEPS = (T.NEWLINE, T.SEMI, T.COMMA)
@@ -789,7 +789,19 @@ class Parser:
             if tol is None: return None
             return A.VerifyDecl("case", path=path, tol=tol, tol_unit=unit,
                                 tol_unit_span=usp, span=self.span(kw))
-        out = self.ident("output name to verify (or 'case')")
+        if self.at_ident("converged"):
+            self.bump()
+            metric = self.ident("convergence metric name the core reports (e.g. residual)")
+            if metric is None: return None
+            if not self.expect(T.LE, f"'<=' after 'verify converged {metric}'"): return None
+            thr = self.signed_number("convergence threshold")
+            if thr is None: return None
+            if thr < 0:
+                self.bag.error("UEL0107", f"convergence threshold must be >= 0, got {thr:g}",
+                               self.span(self.toks[self.i - 1]))
+                return None
+            return A.VerifyDecl("converged", output=metric, tol=thr, span=self.span(kw))
+        out = self.ident("output name to verify (or 'case'/'converged')")
         if out is None: return None
         if self.at_ident("against"):
             self.bump()
@@ -811,7 +823,7 @@ class Parser:
                                self.span(self.toks[self.i - 1]))
                 return None
             return A.VerifyDecl("monotone", output=out, known=known, direction=d, span=self.span(kw))
-        self.err(f"expected 'against', 'monotone', or 'case' after 'verify {out}'",
+        self.err(f"expected 'against', 'monotone', 'case', or 'converged' after 'verify {out}'",
                  reason="verification contracts are machine-checkable reasons to believe an opaque core (ADR-0008)")
         return None
 
@@ -841,14 +853,41 @@ class Parser:
                 fr.model = self.dotted("physics model name (e.g. beam.euler_bernoulli)")
             elif self.at_ident("assume", "require"):
                 fr.claims.append(self.env_claim())
+            elif self.at_ident("covers"):
+                ct = self.bump()
+                names = self.ident_list("hazard name after 'covers'")
+                fr.covers.extend(A.EnvClaim("covers", n, span=self.span(ct)) for n in names)
+            elif self.at_ident("waive"):
+                wt = self.bump()
+                nm = self.ident("hazard name after 'waive'") or "?"
+                if self.eat_ident("because"):
+                    reason = self.string("waiver rationale string after 'because'")
+                    fr.waives.append(A.EnvClaim("waive", nm, reason, self.span(wt)))
+                else:
+                    self.err(f"expected 'because \"reason\"' after 'waive {nm}'",
+                             reason="a waiver without a reason is denial; say why this "
+                                    "hazard does not apply here (v0.6)")
+                    break
             elif self.at_ident("envelope"):
                 fr.envelope = self.envelope_block()
             else:
-                self.err("expected a framing item: model, assume, require, or envelope")
+                self.err("expected a framing item: model, assume, require, covers, waive, or envelope")
                 break
             self.skip_seps()
         self.expect(T.RBRACE, "'}' to close framing")
         return fr
+
+    def ident_list(self, what: str) -> list[str]:
+        names: list[str] = []
+        n0 = self.ident(what)
+        if n0:
+            names.append(n0)
+        while self.at(T.COMMA):
+            self.bump()
+            nn = self.ident(f"{what.split(' after ')[0]} in list")
+            if nn is None: break
+            names.append(nn)
+        return names
 
     def output_decl(self) -> Optional[A.OutputDeclA]:
         nt = self.bump()
@@ -971,17 +1010,7 @@ class Parser:
         while not self.at(T.RBRACE) and not self.at(T.EOF):
             if self.at_ident("entails", "excludes"):
                 which = self.bump().text
-                names: list[str] = []
-                n0 = self.ident(f"claim name after '{which}'")
-                if n0:
-                    names.append(n0)
-                while self.at(T.COMMA):
-                    self.bump()
-                    nn = self.ident(f"claim name in '{which}' list")
-                    if nn:
-                        names.append(nn)
-                    else:
-                        break
+                names = self.ident_list(f"claim name after '{which}'")
                 if which == "entails":
                     cl.entails.extend(names)
                 else:
@@ -1065,6 +1094,32 @@ class Parser:
         msg = self._rule_message()
         return A.RuleDecl(name, feature, op, limit, msg, self.span(kw))
 
+    def model_decl(self) -> Optional[A.ModelDecl]:
+        """v0.6: `model beam.euler_bernoulli { hazard ltb "why it kills" … }` —
+        a registered physics model carries the failure modes it cannot see."""
+        kw = self.bump()
+        name_ref = self.dotted("model name (dotted, e.g. beam.euler_bernoulli)")
+        if name_ref is None: return None
+        md = A.ModelDecl(name_ref.text, span=self.span(kw))
+        if not self.expect(T.LBRACE, f"'{{' to open model '{md.name}'"): return md
+        self.skip_seps()
+        while not self.at(T.RBRACE) and not self.at(T.EOF):
+            if self.at_ident("hazard"):
+                ht = self.bump()
+                nm = self.ident("hazard name (a structural claim naming the failure mode)")
+                if nm is None: break
+                why = self.string(f"one-line reason string: why '{nm}' kills designs this model cannot warn about")
+                md.hazards.append(A.EnvClaim("hazard", nm, why, self.span(ht)))
+            elif self.at_ident("doc"):
+                self.bump()
+                md.doc = self.string("doc string")
+            else:
+                self.err("expected 'hazard name \"why\"' or 'doc' in model")
+                break
+            self.skip_seps()
+        self.expect(T.RBRACE, f"'}}' to close model '{md.name}'")
+        return md
+
     def _rule_message(self) -> str:
         """Rule rationale string; may sit on a continuation line."""
         j = self.i
@@ -1110,6 +1165,8 @@ class Parser:
                 item = self.material_decl()
             elif word == "process":
                 item = self.process_decl()
+            elif word == "model":
+                item = self.model_decl()
             else:
                 close = get_close_matches(word, TOP_KEYWORDS, 1, 0.6)
                 self.bag.error(

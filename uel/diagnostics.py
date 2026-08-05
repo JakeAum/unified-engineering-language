@@ -51,6 +51,7 @@ CODES: dict[str, str] = {
     "UEL0503": "required claim not provided",
     "UEL0504": "unknown structural claim",
     "UEL0505": "envelope variable unit mismatch",
+    "UEL0510": "model hazard not covered",
     "UEL0601": "geometry without topological assertions",
     "UEL0602": "topological assertion failed",
     "UEL0603": "DFM rule violation",

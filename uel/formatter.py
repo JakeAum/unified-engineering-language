@@ -93,6 +93,8 @@ class Formatter:
             self.material(item)
         elif isinstance(item, A.ProcessDecl):
             self.process(item)
+        elif isinstance(item, A.ModelDecl):
+            self.model(item)
 
     def _doc(self, doc: str, indent: int) -> None:
         if doc:
@@ -190,6 +192,11 @@ class Formatter:
             for cl in a.framing.claims:
                 because = f' because "{_esc(cl.rationale)}"' if cl.rationale else ""
                 self.put(2, f"{cl.keyword} {cl.claim}{because}", cl.span.line)
+            if a.framing.covers:
+                self.put(2, "covers " + ", ".join(c.claim for c in a.framing.covers),
+                         a.framing.covers[0].span.line)
+            for w in a.framing.waives:
+                self.put(2, f'waive {w.claim} because "{_esc(w.rationale)}"', w.span.line)
             if a.framing.envelope:
                 self.envelope(a.framing.envelope, 2)
             self.put(1, "}")
@@ -299,12 +306,20 @@ class Formatter:
                 self.put(2, f'"{_esc(r.message)}"')
         self.put(0, "}")
 
+    def model(self, m: A.ModelDecl) -> None:
+        self.put(0, f"model {m.name} {{", m.span.line)
+        self._doc(m.doc, 1)
+        for h in m.hazards:
+            self.put(1, f'hazard {h.claim} "{_esc(h.rationale)}"', h.span.line)
+        self.put(0, "}")
+
 def _verify_text(v: A.VerifyDecl) -> str:
     tol = ""
     if v.tol is not None:
         tol = f" within {_num(v.tol * 100)} %" if not v.tol_unit else f" within {_num(v.tol)} {v.tol_unit}"
     if v.kind == "case": return f'verify case "{_esc(v.path)}"{tol}'
     if v.kind == "against": return f"verify {v.output} against {v.ref.text if v.ref else '?'}{tol}"
+    if v.kind == "converged": return f"verify converged {v.output} <= {_num(v.tol or 0.0)}"
     return f"verify {v.output} monotone with {v.known} {v.direction}"
 
 def _esc(s: str) -> str:

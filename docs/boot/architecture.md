@@ -26,7 +26,7 @@ Kept deliberately short; prune as aggressively as you grow it.*
 | Loop | `uel/calibration.py` | Measurement write-back (overlays, per-serial as-built), tightening, discrepancy events. |
 | Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status, and the `uel pack` review dossier (ADR-0008). |
 | Surfaces | `uel/diagnostics.py` | Structured diagnostics (JSON + human render). Error-code registry. |
-| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / pack / calibrate / query` (provenance + instances). |
+| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / pack / calibrate / query` (provenance + instances + sensitivity) / agent / init / skill. |
 
 ## Grading artifacts
 
@@ -49,8 +49,13 @@ expression layer (`uel/expr.py`), level quantities (`uel/units.py`),
 targets/seams (`uel/contracts.py`, `uel/envelopes.py`). v0.3 (ADR-0008)
 operationalized zero-trust review: verification contracts (against/monotone/
 case), declared tool pins + interface manifests, the `uel pack` dossier, and
-the trust ledger. Still deliberately unbuilt (v0.4+): LSP, FMU import (the
+the trust ledger. v0.5 made the tool agent-native (`uel agent`, the packaged
+skill, `uel init`); v0.6 (ADR-0009) added the recursive-detail harness:
+the physics-model hazard registry (`uel/stdlib/models.uel`, UEL0510
+cover/waive obligations), the sensitivity query, and convergence contracts
+(`verify converged`). Still deliberately unbuilt: LSP, FMU import (the
 manifest pattern exists; the shell generator waits for a real FMU), remote
-execution, SysML bridges, distributor refresh, sensitivity staleness,
-expression conditionals/interp tables, per-instance graph state, statistical
-uncertainty, property contracts beyond monotone.
+execution, SysML bridges, distributor refresh, sensitivity-aware staleness,
+expression conditionals/interp tables, per-instance graph state (hazard
+coverage is therefore project-granular, not per-subject), statistical
+uncertainty.

@@ -1,0 +1,24 @@
+model beam.euler_bernoulli {
+  doc "Slender-beam bending; plane sections remain plane."
+  hazard lateral_torsional_buckling "critical moment falls with flange t^3 and unbraced length^2"
+  hazard shear_deformation "short spans: stiffness overpredicted"
+}
+
+analysis Bracket {
+  framing {
+    model beam.euler_bernoulli
+    assume static because "quasi-static load case"
+    covers local_buckling, web_crippling
+    waive shear_deformation because "span/depth > 20 across the envelope"
+  }
+  params {
+    w = 10 N/m
+  }
+  core python "cores/fea.py"
+  verify converged residual <= 1e-05
+  verify converged grid_indep_pct <= 0.5
+  outputs {
+    sigma_max : MPa
+  }
+  judgment pending
+}

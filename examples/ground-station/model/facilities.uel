@@ -50,6 +50,7 @@ analysis PowerBudget {
   framing {
     model power.load_ledger
     assume steady_state because "the ledger sums sustained worst-case draws; motor inrush and heater-cycling transients are breaker-coordination items, not feed sizing"
+    waive transient_inrush because "drives are VFD soft-started (ramp-limited below their continuous rating) and everything else on the feed is electronics or thermostatic; the breaker-coordination study, not the feed sizing, owns the residual"
   }
   knowns {
     peak_drive_power <- ServoSizing.outputs.peak_drive_power
@@ -79,6 +80,7 @@ analysis EnclosureThermal {
     model thermal.lumped_balance
     assume lumped_element because "one air node in a small insulated box; wall and component gradients are a few kelvin and unresolved"
     assume steady_state because "site extremes hold for hours against a ~20 min enclosure time constant; soak bounds the transients"
+    waive internal_gradient_field because "the guarded quantity is the LNA flange, which sits in the forced-air stream by install drawing; stratification in a 0.1 m^3 stirred box is a few kelvin and the ±4 K band plus the [-5, 40] guarantee already absorb it"
     envelope {
       lna_physical_temp in [-5, 40 degC]
       t_amb_min in [-40, 10 degC]
@@ -111,6 +113,8 @@ analysis UpsRideThrough {
   framing {
     model energy.reservoir_discharge
     assume steady_state because "constant-power discharge at the protected bus; converter dynamics and battery voltage sag are folded into the efficiency and end-of-life derates"
+    waive peukert_effect because "the protected-bus draw discharges at ~C/8, far under the rating knee; the Peukert correction at this rate is a few percent and sits inside the 0.8 end-of-life derate already applied"
+    waive temperature_derate because "the UPS shares the conditioned equipment shelter with the server (indoor install, >= 10 degC by shelter spec); the VRLA capacity knee sits below that floor, and the 0.8 end-of-life derate bounds what is left"
   }
   knowns {
     capacity <- ups_2200.energy_capacity
