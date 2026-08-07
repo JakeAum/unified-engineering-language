@@ -184,10 +184,10 @@ real one is the exact failure this document exists to prevent:
 | `fix.replace` mechanical applicability | **Met.** Proven by the fix-loop conformance case. |
 | Code registry with titles | **Met.** `CODES` in `uel/diagnostics.py`. |
 | Append-only registry test | **Met.** `tests/test_api_contract.py` against a pinned snapshot; proven to catch both removal and title drift. |
-| JSON envelope | **Not built.** `check --json` currently emits a bare diagnostics array with no header block. |
+| JSON envelope | **Built, not wired.** `uel/api.py:envelope()` implements and tests it; `check --json` still emits a bare diagnostics array with no header block. |
 | `--json` on every command | **Not built.** Only `check` has it. |
-| Exit code `3` distinct from `1` | **Not met.** Today both "model rejected" and "could not run" return `1`. This is the most consequential gap in the contract and the first thing to close. |
+| Exit code `3` distinct from `1` | **Built, not wired.** `uel/api.py:guard()` implements and tests the split, including the crash-must-not-read-as-a-verdict case; no command routes through it yet. |
 | stdout/stderr discipline | **Partial.** Some commands print progress to stdout. |
-| Envelope + exit-code conformance cases | **Not built.** |
+| Envelope + exit-code conformance cases | **Unit-tested** (`tests/test_api_envelope.py`); no end-to-end conformance cases until the commands are wired. |
 
 Closing this table is the definition of done for the machine-surface work.
