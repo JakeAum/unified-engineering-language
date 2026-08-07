@@ -2,6 +2,7 @@
 
     uel check [path] [--json]    compile-time pipeline: parse, resolve, check, staleness
     uel fmt [path] [--check]     the zero-config formatter
+    uel doctor [path] [--strict] the checkup: drift, epistemic debt, trust ledger
     uel --version
 
 Later phases add: build, stale, hash, graph, project, calibrate, query.
@@ -302,6 +303,24 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
           f"{summary['validated']} validated, {summary['discrepancies']} discrepancies")
     return 0 if bag.ok() else 1
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """The checkup (uel/doctor.py). Reads; never builds, repairs, or files —
+    reporting upstream is an explicit decision, not a side effect of an audit
+    (the never-files rule, `0007-doctor-and-upstream-issues.md` §Framing).
+    `--strict` is the CI gate: nonzero on error-severity findings only."""
+    from . import doctor as D
+
+    checkup, bag = D.run(args.path)
+    if bag.errors:
+        print(bag.render())
+        print("doctor: cannot audit a project that does not resolve — run `uel check` first")
+        return 1
+    if args.json:
+        print(D.to_json(checkup))
+    else:
+        print(D.render(checkup))
+    return 1 if (args.strict and checkup.errors()) else 0
+
 def cmd_query(args: argparse.Namespace) -> int:
     bag = Bag()
     path = args.path
@@ -411,6 +430,12 @@ def build_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]
     p_cal.add_argument("path", nargs="?", default=".")
     p_cal.add_argument("--no-stubs", action="store_true", help="do not generate investigation stubs")
 
+    p_doc = sub.add_parser("doctor", help="audit a model: drift, epistemic debt, and the trust ledger")
+    p_doc.add_argument("path", nargs="?", default=".")
+    p_doc.add_argument("--strict", action="store_true",
+                       help="exit nonzero on error-severity findings (the CI gate)")
+    p_doc.add_argument("--json", action="store_true", help="emit the structured checkup")
+
     p_query = sub.add_parser("query", help="ask the graph")
     p_query.add_argument("what", choices=["provenance", "instances", "sensitivity"])
     p_query.add_argument("target", nargs="?", default="",
@@ -455,6 +480,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "pack": return cmd_pack(args)
     if args.cmd == "graph": return cmd_graph(args)
     if args.cmd == "calibrate": return cmd_calibrate(args)
+    if args.cmd == "doctor": return cmd_doctor(args)
     if args.cmd == "query": return cmd_query(args)
     ap.print_help()
     return 2
