@@ -102,6 +102,17 @@ design with **`uel init <dir>`**: a green-by-construction project with a
 requirement, a ledgered stub, and a computed acceptance target. Repo-resident
 guidance lives in [`AGENTS.md`](AGENTS.md).
 
+UEL is an **exoskeleton, not a harness** — the fast mechanical oracle your
+agentic harness calls, the way `rustc` and `cargo test` are what made coding
+agents good at Rust. **`uel harness install --target claude-code`** generates
+that seam: a PostToolUse hook that runs `uel check` on every `.uel` edit and
+feeds the diagnostics straight back into the editing agent's context (the merge
+gate as a keystroke gate), a SessionStart work brief, merged hook wiring that
+never clobbers your `settings.json`, and the packaged skill.
+**`--target agents-md`** emits a vendor-neutral `AGENTS.md` instead. Every word
+those artifacts say about UEL is generated from live kernel tables, so they
+cannot rot; `uel harness check` fails when they do (ADR-0010).
+
 ## Quickstart
 
 ```sh

@@ -32,6 +32,16 @@ from .units import UnitError, parse_unit
 
 STDLIB_DIR = Path(__file__).resolve().parent / "stdlib"
 
+# The on-disk vocabulary of a project, as one live table. Everything that has to
+# name a UEL file from outside the kernel — the harness adapters most of all
+# (uel/harness.py) — reads these instead of retyping the strings.
+MANIFEST = "uel.toml"
+LOCK = "uel.lock"
+SOURCE_SUFFIX = ".uel"
+# Editing any of these can change what `uel check` says; editing anything else
+# (a python core, a golden case) can only change what `uel build` produces.
+COMPILE_TIME_INPUTS = (SOURCE_SUFFIX, MANIFEST)
+
 @dataclass
 class TolerancePolicy:
     """Quantization grid for hashing (spec §4.3 draft rule).
@@ -103,7 +113,7 @@ class Project:
 
     @property
     def lock_path(self) -> Path:
-        return self.root / "uel.lock"
+        return self.root / LOCK
 
     def sources_map(self) -> dict[str, str]:
         return {f.rel: f.text for f in self.files}
@@ -121,14 +131,14 @@ def find_root(start: Path) -> Path:
     if start.is_file():
         start = start.parent
     for cand in [start, *start.parents]:
-        if (cand / "uel.toml").is_file(): return cand
+        if (cand / MANIFEST).is_file(): return cand
     return start
 
 def load_project(path: str | Path, bag: Bag, include_stdlib: bool = True) -> Project:
     root = find_root(Path(path))
     proj = Project(root=root)
 
-    manifest = root / "uel.toml"
+    manifest = root / MANIFEST
     model_specs: list[str] = []
     if manifest.is_file():
         proj.manifest_path = manifest

@@ -1,0 +1,11 @@
+{
+  "description": "Claude Code — PostToolUse compile gate, SessionStart work brief, packaged skill",
+  "files": [
+    {"template": "uel-check.py.tmpl", "dest": ".claude/hooks/uel-check.py", "executable": true},
+    {"template": "uel-agenda.sh.tmpl", "dest": ".claude/hooks/uel-agenda.sh", "executable": true}
+  ],
+  "merge": [
+    {"template": "settings.hooks.json", "dest": ".claude/settings.json"}
+  ],
+  "skill": true
+}

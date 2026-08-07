@@ -1,6 +1,7 @@
 """The agent-facing surface (v0.5): UEL describes itself to the model using it.
 
-Three doors, one source of truth:
+Four doors now, one source of truth — `uel harness` (ADR-0010) generates a
+specific harness's hooks and boot context from the same live tables:
 - `uel agent`  — a compact briefing generated from the LIVE kernel tables
   (error codes, expression functions/constants, level units, CLI commands), so
   it cannot drift from the implementation;
@@ -19,8 +20,12 @@ from . import __version__, EDITION
 from .diagnostics import CODES
 
 SKILL_DIR = Path(__file__).resolve().parent / "skill"
+SKILL_NAME = "uel-engineer"
+# Where an installed copy lands in a project. A live table: the harness adapters
+# quote this path rather than retyping it (uel/harness.py).
+SKILL_REL = Path(".claude") / "skills" / SKILL_NAME
 
-_FAMILIES = (
+FAMILIES: tuple[tuple[str, str], ...] = (
     ("UEL00xx", "project / io / lock"),
     ("UEL01xx", "lexing and parsing"),
     ("UEL02xx", "names and references"),
@@ -101,7 +106,7 @@ def briefing(commands: list[str] | None = None) -> str:
         "",
         f"DIAGNOSTICS — {len(CODES)} stable codes:",
     ]
-    lines += [f"  {fam}  {desc}" for fam, desc in _FAMILIES]
+    lines += [f"  {fam}  {desc}" for fam, desc in FAMILIES]
     cmds = commands or ["check", "fmt", "build", "stale", "hash", "project", "pack",
                         "graph", "calibrate", "query", "agent", "init", "skill"]
     lines += [
@@ -121,7 +126,7 @@ def briefing(commands: list[str] | None = None) -> str:
 
 def skill_install(project_dir: Path) -> Path:
     """Copy the packaged skill into <project>/.claude/skills/uel-engineer/."""
-    dest = project_dir / ".claude" / "skills" / "uel-engineer"
+    dest = project_dir / SKILL_REL
     dest.mkdir(parents=True, exist_ok=True)
     for src in SKILL_DIR.iterdir():
         shutil.copy2(src, dest / src.name)
