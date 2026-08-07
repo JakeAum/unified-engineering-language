@@ -30,6 +30,7 @@ _FAMILIES = (
     ("UEL06xx", "geometry assertions and DFM"),
     ("UEL07xx", "staleness, build, core execution"),
     ("UEL08xx", "calibration, targets, seams, verification"),
+    ("UEL10xx", "doctor: drift and epistemic debt over the lock"),
 )
 
 

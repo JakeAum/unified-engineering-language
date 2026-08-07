@@ -70,6 +70,31 @@ CODES: dict[str, str] = {
     "UEL0807": "stub core in the graph",
     "UEL0808": "verification contract failed",
     "UEL0809": "verification contract pending",
+    # UEL10xx — `uel doctor` (uel/doctor.py). Audit findings over the graph and
+    # the lock together: drift on one axis, epistemic debt on the other. They are
+    # a separate family because they grade *recorded state*, not sources, and
+    # several restate a compile-time rule from the auditor's side.
+    "UEL1000": "doctor: lock unreadable",
+    "UEL1001": "doctor: node never built",
+    "UEL1002": "doctor: node stale",
+    "UEL1003": "doctor: node last run failed",
+    "UEL1010": "doctor: verification contract failed",
+    "UEL1011": "doctor: verification contract pending",
+    "UEL1012": "doctor: verification contract never exercised",
+    "UEL1020": "doctor: output target violated",
+    "UEL1021": "doctor: output target met on the nominal, band across the line",
+    "UEL1022": "doctor: output target pending",
+    "UEL1030": "doctor: model hazard neither covered nor waived",
+    "UEL1031": "doctor: hazard waiver carries no argument",
+    "UEL1040": "doctor: belief rests on an opaque core with no contract",
+    "UEL1050": "doctor: output uncertainty is asserted, not propagated",
+    "UEL1051": "doctor: asserted uncertainty is narrower than its inputs",
+    "UEL1052": "doctor: output declares ± but records no band",
+    "UEL1060": "doctor: compiled projection is stale",
+    "UEL1061": "doctor: compiled projection was hand-edited",
+    "UEL1070": "doctor: rollup stands on unvalued leaves",
+    "UEL1071": "doctor: input port never connected",
+    "UEL1080": "doctor: stub core in the maturity ledger",
 }
 
 SEVERITIES = ("error", "warning", "info")
