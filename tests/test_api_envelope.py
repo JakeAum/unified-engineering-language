@@ -7,6 +7,8 @@ that "your model is wrong" (1) is never confused with "I could not run" (3).
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import unittest
 
@@ -41,8 +43,6 @@ class TestEnvelope(unittest.TestCase):
         self.assertEqual(env["result"], {})
 
     def test_emit_is_exactly_one_object(self) -> None:
-        import io
-
         buf = io.StringIO()
         bag = Bag()
         bag.error("UEL0501", "assumed range extends above the guaranteed fence")
@@ -53,6 +53,17 @@ class TestEnvelope(unittest.TestCase):
 
 class TestExitCodeDiscipline(unittest.TestCase):
     """The 1-vs-3 split, which is the whole reason this module exists."""
+
+    def setUp(self) -> None:
+        """Swallow the stderr these cases deliberately provoke.
+
+        `guard` is supposed to print a diagnostic and a traceback on the failure
+        paths; letting that land in the suite's own output trains readers to
+        scroll past tracebacks in CI logs, which is how a real one gets missed.
+        """
+        self._stderr = contextlib.redirect_stderr(io.StringIO())
+        self._stderr.__enter__()
+        self.addCleanup(self._stderr.__exit__, None, None, None)
 
     def test_rejection_passes_through(self) -> None:
         self.assertEqual(api.guard("check", False, lambda: api.EXIT_REJECTED),
@@ -83,9 +94,6 @@ class TestExitCodeDiscipline(unittest.TestCase):
         """Under --json the contract promises stdout is always parseable —
         including on failure, which is exactly when a caller most needs to
         read the reason."""
-        import contextlib
-        import io
-
         def body() -> int:
             raise api.ToolUnavailable("project root has no uel.toml", code="UEL0001")
 
