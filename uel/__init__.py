@@ -13,6 +13,9 @@ operating skill), stub nominals with declared bands.
 v0.6: the recursive-detail harness — registered models carry hazard lists
 (cover or waive each, UEL0510), `uel query sensitivity` (elasticities by
 perturbation), convergence contracts (`verify converged`) on python cores.
+Then the generated adapter layer (ADR-0010): `uel harness install` emits an
+agentic harness's hooks and boot context from live kernel tables — substance
+portable, reflexes local, and a drift test so adapters stay disposable.
 """
 
 __version__ = "0.6.0"

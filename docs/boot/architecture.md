@@ -26,7 +26,9 @@ Kept deliberately short; prune as aggressively as you grow it.*
 | Loop | `uel/calibration.py` | Measurement write-back (overlays, per-serial as-built), tightening, discrepancy events. |
 | Surfaces | `uel/projections.py` | Compiled, hash-stamped projections: BOM, ICD, work instructions, status, and the `uel pack` review dossier (ADR-0008). |
 | Surfaces | `uel/diagnostics.py` | Structured diagnostics (JSON + human render). Error-code registry. |
-| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / pack / calibrate / query` (provenance + instances + sensitivity) / agent / init / skill. |
+| Surfaces | `uel/cli.py` | `uel check / build / fmt / stale / hash / graph / project / pack / calibrate / query` (provenance + instances + sensitivity) / agent / init / skill / harness. `build_parser()` is the live CLI table the agent-facing surfaces generate from. |
+| Surfaces | `uel/agentdoc.py` | `uel agent` (self-briefing from live tables), `uel skill`, `uel init`. |
+| Surfaces | `uel/harness.py` + `uel/adapters/` | `uel harness install` — the generated adapter layer (ADR-0010). The only module that knows an agent harness exists; each adapter is a directory of data, under 200 lines, drift-gated by CI. |
 
 ## Grading artifacts
 
@@ -53,7 +55,10 @@ the trust ledger. v0.5 made the tool agent-native (`uel agent`, the packaged
 skill, `uel init`); v0.6 (ADR-0009) added the recursive-detail harness:
 the physics-model hazard registry (`uel/stdlib/models.uel`, UEL0510
 cover/waive obligations), the sensitivity query, and convergence contracts
-(`verify converged`). Still deliberately unbuilt: LSP, FMU import (the
+(`verify converged`). ADR-0010 added the generated adapter layer
+(`uel harness install`): the exoskeleton's seam onto whatever agentic harness
+is calling it, generated from live kernel tables and drift-gated so the
+adapters stay disposable. Still deliberately unbuilt: LSP, FMU import (the
 manifest pattern exists; the shell generator waits for a real FMU), remote
 execution, SysML bridges, distributor refresh, sensitivity-aware staleness,
 expression conditionals/interp tables, per-instance graph state (hazard

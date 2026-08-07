@@ -33,4 +33,4 @@ packages = ["uel"]
 version = { attr = "uel.__version__" }
 
 [tool.setuptools.package-data]
-uel = ["stdlib/*.uel", "skill/*.md"]
+uel = ["stdlib/*.uel", "skill/*.md", "adapters/*/*"]

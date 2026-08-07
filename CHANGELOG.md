@@ -1,5 +1,47 @@
 # Changelog
 
+## Unreleased — the generated adapter layer
+
+- **`uel harness install --target claude-code|agents-md`** (ADR-0010): the seam
+  where a harness-agnostic kernel meets a specific harness's reflexes.
+  `claude-code` emits a PostToolUse compile gate (`uel check --json` on every
+  edit to a `.uel` source or manifest, structured diagnostics back on exit 2 —
+  the merge gate as a keystroke gate), a SessionStart work brief, merged hook
+  wiring in `.claude/settings.json`, and the packaged skill via the existing
+  `uel skill install` machinery. `agents-md` emits a vendor-neutral `AGENTS.md`.
+  `uel harness check` is the drift gate; `uel harness show` prints without
+  writing.
+- **Generation, not authorship** — enforced, not asserted. Every token an
+  adapter says about UEL is substituted from a live kernel table (the argparse
+  tree via the new `cli.build_parser()`, `diagnostics.CODES` grouped into
+  labelled bands, `expr.FUNCTIONS`/`CONSTS`, `units.UNITS`, `graph._KIND_MAP`,
+  `project.MANIFEST`/`LOCK`/`SOURCE_SUFFIX`, the packaged `SKILL.md`, and
+  `agentdoc.briefing()` quoted verbatim). Tests fail if any template contains a
+  literal subcommand name, diagnostic-code band, or project filename — typing
+  `uel check` into a template is a CI failure.
+- **Adapters are directories of data** — `uel/adapters/<target>/adapter.json`
+  plus templates, no per-target Python, budgeted and tested under 200 lines
+  each (claude-code 193, agents-md 70). Adding a harness adds a directory;
+  removing one is `rm -r`.
+- **Merge, never clobber** — foreign hooks, matcher groups, permissions and env
+  in an existing `settings.json` all survive; re-installing is a byte-level
+  no-op; unparseable JSON is left untouched and reported; edited artifacts are
+  kept unless `--force`.
+- **Drift is a test failure** — this repository installs its own adapter and
+  `tests/test_harness.py` fails if the installed copy differs from what the
+  generator emits, extending the v0.5 skill-drift test to the whole harness.
+  That is what makes an adapter safe to regenerate and cheap to throw away.
+- **Graceful degradation** — the brief carries a ladder (`stale --rank`, then
+  `agenda`, then plain `stale`) and the emitted hook probes each rung at
+  *runtime* against the kernel actually installed, so an adapter works on
+  either side of concurrent kernel work; the floor rung is asserted against the
+  live CLI table. `doctor` is probed and surfaced only when present.
+- Emitted hooks are stdlib-only, detect how to invoke the tool (entry point,
+  else `python3 -m uel` with the repo on `PYTHONPATH` for an uninstalled
+  checkout), and are silent no-ops when no kernel answers. 100 unit tests.
+- No new diagnostic codes: the UEL11xx band is reserved and deliberately
+  unused (ADR-0010) — adapter installation is not graph checking.
+
 ## v0.6.0 — the recursive-detail harness (2026-08-05)
 
 The devil is in the details at every layer, so the harness now asks about

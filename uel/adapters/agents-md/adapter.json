@@ -1,0 +1,8 @@
+{
+  "description": "AGENTS.md — vendor-neutral boot context for any harness that reads the convention",
+  "files": [
+    {"template": "AGENTS.md.tmpl", "dest": "AGENTS.md", "executable": false}
+  ],
+  "merge": [],
+  "skill": false
+}

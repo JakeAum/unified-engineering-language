@@ -6,6 +6,16 @@ worked designs (`examples/`). UEL is built for you: orient with `uel agent`
 at `.claude/skills/uel-engineer/SKILL.md` (installable into any project via
 `uel skill install <dir>`).
 
+This file is hand-written, because it describes the *reference implementation*
+(test suites, conformance, worked examples) rather than a UEL project. The
+project-shaped equivalent is generated: `uel harness install --target agents-md
+--dir <repo>` emits an `AGENTS.md` whose every claim about the tool comes from
+live kernel tables (ADR-0010). The `.claude/` hooks in this repo ARE generated
+(`--target claude-code`); do not hand-edit them — `tests/test_harness.py` fails
+if they drift from what the generator emits. Re-run
+`python3 -m uel harness install --target claude-code --dir . --force` and
+commit whenever a kernel change moves the generated text.
+
 ## Commands
 
 ```sh
@@ -15,6 +25,7 @@ python3 -m conformance.runner             # the conformance suite (the gate)
 python3 -m uel check examples/<p>         # compile-time pipeline
 python3 -m uel build examples/<p>         # run the stale cone; re-verdict targets/contracts
 python3 -m uel fmt --check examples/<p>   # canonical layout (CI enforces)
+python3 -m uel harness check --target claude-code   # are the generated adapters current?
 ```
 
 The merge gate (`.github/workflows/ci.yml`) runs all of the above on every

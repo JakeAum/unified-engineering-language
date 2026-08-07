@@ -6,6 +6,10 @@
 
 Later phases add: build, stale, hash, graph, project, calibrate, query.
 Exit codes: 0 clean, 1 diagnostics with errors, 2 usage/internal.
+
+`build_parser()` is the live CLI table: `uel agent` and `uel harness` generate
+their agent-facing text from this argparse tree, so a subcommand added here
+reaches every briefing and every emitted adapter without a prose edit anywhere.
 """
 
 from __future__ import annotations
@@ -321,7 +325,36 @@ def cmd_query(args: argparse.Namespace) -> int:
     print(provenance(res, args.target, Lock.load(project.lock_path)))
     return 0
 
-def main(argv: list[str] | None = None) -> int:
+def cmd_harness(args: argparse.Namespace) -> int:
+    from .harness import TARGETS, HarnessError, check as harness_check, install, render_report
+
+    try:
+        if args.action == "check":
+            drift = harness_check(args.target, Path(args.dir))
+            for line in drift:
+                print(line)
+            print(f"harness: {args.target} artifacts are current" if not drift else
+                  f"harness: {len(drift)} artifact(s) drifted — re-run "
+                  f"`uel harness install --target {args.target} --dir {args.dir} --force`")
+            return 0 if not drift else 1
+        if args.action == "show":
+            if args.target not in TARGETS:
+                raise HarnessError(f"unknown target '{args.target}' "
+                                   f"(have: {', '.join(sorted(TARGETS)) or 'none'})")
+            for art in TARGETS[args.target].artifacts():
+                print(f"==> {art.rel}")
+                sys.stdout.write(art.text if art.text.endswith("\n") else art.text + "\n")
+            return 0
+        print(render_report(install(args.target, Path(args.dir), force=args.force)))
+    except HarnessError as e:
+        print(f"harness: {e}", file=sys.stderr)
+        return 2
+    return 0
+
+def build_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]:
+    """The live CLI table. `uel agent` and `uel harness` generate their text from
+    this object, so a command added here shows up in every agent-facing surface
+    without anyone editing prose."""
     ap = argparse.ArgumentParser(prog="uel", description="UEL — Unified Engineering Language")
     ap.add_argument("--version", action="version", version=f"uel {__version__}")
     sub = ap.add_subparsers(dest="cmd")
@@ -386,6 +419,23 @@ def main(argv: list[str] | None = None) -> int:
     p_query.add_argument("path", nargs="?", default=".")
     p_query.add_argument("--serial", default="")
 
+    p_harness = sub.add_parser("harness", help="generate the harness adapter layer (hooks, settings, AGENTS.md) from live kernel tables")
+    p_harness.add_argument("action", choices=["install", "check", "show"])
+    p_harness.add_argument("--target", default="claude-code",
+                           choices=sorted(_harness_targets()) or None,
+                           help="which harness to adapt to (default: claude-code)")
+    p_harness.add_argument("--dir", default=".", help="repository root to install into (default: .)")
+    p_harness.add_argument("--force", action="store_true", help="overwrite existing generated artifacts")
+
+    return ap, sub
+
+def _harness_targets() -> list[str]:
+    from .harness import TARGETS
+
+    return list(TARGETS)
+
+def main(argv: list[str] | None = None) -> int:
+    ap, sub = build_parser()
     args = ap.parse_args(argv)
     if args.cmd == "agent":
         args._commands = sorted(sub.choices)
@@ -394,6 +444,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_init(args)
     if args.cmd == "skill":
         return cmd_skill(args)
+    if args.cmd == "harness":
+        return cmd_harness(args)
     if args.cmd == "check": return cmd_check(args)
     if args.cmd == "fmt": return cmd_fmt(args)
     if args.cmd == "build": return cmd_build(args)

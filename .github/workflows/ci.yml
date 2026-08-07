@@ -31,6 +31,10 @@ jobs:
       - name: Self-check the low-cost excursion
         run: |
           if [ -d examples/ground-station-lc ]; then python -m uel check examples/ground-station-lc; fi
+      # The adapters are generated (ADR-0010); a hand-edited or stale copy is a
+      # bug. tests/test_harness.py asserts the same thing — this step names it.
+      - name: Generated harness adapters are current
+        run: python -m uel harness check --target claude-code --dir .
       - name: Formatter is canonical
         run: |
           if [ -d examples/apache-one ]; then python -m uel fmt --check examples/apache-one; fi
