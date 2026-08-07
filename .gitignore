@@ -6,3 +6,6 @@ dist/
 .uel/cas/
 out/
 .venv/
+
+# agent worktrees (transient, created by the harness)
+.claude/worktrees/
