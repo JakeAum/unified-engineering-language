@@ -1,0 +1,9 @@
+{
+  "rank": ["LoadBearing", "Incidental"],
+  "scores": {"LoadBearing": 8.75, "Incidental": 4.75},
+  "measure_order": ["req.R-1.hot", "req.R-1.cold"],
+  "measure_fields": {
+    "req.R-1.hot": {"tightening": 1.0, "cone": 1, "pressure": 0.95, "consumer_weight": 1.0},
+    "req.R-1.cold": {"tightening": 1.0, "cone": 1, "pressure": 0.95}
+  }
+}

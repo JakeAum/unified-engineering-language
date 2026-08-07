@@ -1,0 +1,10 @@
+{
+  "rank": ["panel_geom", "Elsewhere"],
+  "scores": {"panel_geom": 6.0, "Elsewhere": 0.0},
+  "terms": {"panel_geom": {"margin": 1.0}, "Elsewhere": {}},
+  "measure_top": "panel_v1.mass",
+  "measure_fields": {
+    "panel_v1.mass": {"kind": "unvalued", "tightening": 1.0, "pressure": 1.0, "cone": 0}
+  },
+  "advisories": ["UEL0901", "UEL0903"]
+}

@@ -98,14 +98,43 @@ def cmd_build(args: argparse.Namespace) -> int:
 
 def cmd_stale(args: argparse.Namespace) -> int:
     bag = Bag()
-    project, res, _ = _load_and_resolve(args.path, bag)
+    # checks stay on for plain `stale` (unchanged behaviour); --rank additionally
+    # needs the budget rollups they compute
+    project, res, rollups = _load_and_resolve(args.path, bag)
     if res is None:
         print(bag.render(project.sources_map()))
         return 1
     from .lockfile import Lock
     from .staleness import compute
 
-    rep = compute(res, Lock.load(project.lock_path, bag))
+    lock = Lock.load(project.lock_path, bag)
+    rep = compute(res, lock)
+    if getattr(args, "rank", False):
+        from . import economics as E
+
+        sig = E.signals(res, rep, lock, rollups)
+        ranked = E.rank(res, rep, lock, sig=sig, include_fresh=args.all)
+        abag = Bag()
+        E.advise(sig, ranked, None, abag)
+        errs = len(bag.errors)
+        if args.json:
+            import json as _json
+
+            print(_json.dumps({"errors": errs,
+                               "terms": [{"term": t.name, "weight": t.weight, "doc": t.doc}
+                                         for t in E.TERMS],
+                               "ranked": [r.to_obj() for r in ranked],
+                               "advisories": [d.to_obj() for d in abag.sorted()]}, indent=2))
+            return 0
+        if errs:
+            print(f"note: {errs} compile error(s) in this graph — nothing outranks a red check. "
+                  f"Run `uel check {args.path}` first; the ranking below reads the graph as "
+                  f"parsed, which is not the graph you will end up with.\n")
+        sys.stdout.write(E.render_rank(ranked, rep, top=args.top, terms=not args.brief))
+        out = abag.render(project.sources_map())
+        if out:
+            print("\n" + out)
+        return 0
     if args.json:
         import json as _json
 
@@ -324,8 +353,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_query(args: argparse.Namespace) -> int:
     bag = Bag()
     path = args.path
-    if args.what == "instances" and args.target and path == ".":
-        path = args.target  # `uel query instances <dir>` — no target for this query
+    if args.target and path == "." and (
+            args.what == "instances"  # `uel query instances <dir>` — no target for this query
+            # info-value's target is optional, so a lone directory is the project
+            or (args.what == "info-value" and Path(args.target).is_dir())):
+        path, args.target = args.target, ""
     project, res, _ = _load_and_resolve(path, bag, serial=args.serial, checks=False)
     if res is None:
         print(bag.render(project.sources_map()))
@@ -340,6 +372,38 @@ def cmd_query(args: argparse.Namespace) -> int:
         from .scheduler import sensitivity
 
         sys.stdout.write(sensitivity(res, args.target, Lock.load(project.lock_path), bag))
+        return 0
+    if args.what == "info-value":
+        from . import economics as E
+        from .checker import run_checks
+        from .staleness import compute
+
+        cbag = Bag()
+        rollups = run_checks(res, cbag, lock=False) or {}
+        lock = Lock.load(project.lock_path, bag)
+        rep = compute(res, lock)
+        sig = E.signals(res, rep, lock, rollups)
+        values = E.info_value(res, rep, lock, sig=sig)
+        if args.sensitivity:
+            E.elasticity_scale(res, lock, Bag(), values)
+        abag = Bag()
+        E.advise(sig, [], values, abag)
+        errs = len(bag.errors) + len(cbag.errors)
+        if args.json:
+            import json as _json
+
+            print(_json.dumps({"errors": errs,
+                               "measurements": [m.to_obj() for m in values],
+                               "advisories": [d.to_obj() for d in abag.sorted()]}, indent=2))
+            return 0
+        if errs:
+            print(f"note: {errs} compile error(s) in this graph — a measurement bought against "
+                  f"a graph that does not check is a measurement of the wrong thing. "
+                  f"Run `uel check {path}` first.\n")
+        sys.stdout.write(E.render_info_value(values, target=args.target, top=args.top))
+        out = abag.render(project.sources_map())
+        if out and not args.target:
+            print("\n" + out)
         return 0
     print(provenance(res, args.target, Lock.load(project.lock_path)))
     return 0
@@ -395,6 +459,13 @@ def build_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]
     p_stale = sub.add_parser("stale", help="what does the current state invalidate?")
     p_stale.add_argument("path", nargs="?", default=".")
     p_stale.add_argument("--json", action="store_true")
+    p_stale.add_argument("--rank", action="store_true",
+                         help="value-order the stale frontier, showing the scoring terms (ADR-0011)")
+    p_stale.add_argument("--all", action="store_true",
+                         help="--rank: include fresh nodes carrying open obligations")
+    p_stale.add_argument("--top", type=int, default=0, help="--rank: show only the top N")
+    p_stale.add_argument("--brief", action="store_true",
+                         help="--rank: scores only, without the term breakdown")
 
     p_hash = sub.add_parser("hash", help="show content hashes (graph, or one node with --node)")
     p_hash.add_argument("path", nargs="?", default=".")
@@ -437,12 +508,18 @@ def build_parser() -> tuple[argparse.ArgumentParser, argparse._SubParsersAction]
     p_doc.add_argument("--json", action="store_true", help="emit the structured checkup")
 
     p_query = sub.add_parser("query", help="ask the graph")
-    p_query.add_argument("what", choices=["provenance", "instances", "sensitivity"])
+    p_query.add_argument("what", choices=["provenance", "instances", "sensitivity", "info-value"])
     p_query.add_argument("target", nargs="?", default="",
                          help="provenance: a value ref; sensitivity: an analysis node "
-                              "(elasticities by perturbation, v0.6)")
+                              "(elasticities by perturbation, v0.6); info-value: a quantity "
+                              "(omit to rank every candidate measurement)")
     p_query.add_argument("path", nargs="?", default=".")
     p_query.add_argument("--serial", default="")
+    p_query.add_argument("--json", action="store_true", help="info-value: structured output")
+    p_query.add_argument("--top", type=int, default=0, help="info-value: show only the top N")
+    p_query.add_argument("--sensitivity", action="store_true",
+                         help="info-value: scale tightening by measured elasticities "
+                              "(costs core runs; needs a fresh lock)")
 
     p_harness = sub.add_parser("harness", help="generate the harness adapter layer (hooks, settings, AGENTS.md) from live kernel tables")
     p_harness.add_argument("action", choices=["install", "check", "show"])

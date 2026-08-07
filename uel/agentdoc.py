@@ -35,6 +35,7 @@ FAMILIES: tuple[tuple[str, str], ...] = (
     ("UEL06xx", "geometry assertions and DFM"),
     ("UEL07xx", "staleness, build, core execution"),
     ("UEL08xx", "calibration, targets, seams, verification"),
+    ("UEL09xx", "economics: attention ranking, information value"),
     ("UEL10xx", "doctor: drift and epistemic debt over the lock"),
 )
 
@@ -117,6 +118,10 @@ def briefing(commands: list[str] | None = None) -> str:
         "trust ledger); uel pack <Analysis> <dir> (one node's full epistemic chain for",
         "review); uel query provenance <ref> <dir>; uel calibrate <measurements.json>",
         "<dir> (reality writes back; consumers flip stale mechanically).",
+        "Pick your next move, don't guess it: `uel stale --rank <dir>` is the work",
+        "queue in value order with the score's terms shown, and `uel query info-value",
+        "<dir>` ranks which single measurement buys the most. Both are advice — the",
+        "checker still gates and build still walks dependencies (ADR-0011).",
         "",
         "DEEP DOCS — docs/syntax.md · docs/schema.md · docs/core-protocol.md ·",
         "docs/decisions/ (ADRs: why it is this way) · examples/ground-station* (a full",

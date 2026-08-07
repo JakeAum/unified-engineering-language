@@ -71,6 +71,9 @@ CODES: dict[str, str] = {
     "UEL0807": "stub core in the graph",
     "UEL0808": "verification contract failed",
     "UEL0809": "verification contract pending",
+    "UEL0901": "stale work with no computed value",
+    "UEL0902": "no declared ignorance to measure",
+    "UEL0903": "measurement would decide a verdict",
     # UEL10xx — `uel doctor` (uel/doctor.py). Audit findings over the graph and
     # the lock together: drift on one axis, epistemic debt on the other. They are
     # a separate family because they grade *recorded state*, not sources, and

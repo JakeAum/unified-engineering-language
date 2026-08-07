@@ -339,13 +339,34 @@ class BriefDegradesGracefully(unittest.TestCase):
         self.assertIn("--rank", self.hook.read_text(encoding="utf-8"))
 
     def test_falls_back_when_the_ranked_brief_does_not_exist(self):
-        """Today's kernel has no `--rank`; the agent still gets a work queue."""
-        self.assertFalse(harness.supports("stale", "--rank"),
-                         "if --rank has landed, this test's premise changed (that is fine)")
+        """An older kernel has no `--rank`; the agent still gets a work queue.
+
+        Originally this asserted the *live* kernel lacked `--rank` and said so
+        loudly if that changed. It has since changed — the economics scheduler
+        landed — so the premise moves to a shim. The property under test is
+        unchanged and is now the durable one: an adapter outlives the kernel
+        that generated it, so it must degrade against a kernel *older* than
+        itself, which no live-table assertion can ever exercise.
+        """
+        binroot = self._fake_kernel(
+            "#!/bin/sh\n"
+            "case \"$1\" in\n"
+            "  --version) echo 'uel 0.0.1'; exit 0 ;;\n"
+            "  stale) [ \"$2\" = --help ] && { echo 'usage: stale [--json]'; exit 0; }\n"
+            "         echo 'MISSING-RANK-PLAIN'; exit 0 ;;\n"
+            "  *) exit 2 ;;\nesac\n")
+        r = self._run(binroot)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("MISSING-RANK-PLAIN", r.stdout, "a work queue was printed anyway")
+        self.assertNotIn("--rank", r.stdout, "an unsupported rung must not be invoked")
+
+    def test_uses_the_ranked_brief_on_the_live_kernel(self):
+        """The other side of the same coin, now that `--rank` really exists:
+        the ladder's top rung is what actually runs."""
+        self.assertTrue(harness.supports("stale", "--rank"))
         r = self._run()
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("MISSING", r.stdout, "a work queue was printed anyway")
-        self.assertNotIn("--rank", r.stdout, "an unsupported rung must not be invoked")
+        self.assertIn("--rank", r.stdout, "the best available rung must be used")
 
     def test_uses_the_ranked_brief_when_the_kernel_has_it(self):
         binroot = self._fake_kernel(
@@ -362,10 +383,21 @@ class BriefDegradesGracefully(unittest.TestCase):
         self.assertIn("RANKED-OK", r.stdout)
         self.assertNotIn("PLAIN", r.stdout)
 
+    def test_optional_commands_are_hidden_on_a_kernel_without_them(self):
+        """`doctor` has since landed, so absence is exercised with a shim —
+        again the durable direction: an adapter must not advertise a command
+        the kernel in front of it does not have."""
+        binroot = self._fake_kernel(
+            "#!/bin/sh\n"
+            "case \"$1\" in\n"
+            "  --version) echo 'uel 0.0.1'; exit 0 ;;\n"
+            "  stale) [ \"$2\" = --help ] && { echo 'usage: stale'; exit 0; }; echo 'PLAIN'; exit 0 ;;\n"
+            "  *) exit 2 ;;\nesac\n")
+        self.assertNotIn("doctor", self._run(binroot).stdout)
+
     def test_surfaces_optional_commands_only_when_present(self):
-        self.assertFalse(harness.supports("doctor"),
-                         "if doctor has landed, this test's premise changed (that is fine)")
-        self.assertNotIn("doctor", self._run().stdout)
+        self.assertIn("doctor", self._run().stdout,
+                      "doctor is in this kernel; the brief should point at it")
         binroot = self._fake_kernel(
             "#!/bin/sh\n"
             "case \"$1\" in\n"

@@ -11,6 +11,7 @@ Case kinds are registered per phase; each kind owns a directory:
   stale/     Phase 3 — edit scripts → expected stale sets
   build/     Phase 3 — scheduler runs → expected outputs within tolerance
   derisk/    Phase 4 — R1 envelope-formalism pair set (spec §10.1)
+  economics/ ADR-0011 — attention ranking / information value → expected orderings
 
 Exit code 0 iff every discovered case passes. Run: python -m conformance.runner
 """
@@ -211,6 +212,109 @@ def run_check_case(path: Path) -> tuple[bool, str]:
         res = resolve_project(project, bag)
         run_checks(res, bag, lock=False)
     return _match_diags(expected, bag.sorted())
+
+
+@handler("economics", "*")
+def run_economics_case(path: Path) -> tuple[bool, str]:
+    """ADR-0011 attention/info-value machinery, graded against expected orderings.
+
+    expected.json may assert any of: "rank" (exact value-order), "include_fresh"
+    (widen the ranked set past the stale frontier), "scores" and "terms"
+    (node -> expected score / normalized term values), "frontier" (node ->
+    buildable-now flag), "measure_top" and "measure_order" (the highest-value
+    candidate measurements, in order), "measure_fields" (target -> expected
+    field values), and "advisories" (UEL09xx codes that must be raised).
+
+    Cases carry no lock, so every executable is 'missing' and every number is
+    reproducible without running a core: what is pinned is the *semantics* of
+    the ranking, which must survive a weight amendment or fail loudly.
+    """
+    import json
+
+    from uel import economics as E
+    from uel.checker import run_checks
+    from uel.diagnostics import Bag
+    from uel.lockfile import Lock
+    from uel.project import load_project
+    from uel.resolver import resolve_project
+    from uel.staleness import compute
+
+    if not path.is_dir():
+        return True, "skipped (not a case dir)"
+    expected = json.loads((path / "expected.json").read_text(encoding="utf-8"))
+    bag = Bag()
+    project = load_project(path, bag)
+    res = resolve_project(project, bag) if not bag.errors else None
+    if res is None or bag.errors:
+        return False, "economics case must resolve cleanly: " + \
+            "; ".join(f"{d.code} {d.message}" for d in bag.sorted()[:3])
+    rollups = run_checks(res, Bag(), lock=False) or {}
+    lock = Lock.load(project.lock_path)
+    rep = compute(res, lock)
+    sig = E.signals(res, rep, lock, rollups)
+    ranked = E.rank(res, rep, lock, sig=sig, include_fresh=expected.get("include_fresh", False))
+    values = E.info_value(res, rep, lock, sig=sig)
+    abag = Bag()
+    E.advise(sig, ranked, values, abag)
+
+    checked: list[str] = []
+    got = [r.name for r in ranked]
+    if (want := expected.get("rank")) is not None:
+        if got != want:
+            return False, f"rank: expected {want}, got {got}"
+        checked.append(f"rank order exact ({len(got)} nodes)")
+    by = {r.name: r for r in ranked}
+    for name, want_score in sorted(expected.get("scores", {}).items()):
+        if name not in by:
+            return False, f"scores: '{name}' is not in the ranked set {got}"
+        if abs(by[name].score - want_score) > 1e-6:
+            return False, f"scores: '{name}' expected {want_score}, got {by[name].score}"
+    for name, want_terms in sorted(expected.get("terms", {}).items()):
+        if name not in by:
+            return False, f"terms: '{name}' is not in the ranked set {got}"
+        have = {t.name: t.value for t in by[name].terms}
+        for tname, tval in sorted(want_terms.items()):
+            if abs(have.get(tname, 0.0) - tval) > 1e-6:
+                return False, (f"terms: '{name}.{tname}' expected {tval}, "
+                               f"got {have.get(tname, 0.0)}")
+    if expected.get("scores") or expected.get("terms"):
+        checked.append(f"{len(expected.get('scores', {})) + len(expected.get('terms', {}))} "
+                       "score/term assertions")
+    for name, want_flag in sorted(expected.get("frontier", {}).items()):
+        if name not in by:
+            return False, f"frontier: '{name}' is not in the ranked set {got}"
+        if by[name].frontier != want_flag:
+            return False, f"frontier: '{name}' expected {want_flag}, got {by[name].frontier}"
+    if expected.get("frontier"):
+        checked.append(f"{len(expected['frontier'])} frontier flags")
+    got_m = [m.target for m in values]
+    if "measure_top" in expected:  # null asserts that nothing is measurable
+        want_top = expected["measure_top"]
+        if (got_m[0] if got_m else None) != want_top:
+            return False, f"measure_top: expected {want_top!r}, got {got_m[:3]}"
+        checked.append("top measurement" if want_top else "no measurable ignorance")
+    if (want_m := expected.get("measure_order")) is not None:
+        if got_m[:len(want_m)] != want_m:
+            return False, f"measure_order: expected {want_m}, got {got_m[:len(want_m) + 1]}"
+        checked.append(f"measurement order ({len(want_m)})")
+    mby = {m.target: m for m in values}
+    for target, fields in sorted(expected.get("measure_fields", {}).items()):
+        if target not in mby:
+            return False, f"measure_fields: '{target}' is not a candidate; have {got_m[:5]}"
+        for f, want_v in sorted(fields.items()):
+            have_v = getattr(mby[target], f, None)
+            if isinstance(want_v, (int, float)) and isinstance(have_v, (int, float)):
+                if abs(have_v - want_v) > 1e-6:
+                    return False, f"measure_fields: '{target}.{f}' expected {want_v}, got {have_v}"
+            elif have_v != want_v:
+                return False, f"measure_fields: '{target}.{f}' expected {want_v!r}, got {have_v!r}"
+        checked.append(f"{target} fields")
+    if (want_codes := expected.get("advisories")) is not None:
+        got_codes = sorted({d.code for d in abag.items})
+        if sorted(set(want_codes)) != got_codes:
+            return False, f"advisories: expected {sorted(set(want_codes))}, got {got_codes}"
+        checked.append(f"advisories {got_codes}")
+    return True, ", ".join(checked) or "nothing asserted"
 
 
 # ---------------------------------------------------------------------------

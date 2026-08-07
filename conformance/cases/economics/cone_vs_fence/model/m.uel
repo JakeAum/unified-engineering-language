@@ -1,0 +1,88 @@
+# The tradeoff the weights exist to make, pinned from both sides so that
+# amending one weight cannot quietly invert the intent.
+#
+# Six executables, so a cone term is a fraction of the other five.
+#
+# Sharp: input at 95 % of its fence, nothing downstream -- 5*0.95 = 4.75.
+# Broad: no fence, holds up three of five -- 3*0.60 = 1.80.
+# Mild: input at 30 % of its fence, nothing downstream -- 5*0.30 = 1.50.
+# C1 holds up two of five (1.20), C2 one of five (0.60), C3 nothing (0.00).
+#
+# Read it as a claim about engineering, not about arithmetic: a value sitting
+# one perturbation from leaving its own validity envelope outranks a node that
+# merely has a lot behind it (Sharp > Broad), while a comfortable input does not
+# outrank real blast radius (Broad > Mild). A single weight change that flips
+# either comparison breaks this case, which is the point of writing it down.
+#
+# Nothing here declares any ignorance, so there is no measurement to rank
+# (UEL0902) — and C3 is invalid while serving nothing and blocking nothing,
+# which is the dead-work advisory (UEL0901).
+analysis Sharp {
+  framing {
+    envelope {
+      load in [0, 1000 N]
+    }
+  }
+  params {
+    load = 950 N
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis Mild {
+  framing {
+    envelope {
+      load in [0, 1000 N]
+    }
+  }
+  params {
+    load = 300 N
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis Broad {
+  params {
+    seed = 1 m
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis C1 {
+  knowns {
+    a <- Broad.outputs.y
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis C2 {
+  knowns {
+    a <- C1.outputs.y
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis C3 {
+  knowns {
+    a <- C2.outputs.y
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}

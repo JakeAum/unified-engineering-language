@@ -1,6 +1,32 @@
 # Changelog
 
-## Unreleased — the generated adapter layer
+## Unreleased — the exoskeleton pass
+
+Positions UEL as a harness-agnostic tool that agentic harnesses call, rather
+than a harness of its own: the fast mechanical oracle, the way `rustc` and
+`cargo test` are what made coding agents good at Rust. Substance portable,
+reflexes local. Also reconciles the v0.1.x branch's work onto the v0.6 kernel,
+retiring the fork.
+
+### The tool surface is an API (`docs/stability.md`)
+
+- **A written stability contract.** Diagnostic-code identity, exit-code
+  semantics and the JSON envelope are frozen; subcommands, result fields and
+  the code set are additive-only; message prose and rendered output are
+  explicitly unstable so the fix-loop product surface stays free to improve.
+  Callers match on `code`, never on message text.
+- **Tier 1 has teeth** — `tests/test_api_contract.py` pins the code registry
+  and fails if a code disappears or a title drifts, verified by negative
+  control. Retired rules keep their entry so historical locks and dossiers
+  citing them stay readable.
+- **`uel/api.py`: the envelope and the 1-vs-3 exit split.** "The model was
+  rejected" and "the tool could not run" are opposite instructions; a caller
+  that conflates them either thrashes on a healthy model or ignores a real
+  rejection. `guard()` catches unexpected exceptions on purpose — an unhandled
+  traceback exits 1 through a shell, which would let a kernel defect
+  masquerade as an engineering verdict. Mints UEL0004.
+
+### The generated adapter layer
 
 - **`uel harness install --target claude-code|agents-md`** (ADR-0010): the seam
   where a harness-agnostic kernel meets a specific harness's reflexes.
@@ -41,6 +67,66 @@
   checkout), and are silent no-ops when no kernel answers. 100 unit tests.
 - No new diagnostic codes: the UEL11xx band is reserved and deliberately
   unused (ADR-0010) — adapter installation is not graph checking.
+
+### The economics scheduler
+
+Executes gap-analysis §2 moves 2 and 3 (ADR-0011). The substrate scheduled
+cores; nothing scheduled the two resources that actually bound the loop —
+agent attention and oracle contact. Advice, not authority: the checker still
+gates and `uel build` still walks in dependency order.
+
+- **`uel stale --rank`** — the stale frontier in value order, scored by nine
+  normalized signals joined from data the kernel already computes: broken runs
+  and failed `verify` contracts, target verdicts (violated / band-across-the-
+  line / pending), budget erosion, envelope-fence pressure, requirement trace,
+  blast radius, uncovered model hazards, stub maturity, evidence age. Every
+  row ships its terms — `value × weight = contribution`, summing exactly to
+  the score — because a rank with no visible arithmetic is an oracle. Ties
+  break toward topological order; `frontier` marks what is buildable now;
+  `--all` includes fresh nodes carrying obligations a rebuild cannot fix.
+- **`uel query info-value [quantity]`** — which single test to run next:
+  `tightening × (1 + Σ consumer weight) × (1 + margin pressure)`. Consumers
+  are weighted by their *own* attention score, not counted, so tightening a
+  band that feeds a violated target outranks tightening one that feeds three
+  nodes nobody is waiting on. Unvalued budget leaves are candidates even
+  though they declare no band — they are the holes that make a rollup
+  indeterminate. `--sensitivity` scales tightening by measured elasticities
+  (v0.6 perturbation machinery; costs core runs, hence opt-in).
+- **Normalized terms** — every signal is [0, 1], so a weight means the same
+  thing in a 7-node slice and a 50-node chain. Evidence age is measured inside
+  the lock, never against wall-clock: a ranking that changes because a day
+  passed is not reproducible.
+- New diagnostics UEL0901–0903 (dead stale work, no declared ignorance,
+  measurement decides a verdict), raised by the economics queries only —
+  the merge gate does not carry opinions about what is worth doing.
+- New conformance kind `economics/` (5 cases pinning rank order, term values,
+  frontier flags, the cone-vs-fence tradeoff from both sides, the
+  consumer-weight upgrade in isolation, and the indeterminate-budget rule);
+  34 new unit tests. Gates: 106 tests, 72 cases, three examples green.
+- No version bump and no relock: `uel.__version__` feeds `tool_pins()` and so
+  every recipe hash. This change adds two read-only queries and touches no
+  locked semantics, so the bump and relock belong to whoever cuts the release.
+
+### `uel doctor` — audit the model, and say where belief is load-bearing
+
+Ports the v0.1.3 audit onto v0.6, where there are contract verdicts, target
+verdicts, hazard dispositions and transparent expr cores to grade.
+
+- **The trust ledger** — what fraction of a model is verified by construction,
+  verified by contract, or trusted on the author's word. On `apache-one` that
+  reads 0%/0%/100%, with every uncertainty hand-asserted: the single most
+  useful sentence anyone has written about that model.
+- **Asserted-vs-propagated uncertainty** (UEL1050–1052) — flags outputs whose
+  band is authorial assertion rather than computed propagation, including a
+  hard band derived from an input the graph says is still `± cal`.
+- **Self-authenticating** — every finding cites the hash it came from, so the
+  report can be checked rather than believed. Never files anything: reporting
+  upstream is an explicit decision, not a side effect of an audit.
+- 21 diagnostics UEL1000–1080; `--strict` exits nonzero for use as a gate.
+- Root cause of the v0.1.3 red gate, fixed rather than reproduced: its tests
+  read gitignored build artifacts that existed only on the author's machine.
+  A commit about detecting drift shipped a suite that had drifted from its own
+  repository.
 
 ## v0.6.0 — the recursive-detail harness (2026-08-05)
 
