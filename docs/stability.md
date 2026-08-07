@@ -183,7 +183,7 @@ real one is the exact failure this document exists to prevent:
 | Diagnostic object shape | **Met.** `Diagnostic.to_obj()` already emits it. |
 | `fix.replace` mechanical applicability | **Met.** Proven by the fix-loop conformance case. |
 | Code registry with titles | **Met.** `CODES` in `uel/diagnostics.py`. |
-| Append-only registry test | **Not built.** |
+| Append-only registry test | **Met.** `tests/test_api_contract.py` against a pinned snapshot; proven to catch both removal and title drift. |
 | JSON envelope | **Not built.** `check --json` currently emits a bare diagnostics array with no header block. |
 | `--json` on every command | **Not built.** Only `check` has it. |
 | Exit code `3` distinct from `1` | **Not met.** Today both "model rejected" and "could not run" return `1`. This is the most consequential gap in the contract and the first thing to close. |
