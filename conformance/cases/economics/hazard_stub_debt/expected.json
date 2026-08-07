@@ -1,0 +1,10 @@
+{
+  "rank": ["Unanswered", "Answered"],
+  "scores": {"Unanswered": 4.5, "Answered": 2.0},
+  "terms": {
+    "Unanswered": {"hazard": 1.0, "stub": 1.0},
+    "Answered": {"stub": 1.0}
+  },
+  "measure_top": null,
+  "advisories": ["UEL0902"]
+}

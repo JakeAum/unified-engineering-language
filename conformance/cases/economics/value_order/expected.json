@@ -1,0 +1,13 @@
+{
+  "rank": ["Hot", "Cold", "Mid"],
+  "scores": {"Hot": 10.25, "Cold": 3.0, "Mid": 0.0},
+  "terms": {
+    "Hot": {"fence": 0.95, "serves": 1.0, "cone": 0.5},
+    "Cold": {"fence": 0.6},
+    "Mid": {}
+  },
+  "frontier": {"Hot": true, "Cold": true, "Mid": false},
+  "measure_top": "req.LOAD.limit",
+  "measure_fields": {"req.LOAD.limit": {"tightening": 1.0, "cone": 2, "pressure": 0.95}},
+  "advisories": ["UEL0901"]
+}

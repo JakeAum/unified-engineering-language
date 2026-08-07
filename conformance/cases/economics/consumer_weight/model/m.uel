@@ -1,0 +1,55 @@
+# The information-value upgrade the v0.1 port could not make, isolated so that
+# nothing else can explain the ordering.
+#
+# Two calibration-pending quantities, deliberately identical in every term the
+# v0.1 formula (ignorance x cone count x fence pressure) could see:
+#
+# ignorance is 1.00 for both (± cal); cone size is 1 for both (exactly one
+# consumer, with nothing downstream of it); pressure is 0.95 for both (the same
+# 950-of-1000 N fence, declared in both consumers).
+#
+# Under v0.1 those are the same measurement and the tie falls to alphabetical
+# order, which answers "cold" — the wrong test. What actually differs is what
+# the consumers are worth: LoadBearing is sole evidence for a requirement
+# (5*0.95 + 4*1.00 = 8.75), Incidental is only fence-hot (5*0.95 = 4.75). So the
+# consumer weights are 8.75/8.75 = 1.000 and 4.75/8.75 = 0.542, and the values
+# are 1.00 x 2.000 x 1.95 = 3.900 against 1.00 x 1.543 x 1.95 = 3.009.
+#
+# "Which single test should we run next?" is answered by what waits on the
+# answer, not by how many things do.
+requirement R-1 {
+  text "The mount shall carry the limit load."
+  hot = 950 N ± cal
+  cold = 950 N ± cal
+}
+
+analysis LoadBearing {
+  intent req.R-1 "sole evidence that the mount carries the load"
+  framing {
+    envelope {
+      x in [0, 1000 N]
+    }
+  }
+  knowns {
+    x <- req.R-1.hot
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis Incidental {
+  framing {
+    envelope {
+      x in [0, 1000 N]
+    }
+  }
+  knowns {
+    x <- req.R-1.cold
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}

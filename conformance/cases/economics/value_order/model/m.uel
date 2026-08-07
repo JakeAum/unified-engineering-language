@@ -1,0 +1,72 @@
+# ADR-0010 attention semantics, pinned from the spec side.
+#
+# Hot is fed at 95 % of a one-sided fence ([0, 1000 N] cannot be exited below
+# zero, so only the upper edge presses), is the sole evidence for a requirement,
+# and holds up Mid: 5*0.95 + 4*1.00 + 3*0.50 = 10.25.
+#
+# Cold sits mid-fence — 60 degC inside [0, 100 degC] is genuinely two-sided once
+# both edges are in SI, so the coolest place is the middle — and serves no
+# requirement and blocks nothing: 5*0.60 = 3.00.
+#
+# Mid is invalid only because Hot is, and carries nothing of its own: 0.00.
+#
+# Mid scoring zero is not a bug: it is UEL0901. Work with no linked failure is
+# presumptively dead (program §5.3), and the scheduler says so out loud.
+#
+# The top measurement is req.LOAD.limit — calibration-pending (ignorance 1.0),
+# inherited by the whole Hot->Mid cone, pressing Hot's fence at 95 %.
+# req.TEMP.max is declared exact: measuring it removes no declared ignorance.
+#
+# 95 % of a fence is pressure, not a decision: UEL0903 is reserved for a band
+# that actually sits across the line, where one test settles validity outright.
+# So exactly one advisory is expected here, and it is the dead-work one.
+requirement LOAD {
+  text "The structure shall carry the limit load."
+  limit = 950 N ± cal
+}
+
+requirement TEMP {
+  text "The structure shall operate to its rated temperature."
+  max = 60 degC
+}
+
+analysis Hot {
+  intent req.LOAD "carry the limit load"
+  framing {
+    envelope {
+      limit in [0, 1000 N]
+    }
+  }
+  knowns {
+    limit <- req.LOAD.limit
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis Mid {
+  knowns {
+    a <- Hot.outputs.y
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}
+
+analysis Cold {
+  framing {
+    envelope {
+      t in [0, 100 degC]
+    }
+  }
+  knowns {
+    t <- req.TEMP.max
+  }
+  core python "cores/a.py"
+  outputs {
+    y : m
+  }
+}

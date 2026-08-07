@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased — the economics scheduler
+
+Executes gap-analysis §2 moves 2 and 3 (ADR-0010). The substrate scheduled
+cores; nothing scheduled the two resources that actually bound the loop —
+agent attention and oracle contact. Advice, not authority: the checker still
+gates and `uel build` still walks in dependency order.
+
+- **`uel stale --rank`** — the stale frontier in value order, scored by nine
+  normalized signals joined from data the kernel already computes: broken runs
+  and failed `verify` contracts, target verdicts (violated / band-across-the-
+  line / pending), budget erosion, envelope-fence pressure, requirement trace,
+  blast radius, uncovered model hazards, stub maturity, evidence age. Every
+  row ships its terms — `value × weight = contribution`, summing exactly to
+  the score — because a rank with no visible arithmetic is an oracle. Ties
+  break toward topological order; `frontier` marks what is buildable now;
+  `--all` includes fresh nodes carrying obligations a rebuild cannot fix.
+- **`uel query info-value [quantity]`** — which single test to run next:
+  `tightening × (1 + Σ consumer weight) × (1 + margin pressure)`. Consumers
+  are weighted by their *own* attention score, not counted, so tightening a
+  band that feeds a violated target outranks tightening one that feeds three
+  nodes nobody is waiting on. Unvalued budget leaves are candidates even
+  though they declare no band — they are the holes that make a rollup
+  indeterminate. `--sensitivity` scales tightening by measured elasticities
+  (v0.6 perturbation machinery; costs core runs, hence opt-in).
+- **Normalized terms** — every signal is [0, 1], so a weight means the same
+  thing in a 7-node slice and a 50-node chain. Evidence age is measured inside
+  the lock, never against wall-clock: a ranking that changes because a day
+  passed is not reproducible.
+- New diagnostics UEL0901–0903 (dead stale work, no declared ignorance,
+  measurement decides a verdict), raised by the economics queries only —
+  the merge gate does not carry opinions about what is worth doing.
+- New conformance kind `economics/` (5 cases pinning rank order, term values,
+  frontier flags, the cone-vs-fence tradeoff from both sides, the
+  consumer-weight upgrade in isolation, and the indeterminate-budget rule);
+  34 new unit tests. Gates: 106 tests, 72 cases, three examples green.
+- No version bump and no relock: `uel.__version__` feeds `tool_pins()` and so
+  every recipe hash. This change adds two read-only queries and touches no
+  locked semantics, so the bump and relock belong to whoever cuts the release.
+
 ## v0.6.0 — the recursive-detail harness (2026-08-05)
 
 The devil is in the details at every layer, so the harness now asks about

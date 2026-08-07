@@ -1,0 +1,63 @@
+# Margin erosion, and the case the level-only reading of it gets wrong.
+#
+# Box budgets 100 g over two leaves. Bracket declares 40 g; Panel's mass comes
+# from a geometry core that has never run, so the rollup is not "40 % used" —
+# it has no verdict at all until panel_geom runs. That makes panel_geom the
+# node that decides the budget, which is the most a single piece of work can be
+# worth, so its margin term is maximal rather than the 40 % the arithmetic
+# alone would suggest.
+#
+# panel_geom scores 6*1.00 = 6.00, the margin term alone, because it decides
+# Box.mass; Elsewhere scores 0.00, because it cannot move any budget at all.
+#
+# Elsewhere scoring zero is the other half of the claim. Budget pressure
+# attaches to the nodes that can actually change the number — the geometry core
+# whose locked mass is a rollup leaf, and anything upstream of it — not to every
+# analysis in the project. An analysis that cannot move a budget does not
+# inherit its urgency.
+#
+# The same fact prices the measurement: panel_v1.mass is a candidate even though
+# it carries no declared band to be uncertain about, because an unvalued leaf is
+# exactly the hole that makes a rollup indeterminate. The v0.1 port ranked
+# declared ignorance only, and so could not see it at all.
+component Box : functional {
+  doc "Assembly carrying the mass budget"
+  budget mass <= 100 g
+  contains Bracket
+  contains Panel
+}
+
+component Bracket : physical {
+  mass = 40 g
+}
+
+component Panel : functional {
+  doc "Mass is produced by geometry, not declared"
+}
+
+binding Panel -> panel_v1 : physical {
+  geometry panel_geom
+}
+
+geometry panel_geom {
+  params {
+    thickness = 1 mm
+  }
+  core python "cores/panel.py"
+  outputs {
+    mass : g
+    volume : mm^3
+  }
+}
+
+analysis Elsewhere {
+  doc "Real work that moves no budget"
+  params {
+    q = 1 m
+  }
+  core python "cores/panel.py"
+  outputs {
+    mass : g
+    volume : mm^3
+  }
+}

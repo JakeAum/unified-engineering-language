@@ -1,0 +1,48 @@
+# Epistemic debt is work, and the v0.1 attention port could not see any of it.
+#
+# Both analyses are placeholders standing where an argument belongs, so both
+# carry the stub term. They differ only in whether the registered model's blind
+# spots have been answered (ADR-0009): Unanswered waives neither hazard,
+# Answered waives both with real reasons.
+#
+# Unanswered scores 2.5*1.00 (two of two hazards open) + 2*1.00 (stub) = 4.50;
+# Answered scores 2*1.00 (stub alone) = 2.00.
+#
+# The scheduler therefore hands an agent the analysis whose chosen physics is
+# blind in ways nobody has argued about, ahead of the one that is merely
+# unfinished. Neither has a requirement, a cone, a fence or a budget; the whole
+# ordering is carried by signals that only exist because v0.6 registered the
+# hazards and the maturity ledger.
+model plate.kirchhoff_thin {
+  doc "Thin-plate bending; the classical small-deflection formulation"
+  hazard transverse_shear "thick plates: through-thickness shear ignored, deflection underpredicted"
+  hazard membrane_stiffening "large deflection: linear theory overpredicts stress once the midplane stretches"
+}
+
+analysis Unanswered {
+  framing {
+    model plate.kirchhoff_thin
+  }
+  core stub {
+    w_max = 2 mm
+  }
+  outputs {
+    w_max : mm
+  }
+  judgment pending
+}
+
+analysis Answered {
+  framing {
+    model plate.kirchhoff_thin
+    waive transverse_shear because "t/span = 1/80; the Reissner-Mindlin correction at that slenderness is well under 1 % of centre deflection"
+    waive membrane_stiffening because "w_max/t = 0.4, an order below the unity threshold where midplane stretching starts to carry load"
+  }
+  core stub {
+    w_max = 2 mm
+  }
+  outputs {
+    w_max : mm
+  }
+  judgment pending
+}
