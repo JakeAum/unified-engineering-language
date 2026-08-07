@@ -127,11 +127,19 @@ class RepoAdapterDoesNotDrift(unittest.TestCase):
                            capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
 
+    # Raised from 200 when protocol tolerance landed (docs/stability.md): an
+    # adapter outlives the kernel that generated it, so reading either JSON shape
+    # is load-bearing rather than optional, and it costs ~20 lines. The budget
+    # exists to keep adapters throw-away-able, not to keep them wrong — but it is
+    # moved deliberately and in the open, never silently to fit a change.
+    ADAPTER_LINE_BUDGET = 240
+
     def test_adapters_stay_small_and_disposable(self):
         for name, target in harness.TARGETS.items():
             lines = sum(len((target.dir / p.name).read_text(encoding="utf-8").splitlines())
                         for p in sorted(target.dir.iterdir()))
-            self.assertLess(lines, 200, f"adapter '{name}' is {lines} lines — too big to throw away")
+            self.assertLess(lines, self.ADAPTER_LINE_BUDGET,
+                            f"adapter '{name}' is {lines} lines — too big to throw away")
 
 
 class SettingsMergeNeverClobbers(unittest.TestCase):
@@ -249,6 +257,52 @@ class EmittedHooksBehave(unittest.TestCase):
                            input=event, capture_output=True, text=True, env=env, timeout=300)
         self.assertEqual(r.returncode, 0, r.stderr)
 
+
+class HookReadsEitherJsonShape(unittest.TestCase):
+    """An adapter outlives the kernel that generated it (docs/stability.md).
+
+    `check --json` emits a bare diagnostics array today and will emit the
+    versioned envelope once the machine surface is wired. A hook that assumes
+    the array does not merely misread the envelope — it iterates the dict's
+    *keys*, every `.get` raises, and the compile gate stops firing while
+    reporting success. Silent loss of the gate is the worst available outcome,
+    so both shapes are pinned here and an unknown protocol must be loud.
+    """
+
+    def setUp(self):
+        self.td = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.td, ignore_errors=True)
+        harness.install("claude-code", self.td, force=True)
+        ns: dict = {}
+        exec(compile((self.td / ".claude/hooks/uel-check.py").read_text(),
+                     "uel-check.py", "exec"), ns)
+        self.unwrap = ns["unwrap"]
+        self.known = ns["KNOWN_PROTOCOLS"]
+
+    def test_bare_array_is_read(self):
+        diags = [{"code": "UEL0501", "severity": "error"}]
+        self.assertEqual(self.unwrap(diags), diags)
+
+    def test_envelope_is_read(self):
+        diags = [{"code": "UEL0403", "severity": "error"}]
+        env = {"uel": {"protocol": self.known[0], "ok": False}, "diagnostics": diags,
+               "result": {}}
+        self.assertEqual(self.unwrap(env), diags)
+
+    def test_unknown_protocol_is_refused_not_guessed(self):
+        env = {"uel": {"protocol": max(self.known) + 1}, "diagnostics": [{"severity": "error"}]}
+        self.assertIsNone(self.unwrap(env),
+                          "a future protocol must be refused loudly, never partially read")
+
+    def test_garbage_is_refused(self):
+        for junk in ("a string", 42, None, {"diagnostics": "not a list"}):
+            self.assertIsNone(self.unwrap(junk), f"{junk!r} should not parse as diagnostics")
+
+    def test_known_protocols_tracks_the_live_table(self):
+        """The token is generated, not typed — so it cannot fall behind api.py."""
+        from uel import api
+
+        self.assertIn(api.PROTOCOL, self.known)
 
 class BriefDegradesGracefully(unittest.TestCase):
     """Obligation 3: the brief names `stale --rank` and `doctor`, which concurrent

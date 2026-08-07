@@ -23,6 +23,8 @@ WATCHED = tuple([".uel", "uel.toml"])
 MANIFEST = "uel.toml"
 CHECK_ARGV = ["check", "--json"]
 MAX_SHOWN = 12
+KNOWN_PROTOCOLS = [1]
+REGEN_ARGV = "harness install --target claude-code --force"
 
 def enclosing_project(edited, repo):
     """Nearest ancestor of the edited file holding a manifest, at or under the repo
@@ -31,6 +33,20 @@ def enclosing_project(edited, repo):
         if (cand / MANIFEST).is_file(): return cand
         if cand == repo: break
     return None
+
+def unwrap(payload):
+    """Diagnostics from either shape — bare array or versioned envelope — or None.
+
+    An adapter outlives the kernel that generated it, and guessing is the failure
+    to avoid: an envelope iterated as a list yields its *keys*, every `.get`
+    raises, and the gate stops firing while reporting success. Refuse, never
+    assume — a gate that fails silently is worse than no gate at all.
+    """
+    if isinstance(payload, list): return payload
+    if not isinstance(payload, dict): return None
+    if payload.get("uel", {}).get("protocol") not in (None, *KNOWN_PROTOCOLS): return None
+    got = payload.get("diagnostics")
+    return got if isinstance(got, list) else None
 
 def kernel(repo):
     """How to invoke the tool *here*: the installed entry point, or the module —
@@ -80,12 +96,16 @@ def main():
     except (OSError, subprocess.SubprocessError):
         return 0
     try:
-        diagnostics = json.loads(r.stdout or "[]")
-    except (json.JSONDecodeError, ValueError):
+        diagnostics = unwrap(json.loads(r.stdout or "[]"))
+    except (json.JSONDecodeError, ValueError, TypeError):
         if r.returncode == 0: return 0
         print((r.stdout + r.stderr).strip()[:4000], file=sys.stderr)
         return 2
-    errors = [d for d in diagnostics if d.get("severity") == "error"]
+    if diagnostics is None:  # a protocol this hook was not built to read
+        print(f"{argv[-1]}: unreadable JSON protocol — regenerate this hook with "
+              f"`{' '.join(argv)} {REGEN_ARGV}`", file=sys.stderr)
+        return 2
+    errors = [d for d in diagnostics if isinstance(d, dict) and d.get("severity") == "error"]
     if not errors: return 0
     print(report(errors, Path(edited), project, argv), file=sys.stderr)
     return 2

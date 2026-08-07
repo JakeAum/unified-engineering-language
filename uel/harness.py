@@ -24,7 +24,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import EDITION, SCHEMA_VERSION, __version__
+from . import EDITION, SCHEMA_VERSION, __version__, api
 from .diagnostics import CODES
 from .project import COMPILE_TIME_INPUTS, LOCK, MANIFEST, SOURCE_SUFFIX
 
@@ -34,6 +34,7 @@ ADAPTERS = Path(__file__).resolve().parent / "adapters"
 MAX_PROJECTS = 3  # projects a session-start brief will survey
 MAX_LINES = 14  # lines of brief per project
 MAX_DIAGNOSTICS = 12  # errors quoted back into an edit's context
+HARNESS_CMD = "harness"  # this generator's own subcommand, asserted live below
 
 # The loop's *shape* is a decision; every command in it is verified against the
 # live CLI table and its one-line why is the tool's own --help text. A None rung
@@ -205,6 +206,10 @@ def tokens() -> dict[str, str]:
         "SUFFIX": SOURCE_SUFFIX,
         "WATCHED_JSON": json.dumps(sorted(COMPILE_TIME_INPUTS)),
         "CHECK_ARGV_JSON": json.dumps(check_argv),
+        # An adapter outlives the kernel that generated it, so the shape of
+        # `--json` it should expect is itself a live table (docs/stability.md).
+        "KNOWN_PROTOCOLS_JSON": json.dumps([api.PROTOCOL]),
+        "REGEN_ARGV": f"{HARNESS_CMD} install --target claude-code --force",
         "MAX_PROJECTS": str(MAX_PROJECTS),
         "MAX_LINES": str(MAX_LINES),
         "MAX_DIAGNOSTICS": str(MAX_DIAGNOSTICS),
