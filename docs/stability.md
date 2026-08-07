@@ -184,10 +184,10 @@ real one is the exact failure this document exists to prevent:
 | `fix.replace` mechanical applicability | **Met.** Proven by the fix-loop conformance case. |
 | Code registry with titles | **Met.** `CODES` in `uel/diagnostics.py`. |
 | Append-only registry test | **Met.** `tests/test_api_contract.py` against a pinned snapshot; proven to catch both removal and title drift. |
-| JSON envelope | **Built, not wired.** `uel/api.py:envelope()` implements and tests it; `check --json` still emits a bare diagnostics array with no header block. |
-| `--json` on every command | **Not built.** Only `check` has it. |
-| Exit code `3` distinct from `1` | **Built, not wired.** `uel/api.py:guard()` implements and tests the split, including the crash-must-not-read-as-a-verdict case; no command routes through it yet. |
+| JSON envelope | **Met.** `check --json` emits it; end-to-end tested through `main()`. |
+| `--json` on every command | **Partial.** `check`, `stale`, `stale --rank`, `doctor`, `query info-value` have it; `stale`/`query` emit their own shapes rather than the envelope. Unifying them is the remaining wiring. |
+| Exit code `3` distinct from `1` | **Met.** Every command dispatches through `api.guard()`; `api.exit_for()` maps the 00xx family to 3 and anything mixed to 1. Missing project, corrupt lock, and an injected crash all verified as 3. |
 | stdout/stderr discipline | **Partial.** Some commands print progress to stdout. |
-| Envelope + exit-code conformance cases | **Unit-tested** (`tests/test_api_envelope.py`); no end-to-end conformance cases until the commands are wired. |
+| Envelope + exit-code conformance cases | **Met at unit level** (`tests/test_api_envelope.py`, 20 cases incl. end-to-end through `main()`). Conformance-kind cases still to add. |
 
 Closing this table is the definition of done for the machine-surface work.

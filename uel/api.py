@@ -39,6 +39,26 @@ EXIT_REJECTED = 1
 EXIT_USAGE = 2
 EXIT_UNAVAILABLE = 3
 
+# Codes that mean "the tool could not run", not "the graph is wrong". They are
+# the 00xx family: a missing manifest, an unreadable source, a corrupt lock, an
+# internal defect. Nothing about them is a judgment on the engineering.
+ENVIRONMENT_CODES = ("UEL0001", "UEL0002", "UEL0003", "UEL0004")
+
+def exit_for(bag) -> int:
+    """Map a diagnostic bag onto the contract's exit codes.
+
+    The rule is deliberately conservative: a run is only *unavailable* when
+    every error in it is an environment failure. One genuine finding alongside a
+    missing file still means the graph was judged and found wrong, and a caller
+    that stops reading diagnostics because it saw a 3 would miss it.
+    """
+    errs = bag.errors
+    if not errs:
+        return EXIT_OK
+    if all(d.code in ENVIRONMENT_CODES for d in errs):
+        return EXIT_UNAVAILABLE
+    return EXIT_REJECTED
+
 class ToolUnavailable(Exception):
     """The tool could not run: unreadable project, corrupt lock, missing core.
 

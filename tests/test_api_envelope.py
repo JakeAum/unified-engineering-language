@@ -10,9 +10,12 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import shutil
+import tempfile
 import unittest
+from pathlib import Path
 
-from uel import api
+from uel import api, cli
 from uel.diagnostics import Bag
 
 class TestEnvelope(unittest.TestCase):
@@ -109,6 +112,88 @@ class TestExitCodeDiscipline(unittest.TestCase):
     def test_codes_are_distinct(self) -> None:
         self.assertEqual(
             len({api.EXIT_OK, api.EXIT_REJECTED, api.EXIT_USAGE, api.EXIT_UNAVAILABLE}), 4)
+
+class TestExitForMapping(unittest.TestCase):
+    def test_clean_is_zero(self) -> None:
+        self.assertEqual(api.exit_for(Bag()), api.EXIT_OK)
+
+    def test_pure_environment_failure_is_three(self) -> None:
+        bag = Bag()
+        bag.error("UEL0003", "uel.lock is not readable JSON")
+        self.assertEqual(api.exit_for(bag), api.EXIT_UNAVAILABLE)
+
+    def test_a_real_finding_alongside_an_environment_failure_is_one(self) -> None:
+        """The conservative direction, and the one that matters.
+
+        A caller that saw 3 and stopped reading diagnostics would walk past a
+        genuine rejection. Mixed causes mean the graph *was* judged.
+        """
+        bag = Bag()
+        bag.error("UEL0003", "uel.lock is not readable JSON")
+        bag.error("UEL0403", "worst-case draw exceeds declared supply")
+        self.assertEqual(api.exit_for(bag), api.EXIT_REJECTED)
+
+    def test_warnings_never_change_the_code(self) -> None:
+        bag = Bag()
+        bag.warning("UEL0406", "an 'in' port is never connected")
+        bag.info("UEL0405", "rollup has unvalued leaves")
+        self.assertEqual(api.exit_for(bag), api.EXIT_OK)
+
+class TestCliHonoursTheContract(unittest.TestCase):
+    """End to end through `main()` — the shape a real caller actually sees."""
+
+    EXAMPLE = Path(__file__).resolve().parent.parent / "examples" / "apache-one"
+
+    def setUp(self) -> None:
+        self.td = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.td, ignore_errors=True)
+        self.project = self.td / "slice"
+        shutil.copytree(self.EXAMPLE, self.project)
+
+    def _run(self, *argv: str) -> tuple[int, str]:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc = cli.main(list(argv))
+        return rc, out.getvalue()
+
+    def test_clean_project_exits_zero_with_an_ok_envelope(self) -> None:
+        rc, out = self._run("check", str(self.project), "--json")
+        self.assertEqual(rc, api.EXIT_OK)
+        env = json.loads(out)
+        self.assertTrue(env["uel"]["ok"])
+        self.assertEqual(env["uel"]["protocol"], api.PROTOCOL)
+        self.assertEqual(env["uel"]["command"], "check")
+        self.assertGreater(env["result"]["nodes"], 0)
+
+    def test_missing_project_is_three_not_one(self) -> None:
+        rc, _ = self._run("check", str(self.td / "nowhere"))
+        self.assertEqual(rc, api.EXIT_UNAVAILABLE,
+                         "a project that cannot be read is an environment failure")
+
+    def test_corrupt_lock_is_three_not_one(self) -> None:
+        (self.project / "uel.lock").write_text("not json{", encoding="utf-8")
+        rc, _ = self._run("check", str(self.project))
+        self.assertEqual(rc, api.EXIT_UNAVAILABLE)
+
+    def test_rejected_model_is_one(self) -> None:
+        p = self.project / "model" / "structure.uel"
+        p.write_text(p.read_text(encoding="utf-8").replace("budget mass <= 470 g",
+                                                           "budget mass <= 470 W"),
+                     encoding="utf-8")
+        rc, _ = self._run("check", str(self.project))
+        self.assertEqual(rc, api.EXIT_REJECTED,
+                         "a dimension error is a judgment about the graph")
+
+    def test_unknown_command_is_two(self) -> None:
+        with self.assertRaises(SystemExit) as cm:  # argparse's own usage exit
+            self._run("notacommand")
+        self.assertEqual(cm.exception.code, api.EXIT_USAGE)
+
+    def test_json_stdout_is_only_the_envelope(self) -> None:
+        """The contract promises stdout can be piped into a parser
+        unconditionally — nothing else may share it."""
+        _, out = self._run("check", str(self.project), "--json")
+        json.loads(out)  # raises if any chatter shares the stream
 
 if __name__ == "__main__":
     unittest.main()

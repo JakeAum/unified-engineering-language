@@ -6,7 +6,12 @@
     uel --version
 
 Later phases add: build, stale, hash, graph, project, calibrate, query.
-Exit codes: 0 clean, 1 diagnostics with errors, 2 usage/internal.
+
+Exit codes (docs/stability.md): 0 clean · 1 the model was rejected · 2 usage ·
+3 the tool could not run. 1 and 3 are the pair that matters to a machine caller:
+"your beam fails at limit load" and "I couldn't open the lockfile" are opposite
+instructions. Every command dispatches through `api.guard`, so a defect in one
+of them exits 3 rather than impersonating an engineering verdict.
 
 `build_parser()` is the live CLI table: `uel agent` and `uel harness` generate
 their agent-facing text from this argparse tree, so a subcommand added here
@@ -20,6 +25,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
+from . import api
 from .diagnostics import Bag
 from .formatter import format_ast
 from .parser import parse_text
@@ -39,17 +45,17 @@ def cmd_check(args: argparse.Namespace) -> int:
 
             apply_overlays(res, getattr(args, "serial", "") or "")
             run_checks(res, bag, lock=not args.no_lock)
+    n = len(res.doc.nodes) if res else 0
     if args.json:
-        print(bag.to_json())
+        api.emit("check", bag, result={"nodes": n})
     else:
         out = bag.render(project.sources_map())
         if out:
             print(out)
         if bag.ok():
-            n = len(res.doc.nodes) if res else 0
             print(f"check: ok ({n} nodes, {len(bag.items)} advisories)" if bag.items
                   else f"check: ok ({n} nodes)")
-    return 0 if bag.ok() else 1
+    return api.exit_for(bag)
 
 def _load_and_resolve(path: str, bag: Bag, serial: str = "", checks: bool = True):
     project = load_project(path, bag)
@@ -94,7 +100,7 @@ def cmd_build(args: argparse.Namespace) -> int:
     verb = "would run" if args.dry_run else "ran"
     print(f"build: {verb} {len(result.ran)}, skipped {len(result.skipped)} fresh, "
           f"{len(result.failed)} failed")
-    return 0 if result.ok() and bag.ok() else 1
+    return api.EXIT_REJECTED if not result.ok() else api.exit_for(bag)
 
 def cmd_stale(args: argparse.Namespace) -> int:
     bag = Bag()
@@ -330,7 +336,7 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
         print(out)
     print(f"calibrate: {summary['applied']} applied, {summary['tightened']} tightened, "
           f"{summary['validated']} validated, {summary['discrepancies']} discrepancies")
-    return 0 if bag.ok() else 1
+    return api.exit_for(bag)
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     """The checkup (uel/doctor.py). Reads; never builds, repairs, or files —
@@ -539,27 +545,20 @@ def _harness_targets() -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     ap, sub = build_parser()
     args = ap.parse_args(argv)
+    handlers = {
+        "agent": cmd_agent, "init": cmd_init, "skill": cmd_skill, "harness": cmd_harness,
+        "check": cmd_check, "fmt": cmd_fmt, "build": cmd_build, "stale": cmd_stale,
+        "hash": cmd_hash, "project": cmd_project, "pack": cmd_pack, "graph": cmd_graph,
+        "calibrate": cmd_calibrate, "doctor": cmd_doctor, "query": cmd_query,
+    }
+    handler = handlers.get(args.cmd)
+    if handler is None:
+        ap.print_help()
+        return api.EXIT_USAGE
     if args.cmd == "agent":
         args._commands = sorted(sub.choices)
-        return cmd_agent(args)
-    if args.cmd == "init":
-        return cmd_init(args)
-    if args.cmd == "skill":
-        return cmd_skill(args)
-    if args.cmd == "harness":
-        return cmd_harness(args)
-    if args.cmd == "check": return cmd_check(args)
-    if args.cmd == "fmt": return cmd_fmt(args)
-    if args.cmd == "build": return cmd_build(args)
-    if args.cmd == "stale": return cmd_stale(args)
-    if args.cmd == "hash": return cmd_hash(args)
-    if args.cmd == "project": return cmd_project(args)
-    if args.cmd == "pack": return cmd_pack(args)
-    if args.cmd == "graph": return cmd_graph(args)
-    if args.cmd == "calibrate": return cmd_calibrate(args)
-    if args.cmd == "doctor": return cmd_doctor(args)
-    if args.cmd == "query": return cmd_query(args)
-    ap.print_help()
-    return 2
+    # Every command runs behind the guard, so a defect in any of them exits 3
+    # ("the tool could not run") instead of 1 ("the model was rejected").
+    return api.guard(args.cmd, bool(getattr(args, "json", False)), lambda: handler(args))
 
 if __name__ == "__main__": raise SystemExit(main())
