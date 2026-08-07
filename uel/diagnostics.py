@@ -15,6 +15,7 @@ CODES: dict[str, str] = {
     "UEL0001": "project error",
     "UEL0002": "io error",
     "UEL0003": "lockfile error",
+    "UEL0004": "internal error",
     "UEL0101": "unexpected token",
     "UEL0102": "unterminated string",
     "UEL0103": "malformed number",
