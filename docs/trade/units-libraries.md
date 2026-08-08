@@ -29,12 +29,43 @@ Facts verified from PyPI and upstream `pyproject.toml`, 2026-08-08.
 | **unyt** | 3.1.0 | ≥3.10 | BSD-3 | `numpy`, `sympy`, `packaging` |
 | **astropy.units** | 8.0.1 | ≥3.11 | BSD-3 | `numpy≥2.0`, `pyerfa`, `PyYAML`, `packaging`, `astropy-iers-data` |
 | **forallpeople** | 2.7.1 | — | — | **none** |
+| **Unum** | 4.2.1 | `>=2.4,<4` | **GPL** | **none** |
 | **sympy.physics.units** | — | — | BSD | `sympy` → `mpmath` |
 | *status quo* — `uel/units.py` | 0.6.0 | ≥3.11 | — | **none** (418 lines) |
 
 Note Pint's floor is *rising*: released 0.25.3 still matches our 3.11, but main
 has moved to 3.12. Adopting it would couple our supported-Python range to
 theirs.
+
+Unum's `requires_python` of `>=2.4,<4` is Python-2-era metadata, and its release
+history is six releases across thirteen years — 2009, 2010, 2013, 2013, 2018,
+and 4.2.1 in January 2022. Production-stable is a fair label; actively developed
+is not.
+
+## 1a. Licensing — a gate, not a criterion
+
+**Unum is GPL. UEL is MIT.** This is checked before anything technical, because
+it is not a trade-off that a strong technical score could outweigh.
+
+Importing a GPL library into the kernel and distributing the result makes the
+combined work subject to GPL terms on the standard copyleft reading. MIT → GPL
+is a one-way door: we can relicense our own code, but no downstream consumer can
+un-GPL the combination. And it lands precisely where it hurts most — UEL's whole
+position is a tool that slots into anyone's stack, and its intended adopters are
+commercial engineering organizations, many of which have procurement policies
+that exclude GPL from shipped products. A GPL kernel would be an adoption
+barrier aimed exactly at the users the project exists to serve.
+
+*(Not legal advice; the effect is clear enough to gate on and a real adoption
+decision should be confirmed by counsel.)*
+
+**The gate binds the kernel, not the cores.** A core is a separate process
+invoked over a JSON pipe. Arm's-length IPC is the textbook case for *not*
+creating a derivative work, so a core author using a GPL library is their own
+compliance question and not UEL's. Unum is therefore disqualified for §5 and
+merely unattractive for §6.
+
+Every other candidate is BSD or MIT-compatible and clears the gate.
 
 ## 2. Criteria
 
@@ -56,16 +87,24 @@ each traceable to a line of the kernel.
 
 ✅ meets · ◐ partial · ❌ fails
 
-| | Pint | unyt | astropy.units | forallpeople | sympy.units | **hand-rolled** |
-|---|---|---|---|---|---|---|
-| C1 stable identity | ❌ | ❌ | ❌ | ◐ | ❌ | ✅ |
-| C2 zero deps | ❌ (4) | ❌ (numpy+sympy) | ❌ (5, incl. a dated IERS data pkg) | ✅ | ❌ | ✅ |
-| C3 valueless inference | ❌ | ❌ | ❌ | ❌ | ◐ | ✅ |
-| C4 recovery + spans + fixes | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| C5 currency dimension | ✅ | ◐ | ◐ | ❌ (fixed 7 SI) | ◐ | ✅ |
-| C6 composed dB refs | ❌ (Beta; "compound not comprehensive") | ❌ | ✅ (`DecibelUnit`; pycraf precedent) | ❌ | ❌ | ✅ |
-| C7 affine strictness | ◐ (permissive by flag) | ◐ | ◐ | ❌ | ◐ | ✅ |
-| C8 vocabulary breadth | ✅ (best in field) | ✅ | ✅ | ◐ | ✅ | ◐ (curated) |
+| | Pint | unyt | astropy.units | forallpeople | Unum | sympy.units | **hand-rolled** |
+|---|---|---|---|---|---|---|---|
+| **License gate** | ✅ BSD | ✅ BSD | ✅ BSD | ✅ | ❌ **GPL** | ✅ BSD | ✅ MIT |
+| C1 stable identity | ❌ | ❌ | ❌ | ◐ | ❌ | ❌ | ✅ |
+| C2 zero deps | ❌ (4) | ❌ (numpy+sympy) | ❌ (5, incl. a dated IERS data pkg) | ✅ | ✅ | ❌ | ✅ |
+| C3 valueless inference | ❌ | ❌ | ❌ | ❌ | ❌ | ◐ | ✅ |
+| C4 recovery + spans + fixes | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| C5 currency dimension | ✅ | ◐ | ◐ | ❌ (fixed 7 SI) | ◐ (as a derived unit) | ◐ | ✅ |
+| C6 composed dB refs | ❌ (Beta; "compound not comprehensive") | ❌ | ✅ (`DecibelUnit`; pycraf precedent) | ❌ | ❌ | ❌ | ✅ |
+| C7 affine strictness | ◐ (permissive by flag) | ◐ | ◐ | ❌ | ❌ | ◐ | ✅ |
+| C8 vocabulary breadth | ✅ (best in field) | ✅ | ✅ | ◐ | ◐ | ✅ | ◐ (curated) |
+| C9 actively maintained | ✅ | ✅ | ✅ | ◐ | ❌ (6 releases / 13 yrs) | ✅ | ✅ |
+
+**C9 was added when Unum surfaced it.** Liveness is not a nice-to-have for
+something inside an identity function. A dormant dependency cannot ship the fix
+when a conversion factor turns out wrong, and correcting it downstream by
+monkey-patching would be the C1 failure in its purest form — our hashes
+diverging from what the library says they are.
 
 ## 4. The decisive criterion is C1, and it is structural
 
@@ -136,6 +175,12 @@ concrete numbers. A library there costs the kernel nothing.
 | Structural, SI-only, no deps wanted | **forallpeople** |
 | Closed-form arithmetic | **none needed** — see below |
 
+**Unum is not recommended even here**, where its GPL is no longer a blocker. It
+is zero-dependency and works with numpy arrays without depending on numpy, which
+is a genuinely nice property — but it is effectively dormant, and every job it
+could do is done better by a maintained alternative. Zero dependencies is a
+virtue for the kernel, which is not where it is allowed to run.
+
 Two rules:
 
 1. **A library `Quantity` must never cross the JSON boundary.** The protocol is
@@ -170,6 +215,10 @@ Rejecting the dependency is not rejecting the work:
 
 Kill criteria, so the decision stays falsifiable:
 
+0. **A candidate relicenses permissively.** The gate in §1a is the only
+   rejection here that is about paperwork rather than engineering. If Unum ever
+   ships under MIT/BSD it re-enters the study — though it would still need to
+   clear C1, C9, and the capability columns, which is a tall order.
 1. **Array-valued quantities enter the kernel.** If the graph ever carries
    fields rather than scalars, unyt's numpy integration stops being a
    convenience and starts being the design. Revisit immediately.
@@ -190,5 +239,6 @@ Kill criteria, so the decision stays falsifiable:
 - [astropy — DecibelUnit](https://docs.astropy.org/en/stable/api/astropy.units.DecibelUnit.html)
 - [pycraf — conversions (spectrum management)](https://bwinkel.github.io/pycraf/conversions/index.html)
 - [forallpeople](https://github.com/connorferster/forallpeople)
+- [Unum on PyPI](https://pypi.org/project/Unum/) · [Unum documentation](https://unum.readthedocs.io/)
 - [physipy — alternative packages survey](https://physipy.readthedocs.io/en/mkdocs_playground/misc/alternative-packages/alternative-home.html)
 - [Physical-type correctness in scientific Python (arXiv 1807.07643)](https://arxiv.org/pdf/1807.07643)
